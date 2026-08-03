@@ -15,11 +15,10 @@ const HALL_LEFT = (WIDTH - HALL_WIDTH) / 2;
 const HALL_RIGHT = HALL_LEFT + HALL_WIDTH;
 const HALL_LENGTH = 1000;
 
-// Doors on the sides are seen from their EDGE (they face left/right into the hallway)
-// We see the thin profile of the door from the hallway
-const DOOR_DEPTH = 8; // how thick the door looks from the side (edge-on)
+// Doors are flush in the wall - fully on the other side, seen face-on
+// They do NOT extend into the hallway at all
+const DOOR_W = 44;
 const DOOR_H = 60;
-const DOOR_FACE_W = 44; // actual door width (seen if you were facing it)
 
 // Camera
 let camera = { y: 0 };
@@ -242,84 +241,53 @@ function drawDoor(door, index) {
     const doorScreenY = sy(door.y);
     if (doorScreenY < -DOOR_H - 40 || doorScreenY > HEIGHT + 40) return;
 
-    // Side doors face LEFT or RIGHT into the hallway.
-    // From our top-down-ish view, we see:
-    // - The doorframe as a rectangular opening in the wall
-    // - The door itself as a rectangle coming OUT from the wall into the hallway
-    //   (like an open door seen from above, sticking out perpendicular to the wall)
-
     const dsY = doorScreenY;
 
+    // Door is entirely inside the wall (flush, on the OTHER side)
+    // We see it face-on, recessed into the wall
+    let dx;
     if (door.side === 'left') {
-        // Doorframe opening in left wall
-        ctx.fillStyle = '#0f0a1a';
-        ctx.fillRect(HALL_LEFT - 4, dsY, 8, DOOR_H);
-        // Frame trim
-        ctx.fillStyle = COLORS.doorFrame;
-        ctx.fillRect(HALL_LEFT - 4, dsY - 3, 8, 3);
-        ctx.fillRect(HALL_LEFT - 4, dsY + DOOR_H, 8, 3);
-
-        // The door itself - facing RIGHT into the hallway
-        // It's like an open door: extends from the wall into the hall
-        const doorStartX = HALL_LEFT;
-        const doorEndX = HALL_LEFT + DOOR_FACE_W;
-
-        // Door face (the surface you'd see walking down the hall)
-        ctx.fillStyle = COLORS.door;
-        ctx.fillRect(doorStartX, dsY, DOOR_FACE_W, DOOR_DEPTH);
-        // Door bottom edge (thickness visible because perspective)
-        ctx.fillStyle = COLORS.doorDark;
-        ctx.fillRect(doorStartX, dsY + DOOR_DEPTH, DOOR_FACE_W, 2);
-
-        // The face of the door (what you see looking at it from the hallway)
-        ctx.fillStyle = COLORS.door;
-        ctx.fillRect(doorStartX, dsY + 1, DOOR_FACE_W, DOOR_H - 2);
-        // Panels on the face
-        ctx.fillStyle = COLORS.doorDark;
-        ctx.fillRect(doorStartX + 4, dsY + 4, DOOR_FACE_W - 8, 22);
-        ctx.fillRect(doorStartX + 4, dsY + 30, DOOR_FACE_W - 8, 26);
-        // Doorknob
-        ctx.fillStyle = COLORS.doorKnob;
-        ctx.fillRect(doorStartX + DOOR_FACE_W - 10, dsY + DOOR_H / 2, 4, 4);
-
-        // Sign on door face
-        drawSignOnDoor(doorStartX, dsY, DOOR_FACE_W, door);
-
+        dx = HALL_LEFT - DOOR_W - 4; // fully inside left wall
     } else {
-        // Doorframe opening in right wall
-        ctx.fillStyle = '#0f0a1a';
-        ctx.fillRect(HALL_RIGHT - 4, dsY, 8, DOOR_H);
-        ctx.fillStyle = COLORS.doorFrame;
-        ctx.fillRect(HALL_RIGHT - 4, dsY - 3, 8, 3);
-        ctx.fillRect(HALL_RIGHT - 4, dsY + DOOR_H, 8, 3);
-
-        // The door - facing LEFT into the hallway
-        const doorStartX = HALL_RIGHT - DOOR_FACE_W;
-
-        // Door face
-        ctx.fillStyle = COLORS.door;
-        ctx.fillRect(doorStartX, dsY + 1, DOOR_FACE_W, DOOR_H - 2);
-        // Panels
-        ctx.fillStyle = COLORS.doorDark;
-        ctx.fillRect(doorStartX + 4, dsY + 4, DOOR_FACE_W - 8, 22);
-        ctx.fillRect(doorStartX + 4, dsY + 30, DOOR_FACE_W - 8, 26);
-        // Doorknob
-        ctx.fillStyle = COLORS.doorKnob;
-        ctx.fillRect(doorStartX + 6, dsY + DOOR_H / 2, 4, 4);
-
-        // Sign
-        drawSignOnDoor(doorStartX, dsY, DOOR_FACE_W, door);
+        dx = HALL_RIGHT + 4; // fully inside right wall
     }
+
+    // Dark recess behind the door
+    ctx.fillStyle = '#0f0a1a';
+    ctx.fillRect(dx - 2, dsY - 2, DOOR_W + 4, DOOR_H + 4);
+
+    // Door frame
+    ctx.fillStyle = COLORS.doorFrame;
+    ctx.fillRect(dx - 3, dsY - 3, DOOR_W + 6, DOOR_H + 6);
+
+    // Door body
+    ctx.fillStyle = COLORS.door;
+    ctx.fillRect(dx, dsY, DOOR_W, DOOR_H);
+
+    // Panels
+    ctx.fillStyle = COLORS.doorDark;
+    ctx.fillRect(dx + 4, dsY + 4, DOOR_W - 8, 22);
+    ctx.fillRect(dx + 4, dsY + 30, DOOR_W - 8, 26);
+
+    // Doorknob (on the side closest to hallway)
+    ctx.fillStyle = COLORS.doorKnob;
+    if (door.side === 'left') {
+        ctx.fillRect(dx + DOOR_W - 10, dsY + DOOR_H / 2, 4, 4);
+    } else {
+        ctx.fillRect(dx + 6, dsY + DOOR_H / 2, 4, 4);
+    }
+
+    // Sign on door
+    drawSignOnDoor(dx, dsY, DOOR_W, door);
 
     // Highlight when near
     if (nearDoor === index) {
-        const hx = door.side === 'left' ? HALL_LEFT : HALL_RIGHT - DOOR_FACE_W;
         ctx.strokeStyle = '#ffcc00';
         ctx.lineWidth = 2;
-        ctx.strokeRect(hx - 2, dsY - 2, DOOR_FACE_W + 4, DOOR_H + 4);
+        ctx.strokeRect(dx - 4, dsY - 4, DOOR_W + 8, DOOR_H + 8);
         const bob = Math.sin(Date.now() * 0.005) * 3;
         ctx.fillStyle = '#ffcc00';
-        const ax = hx + DOOR_FACE_W / 2;
+        const ax = dx + DOOR_W / 2;
         const ay = dsY - 14 + bob;
         ctx.beginPath();
         ctx.moveTo(ax, ay + 8);
@@ -688,47 +656,15 @@ function update() {
     if (keys['arrowup'] || keys['w']) { newY -= player.speed; player.facing = 'up'; moved = true; }
     if (keys['arrowdown'] || keys['s']) { newY += player.speed; player.facing = 'down'; moved = true; }
 
-    // Hallway bounds
+    // Hallway bounds (doors are in the walls so no door collision needed)
     if (newX < HALL_LEFT + 6) newX = HALL_LEFT + 6;
     if (newX > HALL_RIGHT - player.width - 6) newX = HALL_RIGHT - player.width - 6;
     if (newY < 50) newY = 50;
     if (newY > HALL_LENGTH - player.height - 10) newY = HALL_LENGTH - player.height - 10;
 
-    // Door collision - side doors extend into the hallway
-    for (let i = 0; i < doors.length; i++) {
-        const door = doors[i];
-        if (door.side === 'end') {
-            // End door collision
-            const ex = WIDTH / 2 - 28 - 4;
-            const ey = -10;
-            const ew = 64;
-            const eh = 70;
-            if (newX + player.width > ex && newX < ex + ew &&
-                newY + player.height > ey && newY < ey + eh) {
-                if (player.x + player.width <= ex || player.x >= ex + ew) newX = player.x;
-                if (player.y + player.height <= ey || player.y >= ey + eh) newY = player.y;
-            }
-        } else {
-            let dx, dy, dw, dh;
-            if (door.side === 'left') {
-                dx = HALL_LEFT;
-                dy = door.y;
-                dw = DOOR_FACE_W;
-                dh = DOOR_H;
-            } else {
-                dx = HALL_RIGHT - DOOR_FACE_W;
-                dy = door.y;
-                dw = DOOR_FACE_W;
-                dh = DOOR_H;
-            }
-            if (newX + player.width > dx && newX < dx + dw &&
-                newY + player.height > dy && newY < dy + dh) {
-                // Slide along axes
-                if (player.x + player.width <= dx || player.x >= dx + dw) newX = player.x;
-                if (player.y + player.height <= dy || player.y >= dy + dh) newY = player.y;
-            }
-        }
-    }
+    // End door / north wall collision
+    const northWall = 30;
+    if (newY < northWall) newY = northWall;
 
     player.x = newX;
     player.y = newY;
@@ -740,7 +676,7 @@ function update() {
     if (camera.y < -40) camera.y = -40;
     if (camera.y > HALL_LENGTH - HEIGHT + 20) camera.y = HALL_LENGTH - HEIGHT + 20;
 
-    // Proximity check
+    // Proximity check - player needs to be near the wall where the door is
     nearDoor = null;
     const pcx = player.x + player.width / 2;
     const pcy = player.y + player.height / 2;
@@ -749,16 +685,18 @@ function update() {
         let dcx, dcy;
         if (door.side === 'end') {
             dcx = WIDTH / 2;
-            dcy = 25;
+            dcy = 30;
         } else if (door.side === 'left') {
-            dcx = HALL_LEFT + DOOR_FACE_W / 2;
+            // Door is in the left wall; player approaches the left wall edge
+            dcx = HALL_LEFT + 10;
             dcy = door.y + DOOR_H / 2;
         } else {
-            dcx = HALL_RIGHT - DOOR_FACE_W / 2;
+            // Door is in the right wall; player approaches the right wall edge
+            dcx = HALL_RIGHT - 10;
             dcy = door.y + DOOR_H / 2;
         }
         const dist = Math.sqrt((dcx - pcx) ** 2 + (dcy - pcy) ** 2);
-        if (dist < 55) { nearDoor = i; break; }
+        if (dist < 50) { nearDoor = i; break; }
     }
 
     if (nearDoor !== null) {
