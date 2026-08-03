@@ -321,7 +321,8 @@ function drawSignOnDoor(doorX, doorY, doorW, door) {
 }
 
 function drawEndDoor(door, index) {
-    // End door is on the north wall, we see it FACE-ON
+    // End door on north wall, ajar with leg sticking out
+    // Draw order: 1) dark gap  2) leg on top  3) door covering right half
     const edw = 56;
     const edh = 66;
     const edx = WIDTH / 2 - edw / 2;
@@ -329,56 +330,59 @@ function drawEndDoor(door, index) {
 
     if (edy > HEIGHT + 20 || edy + edh < -40) return;
 
-    // FIRST: Draw the leg UNDERNEATH, coming from the right side of the door
-    // The leg extends to the LEFT from behind the right side of the door
+    // Frame (behind everything)
+    ctx.fillStyle = COLORS.doorFrame;
+    ctx.fillRect(edx - 4, edy - 4, edw + 8, edh + 8);
+
+    // 1) DARK GAP (the open doorway - full door width, darkness behind)
+    ctx.fillStyle = '#030305';
+    ctx.fillRect(edx, edy, edw, edh);
+
+    // 2) LEG on top of the dark gap - extends from right to left
     const legY = edy + edh - 10;
 
-    // Foot pointing UP (leftmost, furthest from door)
-    ctx.fillStyle = COLORS.skin;
-    ctx.fillRect(edx - 12, legY - 14, 10, 8); // top of foot / toes
-    ctx.fillRect(edx - 10, legY - 8, 8, 12); // foot base
-
-    // Ankle
-    ctx.fillStyle = COLORS.skin;
-    ctx.fillRect(edx - 4, legY + 3, 6, 9);
-
-    // Shin in jeans
+    // Thigh (rightmost - disappears behind the door)
     ctx.fillStyle = COLORS.jeans;
-    ctx.fillRect(edx, legY + 2, 16, 10);
+    ctx.fillRect(edx + 34, legY, 24, 12);
+
+    // More thigh
+    ctx.fillStyle = COLORS.jeans;
+    ctx.fillRect(edx + 20, legY, 16, 12);
 
     // Knee
     ctx.fillStyle = COLORS.jeansDark;
     ctx.fillRect(edx + 14, legY + 1, 8, 11);
 
-    // Thigh in jeans - goes behind the door
+    // Shin in jeans
     ctx.fillStyle = COLORS.jeans;
-    ctx.fillRect(edx + 20, legY, 24, 12);
+    ctx.fillRect(edx, legY + 2, 16, 10);
 
-    // More thigh going under/behind the door
-    ctx.fillStyle = COLORS.jeans;
-    ctx.fillRect(edx + 42, legY, 16, 12);
+    // Ankle
+    ctx.fillStyle = COLORS.skin;
+    ctx.fillRect(edx - 4, legY + 3, 6, 9);
 
-    // NOW: Draw the door ON TOP, covering where the leg enters
-    // Frame
-    ctx.fillStyle = COLORS.doorFrame;
-    ctx.fillRect(edx - 4, edy - 4, edw + 8, edh + 8);
+    // Foot pointing UP (leftmost, furthest from door)
+    ctx.fillStyle = COLORS.skin;
+    ctx.fillRect(edx - 10, legY - 8, 8, 12); // foot base
+    ctx.fillRect(edx - 12, legY - 14, 10, 8); // top of foot / toes
 
-    // Door body (the closed portion covers the leg)
+    // 3) DOOR (closed portion) - covers the RIGHT half only
+    // This makes the leg appear to come from behind the door's edge
+    const doorCoverX = edx + edw / 2 - 4; // door covers right half
+    const doorCoverW = edw / 2 + 4;
+
     ctx.fillStyle = COLORS.door;
-    ctx.fillRect(edx, edy, edw, edh);
-
-    // Panels
+    ctx.fillRect(doorCoverX, edy, doorCoverW, edh);
+    // Panels on the closed portion
     ctx.fillStyle = COLORS.doorDark;
-    ctx.fillRect(edx + 5, edy + 5, edw - 10, 26);
-    ctx.fillRect(edx + 5, edy + 36, edw - 10, 26);
-
-    // Ajar gap on the RIGHT side (where the leg comes from)
-    ctx.fillStyle = '#030305';
-    ctx.fillRect(edx + edw - 18, edy, 18, edh);
+    ctx.fillRect(doorCoverX + 4, edy + 5, doorCoverW - 8, 26);
+    ctx.fillRect(doorCoverX + 4, edy + 36, doorCoverW - 8, 26);
+    // Doorknob
+    ctx.fillStyle = COLORS.doorKnob;
+    ctx.fillRect(doorCoverX + 4, edy + edh / 2, 4, 4);
+    // Edge shadow where door meets the opening
     ctx.fillStyle = '#0a0808';
-    ctx.fillRect(edx + edw - 21, edy, 3, edh);
-
-    // The door covers the thigh - leg appears to come from behind the open gap
+    ctx.fillRect(doorCoverX - 2, edy, 3, edh);
 
     if (nearDoor === index) {
         ctx.strokeStyle = '#ffcc00';
@@ -397,7 +401,7 @@ function drawEndDoor(door, index) {
 }
 
 function drawDeadBodyScene() {
-    // Close-up: door ajar on right side, leg in jeans comes from behind door to the left
+    // Close-up render. Layer order: 1) dark gap  2) leg  3) door covering right half
     ctx.fillStyle = '#0a0a12';
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
@@ -425,31 +429,25 @@ function drawDeadBodyScene() {
     ctx.fillStyle = COLORS.carpet;
     ctx.fillRect(doorX - 40, doorY + doorH, doorW + 80, 40);
 
-    // FIRST: Draw the entire leg (it will be partially covered by door)
+    // Frame
+    ctx.fillStyle = COLORS.doorFrame;
+    ctx.fillRect(doorX - 8, doorY - 8, doorW + 16, doorH + 16);
+
+    // 1) DARK GAP (full doorway opening - darkness inside the room)
+    ctx.fillStyle = '#020204';
+    ctx.fillRect(doorX, doorY, doorW, doorH);
+
+    // 2) LEG on top of the gap - horizontal, jeans, foot pointing up
     const legFloorY = doorY + doorH - 6;
 
-    // FOOT pointing UP (leftmost - far from door)
-    ctx.fillStyle = COLORS.skin;
-    // Top of foot / toes pointing up
-    ctx.fillRect(doorX - 30, legFloorY - 30, 14, 10);
-    // Foot instep rising up
-    ctx.fillRect(doorX - 28, legFloorY - 22, 12, 24);
-    // Heel on floor
-    ctx.fillRect(doorX - 26, legFloorY + 2, 14, 20);
-
-    // Ankle (skin)
-    ctx.fillStyle = COLORS.skin;
-    ctx.fillRect(doorX - 14, legFloorY + 5, 12, 16);
-
-    // Jean cuff
-    ctx.fillStyle = COLORS.jeansDark;
-    ctx.fillRect(doorX - 4, legFloorY + 4, 10, 18);
-
-    // Shin in jeans
+    // Thigh (rightmost, will be covered by door)
     ctx.fillStyle = COLORS.jeans;
-    ctx.fillRect(doorX + 4, legFloorY + 3, 50, 20);
+    ctx.fillRect(doorX + 126, legFloorY, 40, 24);
+    // More thigh
+    ctx.fillStyle = COLORS.jeans;
+    ctx.fillRect(doorX + 68, legFloorY + 2, 60, 22);
     ctx.fillStyle = COLORS.jeansDark;
-    ctx.fillRect(doorX + 4, legFloorY + 12, 50, 2);
+    ctx.fillRect(doorX + 68, legFloorY + 12, 60, 2);
 
     // Knee
     ctx.fillStyle = COLORS.jeansDark;
@@ -457,35 +455,43 @@ function drawDeadBodyScene() {
     ctx.fillStyle = '#162840';
     ctx.fillRect(doorX + 56, legFloorY + 8, 10, 3);
 
-    // Thigh in jeans (goes behind the door)
+    // Shin in jeans
     ctx.fillStyle = COLORS.jeans;
-    ctx.fillRect(doorX + 68, legFloorY + 2, 60, 22);
+    ctx.fillRect(doorX + 4, legFloorY + 3, 50, 20);
     ctx.fillStyle = COLORS.jeansDark;
-    ctx.fillRect(doorX + 68, legFloorY + 12, 60, 2);
+    ctx.fillRect(doorX + 4, legFloorY + 12, 50, 2);
 
-    // Upper thigh continues behind door
-    ctx.fillStyle = COLORS.jeans;
-    ctx.fillRect(doorX + 126, legFloorY, 60, 24);
+    // Jean cuff
+    ctx.fillStyle = COLORS.jeansDark;
+    ctx.fillRect(doorX - 4, legFloorY + 4, 10, 18);
 
-    // NOW: Draw door ON TOP (covers where leg goes behind)
-    // Frame
-    ctx.fillStyle = COLORS.doorFrame;
-    ctx.fillRect(doorX - 8, doorY - 8, doorW + 16, doorH + 16);
+    // Ankle (skin)
+    ctx.fillStyle = COLORS.skin;
+    ctx.fillRect(doorX - 14, legFloorY + 5, 12, 16);
 
-    // Door body
+    // FOOT pointing UP (leftmost - far from door)
+    ctx.fillStyle = COLORS.skin;
+    ctx.fillRect(doorX - 26, legFloorY + 2, 14, 20); // heel on floor
+    ctx.fillRect(doorX - 28, legFloorY - 22, 12, 26); // foot rising up
+    ctx.fillRect(doorX - 30, legFloorY - 30, 14, 10); // toes at top
+
+    // 3) DOOR (closed portion) covers RIGHT half only
+    // The leg appears to emerge from behind the door's left edge
+    const doorCoverX = doorX + doorW / 2 - 10;
+    const doorCoverW = doorW / 2 + 10;
+
     ctx.fillStyle = COLORS.door;
-    ctx.fillRect(doorX, doorY, doorW, doorH);
-
+    ctx.fillRect(doorCoverX, doorY, doorCoverW, doorH);
     // Panels
     ctx.fillStyle = COLORS.doorDark;
-    ctx.fillRect(doorX + 10, doorY + 10, doorW - 20, 70);
-    ctx.fillRect(doorX + 10, doorY + 90, doorW - 20, 70);
-
-    // Ajar gap on the RIGHT side (the leg comes from here)
-    ctx.fillStyle = '#020204';
-    ctx.fillRect(doorX + doorW - 50, doorY, 50, doorH);
-    ctx.fillStyle = '#080608';
-    ctx.fillRect(doorX + doorW - 55, doorY, 5, doorH);
+    ctx.fillRect(doorCoverX + 8, doorY + 10, doorCoverW - 16, 70);
+    ctx.fillRect(doorCoverX + 8, doorY + 90, doorCoverW - 16, 70);
+    // Doorknob (on the left edge of the closed door, facing the opening)
+    ctx.fillStyle = COLORS.doorKnob;
+    ctx.fillRect(doorCoverX + 6, doorY + doorH / 2, 6, 6);
+    // Shadow edge where door meets the opening
+    ctx.fillStyle = '#0a0808';
+    ctx.fillRect(doorCoverX - 3, doorY, 4, doorH);
 }
 
 function drawPlayer() {
