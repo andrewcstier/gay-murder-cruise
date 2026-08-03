@@ -2,29 +2,40 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Gay Murder Cruise</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
         body {
             background: #000;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             height: 100vh;
+            height: 100dvh;
             overflow: hidden;
+            touch-action: none;
         }
         canvas {
             image-rendering: pixelated;
             image-rendering: crisp-edges;
             border: 2px solid #333;
+            max-width: 100vw;
+            max-height: 60vh;
         }
         #game-container {
             position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
         #ui-overlay {
             position: absolute;
@@ -47,7 +58,6 @@
             margin: 8px;
             display: none;
             pointer-events: auto;
-            image-rendering: pixelated;
         }
         #dialog-box.visible {
             display: block;
@@ -86,6 +96,8 @@
             color: #ff69b4;
             text-shadow: 2px 2px 0 #8b0000;
             margin-bottom: 8px;
+            text-align: center;
+            padding: 0 10px;
         }
         #title-screen .subtitle {
             font-size: 12px;
@@ -96,6 +108,8 @@
             font-size: 14px;
             color: #ffcc00;
             animation: blink 1s infinite;
+            cursor: pointer;
+            padding: 20px;
         }
         @keyframes blink {
             0%, 100% { opacity: 1; }
@@ -122,10 +136,106 @@
         #game-over h2 {
             font-size: 24px;
             margin-bottom: 16px;
+            text-align: center;
+            padding: 0 10px;
         }
         #game-over p {
             font-size: 14px;
             color: #ffcc00;
+            cursor: pointer;
+            padding: 20px;
+        }
+
+        /* Mobile controls */
+        #mobile-controls {
+            display: none;
+            width: 100%;
+            max-width: 480px;
+            padding: 10px 20px;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+        }
+        .dpad {
+            position: relative;
+            width: 120px;
+            height: 120px;
+        }
+        .dpad-btn {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            border-radius: 6px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+            color: #fff;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .dpad-btn:active, .dpad-btn.active {
+            background: rgba(255, 105, 180, 0.5);
+            border-color: #ff69b4;
+        }
+        .dpad-up { left: 40px; top: 0; }
+        .dpad-down { left: 40px; bottom: 0; }
+        .dpad-left { left: 0; top: 40px; }
+        .dpad-right { right: 0; top: 40px; }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+        }
+        .action-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(255, 204, 0, 0.2);
+            border: 2px solid rgba(255, 204, 0, 0.6);
+            color: #ffcc00;
+            font-family: monospace;
+            font-size: 12px;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .action-btn:active, .action-btn.active {
+            background: rgba(255, 204, 0, 0.5);
+        }
+
+        #music-toggle {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #fff;
+            font-family: monospace;
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            z-index: 20;
+        }
+        #music-toggle:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        @media (pointer: coarse), (max-width: 768px) {
+            #mobile-controls {
+                display: flex;
+            }
+            canvas {
+                max-height: 50vh;
+            }
         }
     </style>
 </head>
@@ -139,13 +249,28 @@
         <div id="title-screen">
             <h1>GAY MURDER CRUISE</h1>
             <div class="subtitle">Level 1 - Room 1: The Hallway</div>
-            <div class="start-prompt">Press ENTER to start</div>
+            <div class="start-prompt" id="start-btn">Tap to start</div>
         </div>
         <div id="game-over">
             <h2>YOU'VE DISCOVERED A DEAD BODY!!</h2>
-            <p>To be continued...</p>
+            <p id="restart-btn">To be continued... (tap to restart)</p>
+        </div>
+        <button id="music-toggle">Music: ON</button>
+    </div>
+
+    <div id="mobile-controls">
+        <div class="dpad">
+            <div class="dpad-btn dpad-up" data-dir="up">^</div>
+            <div class="dpad-btn dpad-down" data-dir="down">v</div>
+            <div class="dpad-btn dpad-left" data-dir="left">&lt;</div>
+            <div class="dpad-btn dpad-right" data-dir="right">&gt;</div>
+        </div>
+        <div class="action-buttons">
+            <div class="action-btn" id="btn-examine">LOOK</div>
         </div>
     </div>
+
+    <script src="music.js"></script>
     <script src="game.js"></script>
 </body>
 </html>
