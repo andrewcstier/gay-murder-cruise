@@ -321,7 +321,9 @@ function drawSignOnDoor(doorX, doorY, doorW, door) {
 }
 
 function drawEndDoor(door, index) {
-    // End door on north wall. Corpse sideways - head/arms out, legs behind door
+    // End door on north wall. Corpse fell sideways out the door to the LEFT.
+    // Body is vertical (head at top, feet at bottom) but lying on the ground.
+    // Head/arms/torso visible on left side, legs hidden behind the door on right.
     const edw = 56;
     const edh = 66;
     const edx = WIDTH / 2 - edw / 2;
@@ -337,67 +339,70 @@ function drawEndDoor(door, index) {
     ctx.fillStyle = '#030305';
     ctx.fillRect(edx, edy, edw, edh);
 
-    // CORPSE lying sideways - body is horizontal
-    // Head and arms stick out to the LEFT of the door, legs go behind the door to the RIGHT
-    const bodyY = edy + edh - 6; // body rests at floor level
+    // CORPSE fell sideways to the left out of the doorway
+    // Legs are inside the door (top half, covered by door)
+    // Head/torso/arms are outside below the door on the left side
 
-    // Legs (will be covered by door) - draw first
+    // Legs inside doorway (drawn first, will be covered by door)
+    const legX = edx + 8;
     ctx.fillStyle = COLORS.jeans;
-    ctx.fillRect(edx + 24, bodyY - 2, 20, 8); // thigh
-    ctx.fillRect(edx + 42, bodyY - 1, 16, 7); // shin
+    ctx.fillRect(legX, edy + 10, 10, 24); // leg 1
+    ctx.fillRect(legX + 12, edy + 8, 10, 26); // leg 2
     ctx.fillStyle = COLORS.shoe;
-    ctx.fillRect(edx + 56, bodyY, 6, 6); // shoe
+    ctx.fillRect(legX - 1, edy + 6, 11, 6); // shoe 1
+    ctx.fillRect(legX + 11, edy + 4, 11, 6); // shoe 2
 
-    // Second leg slightly offset
-    ctx.fillStyle = COLORS.jeans;
-    ctx.fillRect(edx + 24, bodyY + 5, 20, 7);
-    ctx.fillRect(edx + 42, bodyY + 6, 16, 6);
-    ctx.fillStyle = COLORS.shoe;
-    ctx.fillRect(edx + 56, bodyY + 7, 6, 5);
-
-    // Door covers the legs (drawn on top, right half)
-    const doorCoverX = edx + edw / 2;
+    // Door covers the legs (right half of door, on top)
+    const doorCoverX = edx + 14;
     ctx.fillStyle = COLORS.door;
-    ctx.fillRect(doorCoverX, edy, edw / 2, edh);
+    ctx.fillRect(doorCoverX, edy, edw - 14, edh);
     ctx.fillStyle = COLORS.doorDark;
-    ctx.fillRect(doorCoverX + 3, edy + 5, edw / 2 - 6, 26);
-    ctx.fillRect(doorCoverX + 3, edy + 36, edw / 2 - 6, 26);
+    ctx.fillRect(doorCoverX + 4, edy + 5, edw - 22, 26);
+    ctx.fillRect(doorCoverX + 4, edy + 36, edw - 22, 26);
     ctx.fillStyle = COLORS.doorKnob;
-    ctx.fillRect(doorCoverX + 3, edy + edh / 2, 3, 3);
+    ctx.fillRect(doorCoverX + 4, edy + edh / 2, 3, 3);
     ctx.fillStyle = '#0a0808';
     ctx.fillRect(doorCoverX - 2, edy, 3, edh);
 
-    // Torso/waist (at the door edge, visible)
+    // Waist/hips at the door threshold (partially visible at left edge of door)
+    ctx.fillStyle = COLORS.jeans;
+    ctx.fillRect(edx + 2, edy + edh - 14, 14, 14);
+    ctx.fillStyle = '#222';
+    ctx.fillRect(edx + 2, edy + edh - 14, 14, 3); // belt
+
+    // Torso outside the door, below and to the left
     ctx.fillStyle = '#cc3333';
-    ctx.fillRect(edx + 14, bodyY - 4, 14, 14);
+    ctx.fillRect(edx - 8, edy + edh - 2, 20, 16);
     ctx.fillStyle = '#aa2222';
-    ctx.fillRect(edx + 14, bodyY + 2, 14, 2);
+    ctx.fillRect(edx - 8, edy + edh + 6, 20, 2);
 
-    // Head sticking out to the left
+    // Arms splayed on the ground
+    ctx.fillStyle = COLORS.skin;
+    ctx.fillRect(edx - 18, edy + edh + 2, 12, 6); // left arm out
+    ctx.fillRect(edx + 10, edy + edh + 10, 14, 5); // right arm back
+
+    // Neck
+    ctx.fillStyle = COLORS.skin;
+    ctx.fillRect(edx - 10, edy + edh + 14, 14, 6);
+
+    // Head (on its side, face to the left)
     ctx.fillStyle = COLORS.hair;
-    ctx.fillRect(edx - 6, bodyY - 4, 12, 10);
+    ctx.fillRect(edx - 14, edy + edh + 18, 16, 12);
     ctx.fillStyle = COLORS.skin;
-    ctx.fillRect(edx - 8, bodyY, 6, 6); // face/cheek on ground
+    ctx.fillRect(edx - 18, edy + edh + 20, 6, 8); // face
+    ctx.fillStyle = '#333';
+    ctx.fillRect(edx - 16, edy + edh + 23, 3, 2); // X eye
 
-    // Arms out
-    ctx.fillStyle = COLORS.skin;
-    ctx.fillRect(edx - 2, bodyY - 10, 5, 10); // arm up
-    ctx.fillRect(edx + 4, bodyY + 8, 10, 4); // arm down
-
-    // Neck connecting head to torso
-    ctx.fillStyle = COLORS.skin;
-    ctx.fillRect(edx + 4, bodyY - 1, 10, 7);
-
-    // Blood pool under head/torso
+    // Blood pool
     ctx.fillStyle = '#8b0000';
-    ctx.fillRect(edx - 10, bodyY + 4, 28, 5);
+    ctx.fillRect(edx - 20, edy + edh + 28, 30, 5);
     ctx.fillStyle = '#660000';
-    ctx.fillRect(edx - 6, bodyY + 8, 20, 3);
+    ctx.fillRect(edx - 14, edy + edh + 32, 20, 3);
 
     if (nearDoor === index) {
         ctx.strokeStyle = '#ffcc00';
         ctx.lineWidth = 2;
-        ctx.strokeRect(edx - 14, edy - 6, edw + 20, edh + 18);
+        ctx.strokeRect(edx - 22, edy - 6, edw + 28, edh + 46);
         const bob = Math.sin(Date.now() * 0.005) * 3;
         ctx.fillStyle = '#ffcc00';
         const ax = edx + edw / 2;
