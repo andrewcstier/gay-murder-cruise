@@ -356,17 +356,46 @@ function drawEndDoor(door, index) {
     // End door is on the north wall, we see it FACE-ON
     const edw = 56;
     const edh = 66;
-    // Center it in the hallway, embedded in the north wall
     const edx = WIDTH / 2 - edw / 2;
-    const edy = sy(-10); // top of door is inside the north wall
+    const edy = sy(-10);
 
     if (edy > HEIGHT + 20 || edy + edh < -40) return;
 
+    // FIRST: Draw the leg UNDERNEATH, coming from the right side of the door
+    // The leg extends to the LEFT from behind the right side of the door
+    const legY = edy + edh - 10;
+
+    // Foot pointing UP (leftmost, furthest from door)
+    ctx.fillStyle = COLORS.skin;
+    ctx.fillRect(edx - 12, legY - 14, 10, 8); // top of foot / toes
+    ctx.fillRect(edx - 10, legY - 8, 8, 12); // foot base
+
+    // Ankle
+    ctx.fillStyle = COLORS.skin;
+    ctx.fillRect(edx - 4, legY + 3, 6, 9);
+
+    // Shin in jeans
+    ctx.fillStyle = COLORS.jeans;
+    ctx.fillRect(edx, legY + 2, 16, 10);
+
+    // Knee
+    ctx.fillStyle = COLORS.jeansDark;
+    ctx.fillRect(edx + 14, legY + 1, 8, 11);
+
+    // Thigh in jeans - goes behind the door
+    ctx.fillStyle = COLORS.jeans;
+    ctx.fillRect(edx + 20, legY, 24, 12);
+
+    // More thigh going under/behind the door
+    ctx.fillStyle = COLORS.jeans;
+    ctx.fillRect(edx + 42, legY, 16, 12);
+
+    // NOW: Draw the door ON TOP, covering where the leg enters
     // Frame
     ctx.fillStyle = COLORS.doorFrame;
     ctx.fillRect(edx - 4, edy - 4, edw + 8, edh + 8);
 
-    // Door body
+    // Door body (the closed portion covers the leg)
     ctx.fillStyle = COLORS.door;
     ctx.fillRect(edx, edy, edw, edh);
 
@@ -375,49 +404,18 @@ function drawEndDoor(door, index) {
     ctx.fillRect(edx + 5, edy + 5, edw - 10, 26);
     ctx.fillRect(edx + 5, edy + 36, edw - 10, 26);
 
-    // Door is ajar - dark gap on left side
+    // Ajar gap on the RIGHT side (where the leg comes from)
     ctx.fillStyle = '#030305';
-    ctx.fillRect(edx, edy, 18, edh);
+    ctx.fillRect(edx + edw - 18, edy, 18, edh);
     ctx.fillStyle = '#0a0808';
-    ctx.fillRect(edx + 18, edy, 3, edh);
+    ctx.fillRect(edx + edw - 21, edy, 3, edh);
 
-    // LEG ON THE GROUND - horizontal, wearing jeans, foot pointing UP
-    // The leg lies on the floor extending out from the dark gap.
-    // Person is on their back inside the room, one leg sticking out.
-
-    // Thigh in jeans - starts inside the dark gap (connected to body)
-    const legY = edy + edh - 10; // leg rests at floor level of the door
-    ctx.fillStyle = COLORS.jeans;
-    ctx.fillRect(edx + 4, legY, 16, 12); // thigh coming from inside
-
-    // Thigh continues out (no gap!)
-    ctx.fillStyle = COLORS.jeans;
-    ctx.fillRect(edx + 18, legY + 1, 18, 11); // thigh/upper leg
-
-    // Knee area
-    ctx.fillStyle = COLORS.jeansDark;
-    ctx.fillRect(edx + 34, legY + 1, 8, 11);
-
-    // Shin in jeans
-    ctx.fillStyle = COLORS.jeans;
-    ctx.fillRect(edx + 40, legY + 2, 16, 10);
-
-    // Ankle (jeans end, skin visible)
-    ctx.fillStyle = COLORS.skin;
-    ctx.fillRect(edx + 54, legY + 3, 6, 9);
-
-    // FOOT pointing UP - the foot is perpendicular to the leg
-    // Sole is on the ground, foot rises up vertically
-    ctx.fillStyle = COLORS.skin;
-    // Foot base (where it connects to ankle)
-    ctx.fillRect(edx + 54, legY - 8, 8, 12);
-    // Top of foot / toes area pointing up
-    ctx.fillRect(edx + 53, legY - 14, 10, 8);
+    // The door covers the thigh - leg appears to come from behind the open gap
 
     if (nearDoor === index) {
         ctx.strokeStyle = '#ffcc00';
         ctx.lineWidth = 2;
-        ctx.strokeRect(edx - 6, edy - 6, edw + 16, edh + 14);
+        ctx.strokeRect(edx - 16, edy - 6, edw + 22, edh + 14);
         const bob = Math.sin(Date.now() * 0.005) * 3;
         ctx.fillStyle = '#ffcc00';
         const ax = edx + edw / 2;
@@ -431,7 +429,7 @@ function drawEndDoor(door, index) {
 }
 
 function drawDeadBodyScene() {
-    // Close-up: door ajar, leg in jeans on the ground, foot pointing up
+    // Close-up: door ajar on right side, leg in jeans comes from behind door to the left
     ctx.fillStyle = '#0a0a12';
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
@@ -446,7 +444,6 @@ function drawDeadBodyScene() {
         ctx.fillRect(x + 4, cy + 40, 10, 10);
     }
 
-    // Large door frame
     const doorX = cx - 80;
     const doorY = cy - 120;
     const doorW = 160;
@@ -456,6 +453,53 @@ function drawDeadBodyScene() {
     ctx.fillStyle = COLORS.wall;
     ctx.fillRect(0, doorY - 20, WIDTH, doorH + 50);
 
+    // Floor in front
+    ctx.fillStyle = COLORS.carpet;
+    ctx.fillRect(doorX - 40, doorY + doorH, doorW + 80, 40);
+
+    // FIRST: Draw the entire leg (it will be partially covered by door)
+    const legFloorY = doorY + doorH - 6;
+
+    // FOOT pointing UP (leftmost - far from door)
+    ctx.fillStyle = COLORS.skin;
+    // Top of foot / toes pointing up
+    ctx.fillRect(doorX - 30, legFloorY - 30, 14, 10);
+    // Foot instep rising up
+    ctx.fillRect(doorX - 28, legFloorY - 22, 12, 24);
+    // Heel on floor
+    ctx.fillRect(doorX - 26, legFloorY + 2, 14, 20);
+
+    // Ankle (skin)
+    ctx.fillStyle = COLORS.skin;
+    ctx.fillRect(doorX - 14, legFloorY + 5, 12, 16);
+
+    // Jean cuff
+    ctx.fillStyle = COLORS.jeansDark;
+    ctx.fillRect(doorX - 4, legFloorY + 4, 10, 18);
+
+    // Shin in jeans
+    ctx.fillStyle = COLORS.jeans;
+    ctx.fillRect(doorX + 4, legFloorY + 3, 50, 20);
+    ctx.fillStyle = COLORS.jeansDark;
+    ctx.fillRect(doorX + 4, legFloorY + 12, 50, 2);
+
+    // Knee
+    ctx.fillStyle = COLORS.jeansDark;
+    ctx.fillRect(doorX + 52, legFloorY + 1, 18, 23);
+    ctx.fillStyle = '#162840';
+    ctx.fillRect(doorX + 56, legFloorY + 8, 10, 3);
+
+    // Thigh in jeans (goes behind the door)
+    ctx.fillStyle = COLORS.jeans;
+    ctx.fillRect(doorX + 68, legFloorY + 2, 60, 22);
+    ctx.fillStyle = COLORS.jeansDark;
+    ctx.fillRect(doorX + 68, legFloorY + 12, 60, 2);
+
+    // Upper thigh continues behind door
+    ctx.fillStyle = COLORS.jeans;
+    ctx.fillRect(doorX + 126, legFloorY, 60, 24);
+
+    // NOW: Draw door ON TOP (covers where leg goes behind)
     // Frame
     ctx.fillStyle = COLORS.doorFrame;
     ctx.fillRect(doorX - 8, doorY - 8, doorW + 16, doorH + 16);
@@ -469,68 +513,11 @@ function drawDeadBodyScene() {
     ctx.fillRect(doorX + 10, doorY + 10, doorW - 20, 70);
     ctx.fillRect(doorX + 10, doorY + 90, doorW - 20, 70);
 
-    // Ajar gap - darkness, body hidden inside
+    // Ajar gap on the RIGHT side (the leg comes from here)
     ctx.fillStyle = '#020204';
-    ctx.fillRect(doorX, doorY, 50, doorH);
+    ctx.fillRect(doorX + doorW - 50, doorY, 50, doorH);
     ctx.fillStyle = '#080608';
-    ctx.fillRect(doorX + 50, doorY, 5, doorH);
-
-    // Floor area in front of door
-    ctx.fillStyle = COLORS.carpet;
-    ctx.fillRect(doorX - 20, doorY + doorH, doorW + 40, 40);
-
-    // THE LEG - horizontal on the floor, wearing jeans, foot pointing UP
-    // The leg is lying flat, extending from inside the dark gap out onto the hallway floor
-
-    const legFloorY = doorY + doorH - 6; // where the leg rests on the floor
-
-    // Upper thigh - coming FROM inside the door (connected to body we can't see)
-    ctx.fillStyle = COLORS.jeansDark;
-    ctx.fillRect(doorX + 10, legFloorY, 40, 24);
-    // Thigh continues seamlessly
-    ctx.fillStyle = COLORS.jeans;
-    ctx.fillRect(doorX + 48, legFloorY + 2, 50, 22);
-    // Jean seam detail
-    ctx.fillStyle = COLORS.jeansDark;
-    ctx.fillRect(doorX + 48, legFloorY + 12, 50, 2);
-
-    // Knee
-    ctx.fillStyle = COLORS.jeansDark;
-    ctx.fillRect(doorX + 96, legFloorY + 1, 16, 23);
-    // Knee crease
-    ctx.fillStyle = '#162840';
-    ctx.fillRect(doorX + 100, legFloorY + 8, 8, 3);
-
-    // Shin / lower leg in jeans
-    ctx.fillStyle = COLORS.jeans;
-    ctx.fillRect(doorX + 110, legFloorY + 3, 50, 20);
-    ctx.fillStyle = COLORS.jeansDark;
-    ctx.fillRect(doorX + 110, legFloorY + 12, 50, 2);
-
-    // Jean cuff
-    ctx.fillStyle = COLORS.jeansDark;
-    ctx.fillRect(doorX + 158, legFloorY + 4, 8, 18);
-
-    // Ankle (skin)
-    ctx.fillStyle = COLORS.skin;
-    ctx.fillRect(doorX + 164, legFloorY + 5, 10, 16);
-
-    // FOOT - pointing UP (perpendicular to the leg)
-    // The sole of the foot is flat on the ground and the foot rises vertically
-    ctx.fillStyle = COLORS.skin;
-    // Base/heel on ground
-    ctx.fillRect(doorX + 166, legFloorY + 2, 14, 20);
-    // Foot rising up (top of foot / instep)
-    ctx.fillRect(doorX + 164, legFloorY - 24, 16, 28);
-    // Toes at the top
-    ctx.fillStyle = COLORS.skinShadow;
-    ctx.fillRect(doorX + 165, legFloorY - 30, 14, 8);
-    // Toe definition
-    ctx.fillStyle = COLORS.skin;
-    ctx.fillRect(doorX + 166, legFloorY - 28, 3, 5);
-    ctx.fillRect(doorX + 170, legFloorY - 29, 3, 5);
-    ctx.fillRect(doorX + 174, legFloorY - 28, 3, 5);
-    ctx.fillRect(doorX + 177, legFloorY - 26, 2, 4);
+    ctx.fillRect(doorX + doorW - 55, doorY, 5, doorH);
 }
 
 function drawPlayer() {
@@ -706,6 +693,42 @@ function update() {
     if (newX > HALL_RIGHT - player.width - 6) newX = HALL_RIGHT - player.width - 6;
     if (newY < 50) newY = 50;
     if (newY > HALL_LENGTH - player.height - 10) newY = HALL_LENGTH - player.height - 10;
+
+    // Door collision - side doors extend into the hallway
+    for (let i = 0; i < doors.length; i++) {
+        const door = doors[i];
+        if (door.side === 'end') {
+            // End door collision
+            const ex = WIDTH / 2 - 28 - 4;
+            const ey = -10;
+            const ew = 64;
+            const eh = 70;
+            if (newX + player.width > ex && newX < ex + ew &&
+                newY + player.height > ey && newY < ey + eh) {
+                if (player.x + player.width <= ex || player.x >= ex + ew) newX = player.x;
+                if (player.y + player.height <= ey || player.y >= ey + eh) newY = player.y;
+            }
+        } else {
+            let dx, dy, dw, dh;
+            if (door.side === 'left') {
+                dx = HALL_LEFT;
+                dy = door.y;
+                dw = DOOR_FACE_W;
+                dh = DOOR_H;
+            } else {
+                dx = HALL_RIGHT - DOOR_FACE_W;
+                dy = door.y;
+                dw = DOOR_FACE_W;
+                dh = DOOR_H;
+            }
+            if (newX + player.width > dx && newX < dx + dw &&
+                newY + player.height > dy && newY < dy + dh) {
+                // Slide along axes
+                if (player.x + player.width <= dx || player.x >= dx + dw) newX = player.x;
+                if (player.y + player.height <= dy || player.y >= dy + dh) newY = player.y;
+            }
+        }
+    }
 
     player.x = newX;
     player.y = newY;
