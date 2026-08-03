@@ -1,5 +1,5 @@
-// "What Shall We Do with the Drunken Sailor" - public domain sea shanty
-// Faithful melody in D dorian at 140 BPM, chiptune arrangement
+// "What Shall We Do with the Drunken Sailor" - from sheet music
+// Key of E minor, 2/4 time, 140 BPM chiptune arrangement
 
 let audioCtx = null;
 let musicPlaying = false;
@@ -8,78 +8,61 @@ let schedulerTimer = null;
 
 const BPM = 140;
 const BEAT = 60 / BPM;
+const EIGHTH = BEAT / 2;
 
-// Note frequencies
+// Note frequencies (E minor)
 const N = {
     R: 0,
-    C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.00,
-    A4: 440.00, B4: 493.88, C5: 523.25, D5: 587.33,
-    D2: 73.42, E2: 82.41, F2: 87.31, G2: 98.00, A2: 110.00, C3: 130.81, D3: 146.83,
+    E3: 164.81, F3s: 185.00, G3: 196.00, A3: 220.00, B3: 246.94,
+    E4: 329.63, F4s: 369.99, G4: 392.00, A4: 440.00, B4: 493.88,
+    E5: 659.25,
+    E2: 82.41, B2: 123.47, G2: 98.00, A2: 110.00, D3: 146.83,
 };
 
-// Drunken Sailor melody - D dorian
-// The verse melody: each phrase starts on D, leaps up to F, descends
-// "What shall we do with the drunken sailor" x3 then "Early in the morning"
-// Chorus: "Way hey and up she rises" x3 then "Early in the morning"
-//
-// Standard transcription in 2/4, eighth notes:
-// Verse phrase: D4 D4 D4 D4 | D4 E4 F4 F4 | F4 F4 E4 E4 | D4 D4 D4 D4
-// (repeated x3)
-// "Early in the morning": A4 G4 F4 E4 | D4 D4 D4 R
-//
-// Chorus phrase: D4 F4 A4 A4 | A4 G4 F4 G4 | A4 A4 G4 F4 | E4 E4 D4 D4
-// (repeated x3)
-// "Early in the morning": A4 G4 F4 E4 | D4 D4 D4 R
+// Transcribed from the sheet music screenshot
+// Each entry is [note, duration_in_eighths]
+// Verse: "What shall we do with the drunken sailor" x3 + "Early in the morning"
+// Chorus: "Hooray and up she rises" x3 + "Early in the morning"
 
-const melody = [
-    // Verse line 1: "What shall we do with the drunken sailor"
-    N.D4, N.D4, N.D4, N.D4,  N.D4, N.E4, N.F4, N.F4,
-    N.F4, N.F4, N.E4, N.E4,  N.D4, N.D4, N.D4, N.D4,
-    // Verse line 2
-    N.D4, N.D4, N.D4, N.D4,  N.D4, N.E4, N.F4, N.F4,
-    N.F4, N.F4, N.E4, N.E4,  N.D4, N.D4, N.D4, N.D4,
-    // Verse line 3
-    N.D4, N.D4, N.D4, N.D4,  N.D4, N.E4, N.F4, N.F4,
-    N.F4, N.F4, N.E4, N.E4,  N.D4, N.D4, N.D4, N.D4,
-    // "Early in the morning"
-    N.A4, N.A4, N.G4, N.F4,  N.E4, N.E4, N.D4, N.D4,
-    N.D4, N.D4, N.D4, N.D4,  N.D4, N.R, N.R, N.R,
-
-    // Chorus line 1: "Way hey and up she rises"
-    N.D4, N.F4, N.A4, N.A4,  N.A4, N.G4, N.F4, N.G4,
-    N.A4, N.A4, N.G4, N.F4,  N.E4, N.E4, N.D4, N.D4,
-    // Chorus line 2
-    N.D4, N.F4, N.A4, N.A4,  N.A4, N.G4, N.F4, N.G4,
-    N.A4, N.A4, N.G4, N.F4,  N.E4, N.E4, N.D4, N.D4,
-    // Chorus line 3
-    N.D4, N.F4, N.A4, N.A4,  N.A4, N.G4, N.F4, N.G4,
-    N.A4, N.A4, N.G4, N.F4,  N.E4, N.E4, N.D4, N.D4,
-    // "Early in the morning"
-    N.A4, N.A4, N.G4, N.F4,  N.E4, N.E4, N.D4, N.D4,
-    N.D4, N.D4, N.D4, N.D4,  N.D4, N.R, N.R, N.R,
+const verse = [
+    // "What shall we do with the drunken sail-or"
+    [N.E4, 1], [N.E4, 1], [N.E4, 1], [N.E4, 1], [N.E4, 1], [N.E4, 1], [N.F4s, 1], [N.F4s, 1],
+    // "What shall we do with the drunken sail-or"
+    [N.E4, 1], [N.E4, 1], [N.E4, 1], [N.E4, 1], [N.E4, 1], [N.E4, 1], [N.F4s, 1], [N.F4s, 1],
+    // "what shall we do with the drunken sail-or"
+    [N.E4, 1], [N.E4, 1], [N.E4, 1], [N.E4, 1], [N.E4, 1], [N.E4, 1], [N.F4s, 1], [N.F4s, 1],
+    // "Ear-ly in the Mor-ning"
+    [N.B4, 1], [N.B4, 1], [N.B4, 1], [N.B4, 1], [N.A4, 1], [N.A4, 1], [N.G4, 1], [N.F4s, 1],
 ];
 
-// Bass follows Dm - Dm - Dm - (Dm-C) | Dm - F - C - Dm pattern
+const chorus = [
+    // "Hoo-ray and up she ri-ses"
+    [N.E4, 1], [N.E4, 1], [N.B4, 1], [N.B4, 1], [N.B4, 1], [N.B4, 1], [N.A4, 1], [N.G4, 1],
+    // "Hoo-ray and up she ri-ses"
+    [N.E4, 1], [N.E4, 1], [N.B4, 1], [N.B4, 1], [N.B4, 1], [N.B4, 1], [N.A4, 1], [N.G4, 1],
+    // "Hoo-ray and up she ri-ses"
+    [N.E4, 1], [N.E4, 1], [N.B4, 1], [N.B4, 1], [N.B4, 1], [N.B4, 1], [N.A4, 1], [N.G4, 1],
+    // "Ear-ly in the Mor-ning"
+    [N.B4, 1], [N.B4, 1], [N.B4, 1], [N.B4, 1], [N.A4, 1], [N.A4, 1], [N.G4, 1], [N.F4s, 1],
+];
+
+// Full melody: verse then chorus
+const melody = [...verse, ...chorus];
+
+// Bass line (Em - Em - Em - Em | Em - D - C - B pattern for verse)
+// Follows root notes
 const bassVerse = [
-    N.D2, N.R, N.D3, N.R,  N.D2, N.R, N.D3, N.R,
-    N.D2, N.R, N.D3, N.R,  N.D2, N.R, N.D3, N.R,
-    N.D2, N.R, N.D3, N.R,  N.D2, N.R, N.D3, N.R,
-    N.D2, N.R, N.D3, N.R,  N.D2, N.R, N.D3, N.R,
-    N.D2, N.R, N.D3, N.R,  N.D2, N.R, N.D3, N.R,
-    N.D2, N.R, N.D3, N.R,  N.D2, N.R, N.D3, N.R,
-    N.A2, N.R, N.A2, N.R,  N.C3, N.R, N.D3, N.R,
-    N.D2, N.R, N.D3, N.R,  N.D2, N.R, N.R, N.R,
+    [N.E2, 2], [N.E3, 2], [N.E2, 2], [N.E3, 2],
+    [N.E2, 2], [N.E3, 2], [N.E2, 2], [N.E3, 2],
+    [N.E2, 2], [N.E3, 2], [N.E2, 2], [N.E3, 2],
+    [N.B2, 2], [N.B2, 2], [N.A2, 2], [N.E2, 2],
 ];
 
 const bassChorus = [
-    N.D2, N.R, N.D3, N.R,  N.F2, N.R, N.F2, N.R,
-    N.C3, N.R, N.C3, N.R,  N.D2, N.R, N.D3, N.R,
-    N.D2, N.R, N.D3, N.R,  N.F2, N.R, N.F2, N.R,
-    N.C3, N.R, N.C3, N.R,  N.D2, N.R, N.D3, N.R,
-    N.D2, N.R, N.D3, N.R,  N.F2, N.R, N.F2, N.R,
-    N.C3, N.R, N.C3, N.R,  N.D2, N.R, N.D3, N.R,
-    N.A2, N.R, N.A2, N.R,  N.C3, N.R, N.D3, N.R,
-    N.D2, N.R, N.D3, N.R,  N.D2, N.R, N.R, N.R,
+    [N.E2, 2], [N.E3, 2], [N.B2, 2], [N.B2, 2],
+    [N.E2, 2], [N.E3, 2], [N.B2, 2], [N.B2, 2],
+    [N.E2, 2], [N.E3, 2], [N.B2, 2], [N.B2, 2],
+    [N.B2, 2], [N.B2, 2], [N.A2, 2], [N.E2, 2],
 ];
 
 const bass = [...bassVerse, ...bassChorus];
@@ -135,55 +118,78 @@ function createHiHat(startTime, accent) {
 }
 
 let nextNoteTime = 0;
-let noteIndex = 0;
-let beatCount = 0;
+let melodyPos = 0; // position in eighths through the melody
+let bassPos = 0;
+let eighthCount = 0;
+
+function getTotalEighths(arr) {
+    let total = 0;
+    for (const [, dur] of arr) total += dur;
+    return total;
+}
+
+function getNoteAtPos(arr, pos) {
+    let acc = 0;
+    for (const [note, dur] of arr) {
+        if (pos < acc + dur) return { note, isStart: pos === acc, dur };
+        acc += dur;
+    }
+    return { note: 0, isStart: false, dur: 1 };
+}
+
+const melodyTotalEighths = getTotalEighths(melody);
+const bassTotalEighths = getTotalEighths(bass);
 
 function scheduleNotes() {
     if (!musicPlaying) return;
     const now = audioCtx.currentTime;
-    const eighthDur = BEAT / 2;
 
     while (nextNoteTime < now + 0.3) {
         const t = nextNoteTime;
 
         // Melody
-        const melNote = melody[noteIndex % melody.length];
-        createOsc('square', melNote, t, eighthDur * 0.8, 0.07, 0);
-        if (melNote > 0) createOsc('square', melNote, t, eighthDur * 0.8, 0.025, 7);
+        const melPos = melodyPos % melodyTotalEighths;
+        const mel = getNoteAtPos(melody, melPos);
+        if (mel.isStart && mel.note > 0) {
+            const dur = mel.dur * EIGHTH;
+            createOsc('square', mel.note, t, dur * 0.8, 0.07, 0);
+            createOsc('square', mel.note, t, dur * 0.8, 0.025, 7);
+        }
 
         // Bass
-        const bassNote = bass[noteIndex % bass.length];
-        createOsc('triangle', bassNote, t, eighthDur * 0.65, 0.14, 0);
+        const bPos = bassPos % bassTotalEighths;
+        const bas = getNoteAtPos(bass, bPos);
+        if (bas.isStart && bas.note > 0) {
+            const dur = bas.dur * EIGHTH;
+            createOsc('triangle', bas.note, t, dur * 0.65, 0.14, 0);
+        }
 
-        // Kick on beats (every 4 eighth notes = every half note in 2/4)
-        if (beatCount % 4 === 0) createKick(t);
+        // Kick on beats (every 2 eighths)
+        if (eighthCount % 2 === 0) createKick(t);
 
-        // Hi-hat on every eighth, accent off-beats
-        createHiHat(t, beatCount % 2 === 1);
+        // Hi-hat every eighth, accent off-beats
+        createHiHat(t, eighthCount % 2 === 1);
 
-        // Snare-ish hit on beat 2 (every 4 eighths, offset by 2)
-        if (beatCount % 4 === 2) {
-            const snBuf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.06, audioCtx.sampleRate);
+        // Snare on beat 2 of each bar (every 4 eighths, offset by 2)
+        if (eighthCount % 4 === 2) {
+            const snBuf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.05, audioCtx.sampleRate);
             const snD = snBuf.getChannelData(0);
             for (let i = 0; i < snD.length; i++) snD[i] = Math.random() * 2 - 1;
             const snSrc = audioCtx.createBufferSource();
             snSrc.buffer = snBuf;
             const snG = audioCtx.createGain();
             const snF = audioCtx.createBiquadFilter();
-            snF.type = 'bandpass';
-            snF.frequency.value = 3000;
-            snG.gain.setValueAtTime(0.08, t);
-            snG.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
-            snSrc.connect(snF);
-            snF.connect(snG);
-            snG.connect(masterGain);
-            snSrc.start(t);
-            snSrc.stop(t + 0.06);
+            snF.type = 'bandpass'; snF.frequency.value = 3000;
+            snG.gain.setValueAtTime(0.07, t);
+            snG.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+            snSrc.connect(snF); snF.connect(snG); snG.connect(masterGain);
+            snSrc.start(t); snSrc.stop(t + 0.05);
         }
 
-        noteIndex++;
-        beatCount++;
-        nextNoteTime += eighthDur;
+        melodyPos++;
+        bassPos++;
+        eighthCount++;
+        nextNoteTime += EIGHTH;
     }
 }
 
@@ -201,8 +207,9 @@ function startMusic() {
     if (audioCtx.state === 'suspended') audioCtx.resume();
     musicPlaying = true;
     nextNoteTime = audioCtx.currentTime + 0.05;
-    noteIndex = 0;
-    beatCount = 0;
+    melodyPos = 0;
+    bassPos = 0;
+    eighthCount = 0;
     schedulerTimer = setInterval(scheduleNotes, 80);
     scheduleNotes();
 }
