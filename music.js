@@ -1,5 +1,5 @@
 // "What Shall We Do with the Drunken Sailor" - public domain sea shanty
-// Faithful melody in D minor, upbeat chiptune arrangement at 140 BPM
+// Faithful melody in D dorian at 140 BPM, chiptune arrangement
 
 let audioCtx = null;
 let musicPlaying = false;
@@ -7,58 +7,82 @@ let masterGain = null;
 let schedulerTimer = null;
 
 const BPM = 140;
-const EIGHTH = (60 / BPM) / 2;
+const BEAT = 60 / BPM;
 
-// D minor scale frequencies
+// Note frequencies
 const N = {
-    D3: 146.83, E3: 164.81, F3: 174.61, G3: 196.00, A3: 220.00, Bb3: 233.08, C4: 261.63,
-    D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.00, A4: 440.00, Bb4: 466.16, C5: 523.25,
-    D5: 587.33, E5: 659.25, F5: 698.46,
-    D2: 73.42, A2: 110.00, F2: 87.31, G2: 98.00, C3: 130.81, Bb2: 116.54,
     R: 0,
+    C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.00,
+    A4: 440.00, B4: 493.88, C5: 523.25, D5: 587.33,
+    D2: 73.42, E2: 82.41, F2: 87.31, G2: 98.00, A2: 110.00, C3: 130.81, D3: 146.83,
 };
 
-// Melody: "What shall we do with the drunken sailor" (faithful transcription)
-// In Dm, 2/4 time, eighth note pulse
+// Drunken Sailor melody - D dorian
+// The verse melody: each phrase starts on D, leaps up to F, descends
+// "What shall we do with the drunken sailor" x3 then "Early in the morning"
+// Chorus: "Way hey and up she rises" x3 then "Early in the morning"
+//
+// Standard transcription in 2/4, eighth notes:
+// Verse phrase: D4 D4 D4 D4 | D4 E4 F4 F4 | F4 F4 E4 E4 | D4 D4 D4 D4
+// (repeated x3)
+// "Early in the morning": A4 G4 F4 E4 | D4 D4 D4 R
+//
+// Chorus phrase: D4 F4 A4 A4 | A4 G4 F4 G4 | A4 A4 G4 F4 | E4 E4 D4 D4
+// (repeated x3)
+// "Early in the morning": A4 G4 F4 E4 | D4 D4 D4 R
+
 const melody = [
     // Verse line 1: "What shall we do with the drunken sailor"
-    N.D4, N.D4, N.D4, N.D4, N.D4, N.D4, N.D4, N.E4,
-    N.F4, N.F4, N.F4, N.F4, N.F4, N.F4, N.F4, N.G4,
-    // Verse line 2: "What shall we do with the drunken sailor"
-    N.A4, N.A4, N.A4, N.A4, N.A4, N.A4, N.G4, N.F4,
-    N.E4, N.E4, N.E4, N.E4, N.E4, N.E4, N.E4, N.E4,
-    // Verse line 3: "What shall we do with the drunken sailor"
-    N.D4, N.D4, N.D4, N.D4, N.D4, N.D4, N.D4, N.E4,
-    N.F4, N.F4, N.F4, N.F4, N.F4, N.F4, N.F4, N.G4,
-    // Verse line 4: "Early in the morning"
-    N.A4, N.A4, N.G4, N.F4, N.E4, N.E4, N.D4, N.D4,
-    N.D4, N.D4, N.D4, N.D4, N.D4, N.D4, N.R, N.R,
+    N.D4, N.D4, N.D4, N.D4,  N.D4, N.E4, N.F4, N.F4,
+    N.F4, N.F4, N.E4, N.E4,  N.D4, N.D4, N.D4, N.D4,
+    // Verse line 2
+    N.D4, N.D4, N.D4, N.D4,  N.D4, N.E4, N.F4, N.F4,
+    N.F4, N.F4, N.E4, N.E4,  N.D4, N.D4, N.D4, N.D4,
+    // Verse line 3
+    N.D4, N.D4, N.D4, N.D4,  N.D4, N.E4, N.F4, N.F4,
+    N.F4, N.F4, N.E4, N.E4,  N.D4, N.D4, N.D4, N.D4,
+    // "Early in the morning"
+    N.A4, N.A4, N.G4, N.F4,  N.E4, N.E4, N.D4, N.D4,
+    N.D4, N.D4, N.D4, N.D4,  N.D4, N.R, N.R, N.R,
 
     // Chorus line 1: "Way hey and up she rises"
-    N.D4, N.D4, N.E4, N.F4, N.G4, N.G4, N.A4, N.A4,
-    N.A4, N.A4, N.G4, N.F4, N.E4, N.E4, N.D4, N.D4,
-    // Chorus line 2: "Way hey and up she rises"
-    N.D4, N.D4, N.E4, N.F4, N.G4, N.G4, N.A4, N.A4,
-    N.A4, N.A4, N.G4, N.F4, N.E4, N.E4, N.D4, N.D4,
-    // Chorus line 3: "Way hey and up she rises"
-    N.D4, N.D4, N.E4, N.F4, N.G4, N.G4, N.A4, N.A4,
-    N.A4, N.A4, N.G4, N.F4, N.E4, N.E4, N.D4, N.D4,
-    // Chorus line 4: "Early in the morning"
-    N.A4, N.A4, N.G4, N.F4, N.E4, N.E4, N.D4, N.D4,
-    N.D4, N.D4, N.D4, N.D4, N.D4, N.D4, N.R, N.R,
+    N.D4, N.F4, N.A4, N.A4,  N.A4, N.G4, N.F4, N.G4,
+    N.A4, N.A4, N.G4, N.F4,  N.E4, N.E4, N.D4, N.D4,
+    // Chorus line 2
+    N.D4, N.F4, N.A4, N.A4,  N.A4, N.G4, N.F4, N.G4,
+    N.A4, N.A4, N.G4, N.F4,  N.E4, N.E4, N.D4, N.D4,
+    // Chorus line 3
+    N.D4, N.F4, N.A4, N.A4,  N.A4, N.G4, N.F4, N.G4,
+    N.A4, N.A4, N.G4, N.F4,  N.E4, N.E4, N.D4, N.D4,
+    // "Early in the morning"
+    N.A4, N.A4, N.G4, N.F4,  N.E4, N.E4, N.D4, N.D4,
+    N.D4, N.D4, N.D4, N.D4,  N.D4, N.R, N.R, N.R,
 ];
 
-// Bass line follows chord roots (Dm - F - C - Dm pattern)
-const bassPattern = [
-    // Dm
-    N.D2, N.R, N.D3, N.R, N.D2, N.R, N.D3, N.R,
-    // F
-    N.F2, N.R, N.F3, N.R, N.F2, N.R, N.F3, N.R,
-    // C
-    N.C3, N.R, N.G2, N.R, N.C3, N.R, N.G2, N.R,
-    // Dm
-    N.D2, N.R, N.A2, N.R, N.D2, N.R, N.A2, N.R,
+// Bass follows Dm - Dm - Dm - (Dm-C) | Dm - F - C - Dm pattern
+const bassVerse = [
+    N.D2, N.R, N.D3, N.R,  N.D2, N.R, N.D3, N.R,
+    N.D2, N.R, N.D3, N.R,  N.D2, N.R, N.D3, N.R,
+    N.D2, N.R, N.D3, N.R,  N.D2, N.R, N.D3, N.R,
+    N.D2, N.R, N.D3, N.R,  N.D2, N.R, N.D3, N.R,
+    N.D2, N.R, N.D3, N.R,  N.D2, N.R, N.D3, N.R,
+    N.D2, N.R, N.D3, N.R,  N.D2, N.R, N.D3, N.R,
+    N.A2, N.R, N.A2, N.R,  N.C3, N.R, N.D3, N.R,
+    N.D2, N.R, N.D3, N.R,  N.D2, N.R, N.R, N.R,
 ];
+
+const bassChorus = [
+    N.D2, N.R, N.D3, N.R,  N.F2, N.R, N.F2, N.R,
+    N.C3, N.R, N.C3, N.R,  N.D2, N.R, N.D3, N.R,
+    N.D2, N.R, N.D3, N.R,  N.F2, N.R, N.F2, N.R,
+    N.C3, N.R, N.C3, N.R,  N.D2, N.R, N.D3, N.R,
+    N.D2, N.R, N.D3, N.R,  N.F2, N.R, N.F2, N.R,
+    N.C3, N.R, N.C3, N.R,  N.D2, N.R, N.D3, N.R,
+    N.A2, N.R, N.A2, N.R,  N.C3, N.R, N.D3, N.R,
+    N.D2, N.R, N.D3, N.R,  N.D2, N.R, N.R, N.R,
+];
+
+const bass = [...bassVerse, ...bassChorus];
 
 function createOsc(type, freq, startTime, duration, gain, detune) {
     if (freq === 0) return;
@@ -68,8 +92,8 @@ function createOsc(type, freq, startTime, duration, gain, detune) {
     osc.frequency.value = freq;
     if (detune) osc.detune.value = detune;
     g.gain.setValueAtTime(gain, startTime);
-    g.gain.setValueAtTime(gain * 0.7, startTime + duration * 0.75);
-    g.gain.linearRampToValueAtTime(0, startTime + duration * 0.95);
+    g.gain.setValueAtTime(gain * 0.6, startTime + duration * 0.7);
+    g.gain.linearRampToValueAtTime(0, startTime + duration * 0.9);
     osc.connect(g);
     g.connect(masterGain);
     osc.start(startTime);
@@ -82,7 +106,7 @@ function createKick(startTime) {
     osc.type = 'sine';
     osc.frequency.setValueAtTime(150, startTime);
     osc.frequency.exponentialRampToValueAtTime(40, startTime + 0.08);
-    g.gain.setValueAtTime(0.18, startTime);
+    g.gain.setValueAtTime(0.2, startTime);
     g.gain.exponentialRampToValueAtTime(0.001, startTime + 0.12);
     osc.connect(g);
     g.connect(masterGain);
@@ -91,7 +115,7 @@ function createKick(startTime) {
 }
 
 function createHiHat(startTime, accent) {
-    const bufSize = audioCtx.sampleRate * 0.04;
+    const bufSize = audioCtx.sampleRate * 0.03;
     const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
     const d = buf.getChannelData(0);
     for (let i = 0; i < bufSize; i++) d[i] = Math.random() * 2 - 1;
@@ -101,48 +125,65 @@ function createHiHat(startTime, accent) {
     const filt = audioCtx.createBiquadFilter();
     filt.type = 'highpass';
     filt.frequency.value = 8000;
-    g.gain.setValueAtTime(accent ? 0.07 : 0.035, startTime);
-    g.gain.exponentialRampToValueAtTime(0.001, startTime + 0.04);
+    g.gain.setValueAtTime(accent ? 0.06 : 0.03, startTime);
+    g.gain.exponentialRampToValueAtTime(0.001, startTime + 0.03);
     src.connect(filt);
     filt.connect(g);
     g.connect(masterGain);
     src.start(startTime);
-    src.stop(startTime + 0.04);
+    src.stop(startTime + 0.03);
 }
 
 let nextNoteTime = 0;
-let melodyIndex = 0;
-let bassIndex = 0;
+let noteIndex = 0;
 let beatCount = 0;
 
 function scheduleNotes() {
     if (!musicPlaying) return;
     const now = audioCtx.currentTime;
+    const eighthDur = BEAT / 2;
 
     while (nextNoteTime < now + 0.3) {
         const t = nextNoteTime;
-        const dur = EIGHTH;
 
-        // Melody (square wave, main voice)
-        const melNote = melody[melodyIndex % melody.length];
-        createOsc('square', melNote, t, dur * 0.85, 0.07, 0);
-        createOsc('square', melNote, t, dur * 0.85, 0.03, 7);
-        melodyIndex++;
+        // Melody
+        const melNote = melody[noteIndex % melody.length];
+        createOsc('square', melNote, t, eighthDur * 0.8, 0.07, 0);
+        if (melNote > 0) createOsc('square', melNote, t, eighthDur * 0.8, 0.025, 7);
 
-        // Bass (triangle wave, pumping)
-        const bassNote = bassPattern[bassIndex % bassPattern.length];
-        createOsc('triangle', bassNote, t, dur * 0.7, 0.13, 0);
-        bassIndex++;
+        // Bass
+        const bassNote = bass[noteIndex % bass.length];
+        createOsc('triangle', bassNote, t, eighthDur * 0.65, 0.14, 0);
 
-        // Drums: kick on beats 1 and 3 (every 4 eighth notes)
-        if (beatCount % 4 === 0) {
-            createKick(t);
-        }
+        // Kick on beats (every 4 eighth notes = every half note in 2/4)
+        if (beatCount % 4 === 0) createKick(t);
+
         // Hi-hat on every eighth, accent off-beats
         createHiHat(t, beatCount % 2 === 1);
 
+        // Snare-ish hit on beat 2 (every 4 eighths, offset by 2)
+        if (beatCount % 4 === 2) {
+            const snBuf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.06, audioCtx.sampleRate);
+            const snD = snBuf.getChannelData(0);
+            for (let i = 0; i < snD.length; i++) snD[i] = Math.random() * 2 - 1;
+            const snSrc = audioCtx.createBufferSource();
+            snSrc.buffer = snBuf;
+            const snG = audioCtx.createGain();
+            const snF = audioCtx.createBiquadFilter();
+            snF.type = 'bandpass';
+            snF.frequency.value = 3000;
+            snG.gain.setValueAtTime(0.08, t);
+            snG.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+            snSrc.connect(snF);
+            snF.connect(snG);
+            snG.connect(masterGain);
+            snSrc.start(t);
+            snSrc.stop(t + 0.06);
+        }
+
+        noteIndex++;
         beatCount++;
-        nextNoteTime += dur;
+        nextNoteTime += eighthDur;
     }
 }
 
@@ -150,7 +191,7 @@ function initAudio() {
     if (audioCtx) return;
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     masterGain = audioCtx.createGain();
-    masterGain.gain.value = 0.55;
+    masterGain.gain.value = 0.5;
     masterGain.connect(audioCtx.destination);
 }
 
@@ -160,8 +201,7 @@ function startMusic() {
     if (audioCtx.state === 'suspended') audioCtx.resume();
     musicPlaying = true;
     nextNoteTime = audioCtx.currentTime + 0.05;
-    melodyIndex = 0;
-    bassIndex = 0;
+    noteIndex = 0;
     beatCount = 0;
     schedulerTimer = setInterval(scheduleNotes, 80);
     scheduleNotes();
