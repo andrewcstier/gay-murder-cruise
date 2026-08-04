@@ -86,11 +86,11 @@ const COLORS = {
 // and the door faces into the hallway (we see it edge-on from above).
 // End door: on the north wall, we see it face-on.
 const doors = [
-    { y: 750, side: 'left', sign: 'Birthday Bitch \u{1F382}', color: '#ff69b4' },
-    { y: 450, side: 'left', sign: 'No clothes beyond\nthis point \u{1F608}', color: '#e74c3c' },
-    { y: 600, side: 'right', sign: 'First time \ncruiser!', color: '#9b59b6' },
-    { y: 300, side: 'right', sign: 'Beware Of Twink\n(he bites) \u{1F62C}', color: '#f39c12' },
-    { y: 0, side: 'end', sign: null, color: '#2c3e50', ajar: true, dead: true },
+    { y: 750, side: 'left', sign: 'Birthday Bitch \u{1F382}', color: '#ff69b4', number: '401' },
+    { y: 450, side: 'left', sign: 'No clothes beyond\nthis point \u{1F608}', color: '#e74c3c', number: '403' },
+    { y: 600, side: 'right', sign: 'First time \ncruiser!', color: '#9b59b6', number: '402' },
+    { y: 300, side: 'right', sign: 'Beware Of Twink\n(he bites) \u{1F62C}', color: '#f39c12', number: '404' },
+    { y: 0, side: 'end', sign: null, color: '#2c3e50', ajar: true, dead: true, number: '405' },
 ];
 
 // Input
@@ -423,6 +423,14 @@ function drawDoor(door, index) {
 }
 
 function drawSignOnDoor(doorX, doorY, doorW, door) {
+    // Room number above sign
+    if (door.number) {
+        ctx.fillStyle = '#ffd700';
+        ctx.font = 'bold 9px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(door.number, doorX + doorW / 2, doorY + 6);
+    }
+
     const signW = 34;
     const signH = 20;
     const signX = doorX + (doorW - signW) / 2;
@@ -458,6 +466,14 @@ function drawEndDoor(door, index) {
     // Frame
     ctx.fillStyle = COLORS.doorFrame;
     ctx.fillRect(edx - 4, edy - 4, edw + 8, edh + 8);
+
+    // Room number above door
+    if (door.number) {
+        ctx.fillStyle = '#ffd700';
+        ctx.font = 'bold 10px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(door.number, edx + edw / 2, edy - 8);
+    }
 
     // Open doorway (dark)
     ctx.fillStyle = '#030305';
