@@ -30,7 +30,7 @@ let player = {
     y: HALL_LENGTH - 80,
     width: 24,
     height: 36,
-    speed: 2.2,
+    speed: 3.0,
     facing: 'up',
     animTimer: 0
 };
@@ -117,7 +117,7 @@ function startCharSelect() {
     charSelectState = 'captain-intro';
     charSelectEnteredAt = Date.now();
     titleScreen.style.display = 'none';
-    if (musicEnabled) GameMusic.startMusic('charselect');
+    if (musicEnabled) GameMusic.startMusic('hallway');
 }
 
 function handleCharSelectAction(key) {
@@ -149,7 +149,7 @@ function handleCharSelectAction(key) {
 function startLevel1() {
     gameState = 'playing';
     GameMusic.stopMusic();
-    if (musicEnabled) GameMusic.startMusic('hallway');
+    if (musicEnabled) GameMusic.startMusic('charselect');
 }
 
 function closeDialog() {
@@ -157,7 +157,6 @@ function closeDialog() {
         gameState = 'gameover';
         gameOverScreen.classList.add('visible');
         dialogBox.classList.remove('visible');
-        GameMusic.stopMusic();
     } else {
         gameState = 'playing';
         dialogBox.classList.remove('visible');
@@ -274,8 +273,9 @@ musicToggle.addEventListener('click', () => {
     musicEnabled = !musicEnabled;
     musicToggle.textContent = musicEnabled ? 'Music: ON' : 'Music: OFF';
     if (musicEnabled) {
-        if (gameState === 'charselect') GameMusic.startMusic('charselect');
-        else if (gameState === 'playing') GameMusic.startMusic('hallway');
+        if (gameState === 'charselect') GameMusic.startMusic('hallway');
+        else if (gameState === 'playing') GameMusic.startMusic('charselect');
+        else if (gameState === 'gameover') GameMusic.startMusic('panic');
     } else {
         GameMusic.stopMusic();
     }
