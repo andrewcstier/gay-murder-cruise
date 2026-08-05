@@ -177,14 +177,15 @@ function startLevel1() {
 }
 
 function closeDialog() {
-    if (currentDoorIsDead) {
+    if (gameState === 'room-dialog') {
+        gameState = 'room';
+        dialogBox.classList.remove('visible');
+    } else if (currentDoorIsDead) {
+        currentDoorIsDead = false;
         gameState = 'cutscene';
         cutsceneState = 'murderer-appears';
         cutsceneTimer = 0;
         murdererY = player.y + 200;
-        dialogBox.classList.remove('visible');
-    } else if (gameState === 'room-dialog') {
-        gameState = 'room';
         dialogBox.classList.remove('visible');
     } else {
         gameState = 'playing';
@@ -1523,37 +1524,65 @@ function drawMurdererScreen(screenX, screenY) {
 }
 
 // --- ROOM 405 (Level 1.2) ---
+// Room is small - just enough to walk around the bed
 const ROOM_W = 480;
 const ROOM_H = 320;
+
+// Collision rects for room objects (player cannot walk over these)
+// Room layout: top wall at y=50, bottom wall at y=290
+// Bed centered, tables on sides, bathroom door in RIGHT WALL, balcony door in LEFT WALL
+const ROOM_COLLIDERS = [
+    { x: 140, y: 50, w: 200, h: 110 },  // bed
+    { x: 100, y: 70, w: 40, h: 40 },    // left table
+    { x: 340, y: 70, w: 40, h: 40 },    // right table
+];
+const BATH_COLLIDERS = [
+    { x: 160, y: 40, w: 70, h: 60 },    // shower
+    { x: 330, y: 40, w: 50, h: 60 },    // toilet
+    { x: 220, y: 40, w: 60, h: 30 },    // sink
+];
+const BALCONY_COLLIDERS = [];
+
 const ROOM_ITEMS = [
-    { id: 'drawer-right', x: 320, y: 80, w: 40, h: 30, label: 'Right drawer' },
-    { id: 'drawer-left', x: 120, y: 80, w: 40, h: 30, label: 'Left drawer' },
-    { id: 'bathroom-door', x: 400, y: 100, w: 40, h: 60, label: 'Bathroom' },
-    { id: 'balcony-door', x: 20, y: 80, w: 40, h: 70, label: 'Balcony' },
+    { id: 'drawer-right', x: 340, y: 70, w: 40, h: 40 },
+    { id: 'drawer-left', x: 100, y: 70, w: 40, h: 40 },
+    { id: 'bathroom-door', x: 450, y: 130, w: 30, h: 60 },
+    { id: 'balcony-door', x: 0, y: 100, w: 30, h: 70 },
 ];
 const BATHROOM_ITEMS = [
-    { id: 'mirror', x: 200, y: 40, w: 60, h: 40, label: 'Mirror' },
-    { id: 'bath-exit', x: 200, y: 260, w: 60, h: 40, label: 'Exit' },
+    { id: 'mirror', x: 240, y: 10, w: 40, h: 40 },
+    { id: 'bath-exit', x: 220, y: 275, w: 50, h: 35 },
 ];
 const BALCONY_ITEMS = [
-    { id: 'book', x: 80, y: 120, w: 40, h: 40, label: 'Book' },
-    { id: 'balcony-exit', x: 420, y: 140, w: 40, h: 60, label: 'Back inside' },
+    { id: 'book', x: 150, y: 200, w: 50, h: 40 },
+    { id: 'balcony-exit', x: 424, y: 100, w: 50, h: 70 },
 ];
+
+function collidesWithAny(px, py, pw, ph, colliders) {
+    for (const c of colliders) {
+        if (px < c.x + c.w && px + pw > c.x && py < c.y + c.h && py + ph > c.y) return true;
+    }
+    return false;
+}
 
 function enterRoom405() {
     gameState = 'room';
     roomState = 'room';
+    // Appear just inside the entry door (bottom wall)
     roomPlayerX = ROOM_W / 2 - 12;
-    roomPlayerY = ROOM_H - 60;
+    roomPlayerY = 250;
     roomPlayerFacing = 'up';
     doorPoundTimer = 0;
     doorPoundCount = 0;
     doorPoundPause = false;
+    promptEl.classList.remove('visible');
+    nearDoor = null;
 }
 
 function examineRoomItem() {
     const item = roomNearItem;
     if (!item) return;
+    promptEl.classList.remove('visible');
     if (item === 'drawer-right') {
         gameState = 'room-dialog';
         dialogBox.innerHTML = '<span style="color:#ffcc00;">You open the drawer...</span><br><br>This just has poppers, not useful here.<br><br><span style="color:#aaa">Press any key to close</span>';
@@ -1564,13 +1593,17 @@ function examineRoomItem() {
         dialogBox.classList.add('visible');
     } else if (item === 'bathroom-door') {
         roomState = 'bathroom';
+        // Appear at the door we came through (right wall equivalent, bottom of bathroom)
         roomPlayerX = ROOM_W / 2 - 12;
-        roomPlayerY = ROOM_H / 2;
+        roomPlayerY = 240;
+        roomPlayerFacing = 'up';
         roomNearItem = null;
     } else if (item === 'balcony-door') {
         roomState = 'balcony';
-        roomPlayerX = ROOM_W - 80;
-        roomPlayerY = ROOM_H / 2;
+        // Appear at right side (door back inside is on right)
+        roomPlayerX = 400;
+        roomPlayerY = 160;
+        roomPlayerFacing = 'left';
         roomNearItem = null;
     } else if (item === 'mirror') {
         gameState = 'room-dialog';
@@ -1578,15 +1611,20 @@ function examineRoomItem() {
         dialogBox.classList.add('visible');
     } else if (item === 'bath-exit') {
         roomState = 'room';
-        roomPlayerX = 380;
+        // Appear near bathroom door in the room (right wall)
+        roomPlayerX = 400;
         roomPlayerY = 160;
+        roomPlayerFacing = 'left';
         roomNearItem = null;
     } else if (item === 'book') {
         gameState = 'book-closeup';
+        promptEl.classList.remove('visible');
     } else if (item === 'balcony-exit') {
         roomState = 'room';
-        roomPlayerX = 60;
+        // Appear near balcony door in the room (left wall)
+        roomPlayerX = 40;
         roomPlayerY = 140;
+        roomPlayerFacing = 'right';
         roomNearItem = null;
     }
 }
@@ -1598,10 +1636,22 @@ function openBook() {
     GameMusic.playWhoosh();
 }
 
-function drawRoom() {
-    ctx.fillStyle = '#1a1a2e';
-    ctx.fillRect(0, 0, ROOM_W, ROOM_H);
+function playDoorPound() {
+    const actx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = actx.createOscillator();
+    const gain = actx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(80, actx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(40, actx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.4, actx.currentTime);
+    gain.gain.linearRampToValueAtTime(0, actx.currentTime + 0.15);
+    osc.connect(gain);
+    gain.connect(actx.destination);
+    osc.start();
+    osc.stop(actx.currentTime + 0.15);
+}
 
+function drawRoom() {
     // Floor
     ctx.fillStyle = '#2a1a3a';
     ctx.fillRect(0, 0, ROOM_W, ROOM_H);
@@ -1612,89 +1662,97 @@ function drawRoom() {
         }
     }
 
-    // Walls
+    // Walls on all four sides
+    // Top wall
     ctx.fillStyle = '#3a2a5c';
     ctx.fillRect(0, 0, ROOM_W, 50);
     ctx.fillStyle = '#4a2a1a';
     ctx.fillRect(0, 46, ROOM_W, 4);
+    // Bottom wall
+    ctx.fillStyle = '#3a2a5c';
+    ctx.fillRect(0, 290, ROOM_W, 30);
+    ctx.fillStyle = '#4a2a1a';
+    ctx.fillRect(0, 290, ROOM_W, 4);
+    // Left wall
+    ctx.fillStyle = '#3a2a5c';
+    ctx.fillRect(0, 0, 30, ROOM_H);
+    ctx.fillStyle = '#4a2a1a';
+    ctx.fillRect(26, 0, 4, ROOM_H);
+    // Right wall
+    ctx.fillStyle = '#3a2a5c';
+    ctx.fillRect(450, 0, 30, ROOM_H);
+    ctx.fillStyle = '#4a2a1a';
+    ctx.fillRect(450, 0, 4, ROOM_H);
 
-    // Door (bottom wall, locked)
-    ctx.fillStyle = '#6d3a0a';
-    ctx.fillRect(ROOM_W / 2 - 25, ROOM_H - 20, 50, 20);
+    // Entry door in bottom wall (locked, shaking)
+    const doorShake = (!doorPoundPause && doorPoundCount > 0) ? Math.sin(doorPoundTimer * 0.8) * 2 : 0;
+    ctx.fillStyle = '#d4a574';
+    ctx.fillRect(ROOM_W / 2 - 25 + doorShake, 290, 50, 30);
     ctx.fillStyle = '#8B4513';
-    ctx.fillRect(ROOM_W / 2 - 22, ROOM_H - 18, 44, 16);
-    // Door shaking from pounding
-    if (doorPoundCount > 0 && !doorPoundPause) {
-        const shake = Math.sin(doorPoundTimer * 0.5) * 2;
-        ctx.fillStyle = '#ff4444';
-        ctx.fillRect(ROOM_W / 2 - 22 + shake, ROOM_H - 18, 44, 2);
-    }
+    ctx.fillRect(ROOM_W / 2 - 22 + doorShake, 293, 44, 24);
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(ROOM_W / 2 - 8 + doorShake, 304, 4, 4);
 
-    // Bed (center-ish, king size)
+    // Balcony sliding glass door in LEFT WALL
+    ctx.fillStyle = '#1a3a5c';
+    ctx.fillRect(0, 100, 30, 70);
+    ctx.fillStyle = '#4488bb';
+    ctx.fillRect(2, 104, 26, 30);
+    ctx.fillRect(2, 138, 26, 28);
+    ctx.fillStyle = '#0a2a4a';
+    ctx.fillRect(8, 120, 14, 26);
+
+    // Bathroom door in RIGHT WALL
+    ctx.fillStyle = '#d4a574';
+    ctx.fillRect(450, 130, 30, 60);
+    ctx.fillStyle = '#8B4513';
+    ctx.fillRect(453, 134, 24, 52);
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(455, 158, 4, 4);
+
+    // Bed (centered, king size)
     ctx.fillStyle = '#4a3a6a';
-    ctx.fillRect(150, 55, 180, 90);
+    ctx.fillRect(140, 50, 200, 110);
     ctx.fillStyle = '#5a4a7a';
-    ctx.fillRect(155, 60, 170, 30);
+    ctx.fillRect(145, 55, 190, 40);
     // Pillows
     ctx.fillStyle = '#ddd';
-    ctx.fillRect(160, 58, 40, 20);
-    ctx.fillRect(280, 58, 40, 20);
+    ctx.fillRect(155, 58, 45, 22);
+    ctx.fillRect(280, 58, 45, 22);
+    // Blanket fold
+    ctx.fillStyle = '#3a2a5a';
+    ctx.fillRect(145, 100, 190, 4);
 
     // Bedside table LEFT
     ctx.fillStyle = '#5c3a1a';
-    ctx.fillRect(120, 75, 30, 35);
+    ctx.fillRect(100, 70, 40, 40);
     ctx.fillStyle = '#4a2a0a';
-    ctx.fillRect(122, 85, 26, 12);
+    ctx.fillRect(104, 82, 32, 14);
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(118, 87, 4, 4);
 
     // Bedside table RIGHT
     ctx.fillStyle = '#5c3a1a';
-    ctx.fillRect(330, 75, 30, 35);
+    ctx.fillRect(340, 70, 40, 40);
     ctx.fillStyle = '#4a2a0a';
-    ctx.fillRect(332, 85, 26, 12);
-
-    // Closet (right wall)
-    ctx.fillStyle = '#5c3a1a';
-    ctx.fillRect(420, 50, 50, 80);
-    ctx.fillStyle = '#4a2a0a';
-    ctx.fillRect(444, 50, 2, 80);
+    ctx.fillRect(344, 82, 32, 14);
     ctx.fillStyle = '#ffd700';
-    ctx.fillRect(440, 88, 4, 4);
-    ctx.fillRect(448, 88, 4, 4);
-
-    // Bathroom door (right side)
-    ctx.fillStyle = '#d4a574';
-    ctx.fillRect(400, 100, 40, 60);
-    ctx.fillStyle = '#8B4513';
-    ctx.fillRect(404, 104, 32, 52);
-    ctx.fillStyle = '#ffd700';
-    ctx.fillRect(406, 130, 4, 4);
-
-    // Balcony sliding glass door (left of bed)
-    ctx.fillStyle = '#1a3a5c';
-    ctx.fillRect(20, 50, 60, 90);
-    ctx.fillStyle = '#4488bb';
-    ctx.fillRect(24, 54, 26, 82);
-    ctx.fillRect(52, 54, 26, 82);
-    // Open gap
-    ctx.fillStyle = '#0a2a4a';
-    ctx.fillRect(36, 54, 14, 82);
+    ctx.fillRect(358, 87, 4, 4);
 
     // Player
     drawRoomPlayer();
 
     // Proximity prompt
-    if (roomNearItem) {
+    if (roomNearItem && gameState === 'room') {
         promptEl.classList.add('visible');
         promptEl.textContent = isMobile() ? 'Tap LOOK to examine' : 'Press E or SPACE to examine';
-    } else {
+    } else if (gameState === 'room') {
         promptEl.classList.remove('visible');
     }
 }
 
 function drawBathroom() {
-    ctx.fillStyle = '#1a1a2e';
-    ctx.fillRect(0, 0, ROOM_W, ROOM_H);
-
+    // Very small bathroom - just shower, toilet, sink/mirror crammed together
     // Tile floor
     ctx.fillStyle = '#e8e8e0';
     ctx.fillRect(0, 0, ROOM_W, ROOM_H);
@@ -1706,113 +1764,131 @@ function drawBathroom() {
         }
     }
 
-    // Walls
+    // Walls on all sides
     ctx.fillStyle = '#e0e0d8';
-    ctx.fillRect(0, 0, ROOM_W, 60);
+    ctx.fillRect(0, 0, ROOM_W, 40);
+    ctx.fillRect(0, 0, 140, ROOM_H);
+    ctx.fillRect(380, 0, 100, ROOM_H);
+    ctx.fillRect(0, 290, ROOM_W, 30);
+    // Trim
+    ctx.fillStyle = '#bbb';
+    ctx.fillRect(140, 36, 240, 4);
+    ctx.fillRect(136, 0, 4, ROOM_H);
+    ctx.fillRect(380, 0, 4, ROOM_H);
+    ctx.fillRect(140, 290, 240, 4);
 
-    // Shower (top left)
+    // Shower (top left of walkable area)
     ctx.fillStyle = '#aaa';
-    ctx.fillRect(30, 20, 80, 80);
+    ctx.fillRect(160, 40, 70, 60);
     ctx.fillStyle = '#ccc';
-    ctx.fillRect(35, 25, 70, 70);
+    ctx.fillRect(164, 44, 62, 52);
     ctx.fillStyle = '#888';
-    ctx.fillRect(60, 20, 4, 10);
+    ctx.fillRect(190, 40, 4, 8);
 
-    // Toilet (top right)
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(350, 30, 30, 40);
-    ctx.fillStyle = '#ddd';
-    ctx.fillRect(352, 20, 26, 14);
-    ctx.fillRect(355, 45, 20, 30);
-
-    // Sink with mirror (center top)
+    // Sink with mirror (center top wall)
     ctx.fillStyle = '#aaa';
-    ctx.fillRect(190, 30, 80, 10);
-    ctx.fillStyle = '#ddd';
-    ctx.fillRect(200, 10, 60, 30);
-    // Mirror
+    ctx.fillRect(240, 40, 40, 12);
     ctx.fillStyle = '#aaccee';
-    ctx.fillRect(205, 15, 50, 30);
+    ctx.fillRect(245, 10, 30, 28);
     ctx.fillStyle = '#fff';
-    ctx.fillRect(208, 18, 10, 6);
+    ctx.fillRect(248, 14, 8, 5);
 
-    // Exit door (bottom)
+    // Toilet (top right of walkable area)
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(330, 44, 30, 36);
+    ctx.fillStyle = '#ddd';
+    ctx.fillRect(333, 40, 24, 8);
+    ctx.fillRect(336, 60, 18, 20);
+
+    // Exit door (bottom wall)
+    ctx.fillStyle = '#d4a574';
+    ctx.fillRect(220, 280, 50, 30);
     ctx.fillStyle = '#8B4513';
-    ctx.fillRect(ROOM_W / 2 - 25, ROOM_H - 30, 50, 30);
+    ctx.fillRect(224, 283, 42, 24);
     ctx.fillStyle = '#ffd700';
-    ctx.fillRect(ROOM_W / 2 - 10, ROOM_H - 18, 4, 4);
+    ctx.fillRect(240, 293, 4, 4);
 
     drawRoomPlayer();
 
-    if (roomNearItem) {
+    if (roomNearItem && gameState === 'room') {
         promptEl.classList.add('visible');
         promptEl.textContent = isMobile() ? 'Tap LOOK to examine' : 'Press E or SPACE to examine';
-    } else {
+    } else if (gameState === 'room') {
         promptEl.classList.remove('visible');
     }
 }
 
 function drawBalcony() {
-    // Ocean background
+    // Layout: sea on LEFT, railing in middle-left, walkable deck, ship wall/door on RIGHT
+    // Ocean (left portion)
     ctx.fillStyle = '#0a2a4a';
-    ctx.fillRect(0, 0, ROOM_W, ROOM_H);
-
-    // Ocean
+    ctx.fillRect(0, 0, 80, ROOM_H);
     ctx.fillStyle = '#1a4a7a';
-    ctx.fillRect(0, 0, ROOM_W, 200);
-    for (let x = 0; x < ROOM_W; x += 25) {
-        const wave = Math.sin((Date.now() * 0.001) + x * 0.08) * 3;
+    ctx.fillRect(0, 0, 80, ROOM_H);
+    for (let y = 0; y < ROOM_H; y += 20) {
+        const wave = Math.sin((Date.now() * 0.001) + y * 0.08) * 3;
         ctx.fillStyle = '#2a5a8c';
-        ctx.fillRect(x, 60 + wave, 18, 3);
-        ctx.fillRect(x + 8, 120 + wave * 0.6, 14, 2);
+        ctx.fillRect(10 + wave, y, 40, 3);
+        ctx.fillRect(30 + wave * 0.6, y + 10, 30, 2);
     }
 
-    // Balcony floor
-    ctx.fillStyle = '#5c4a2a';
-    ctx.fillRect(0, 200, ROOM_W, 120);
-    for (let x = 0; x < ROOM_W; x += 30) {
-        ctx.fillStyle = '#4a3a1a';
-        ctx.fillRect(x, 200, 2, 120);
-    }
-
-    // Railing
+    // Railing (left edge of walkable area)
     ctx.fillStyle = '#888';
-    ctx.fillRect(0, 195, ROOM_W, 6);
-    for (let x = 20; x < ROOM_W; x += 40) {
-        ctx.fillRect(x, 170, 3, 30);
+    ctx.fillRect(80, 0, 6, ROOM_H);
+    for (let y = 10; y < ROOM_H; y += 30) {
+        ctx.fillStyle = '#666';
+        ctx.fillRect(78, y, 10, 3);
     }
 
-    // Purple book with eye
+    // Balcony deck floor
+    ctx.fillStyle = '#5c4a2a';
+    ctx.fillRect(86, 0, 334, ROOM_H);
+    for (let y = 0; y < ROOM_H; y += 24) {
+        ctx.fillStyle = '#4a3a1a';
+        ctx.fillRect(86, y, 334, 2);
+    }
+
+    // Ship wall (right side)
+    ctx.fillStyle = '#3a2a5c';
+    ctx.fillRect(420, 0, 60, ROOM_H);
+    ctx.fillStyle = '#4a2a1a';
+    ctx.fillRect(420, 0, 4, ROOM_H);
+
+    // Door back inside (in right wall)
+    ctx.fillStyle = '#d4a574';
+    ctx.fillRect(424, 100, 50, 70);
+    ctx.fillStyle = '#4488bb';
+    ctx.fillRect(428, 104, 42, 62);
+    ctx.fillStyle = '#1a3a5c';
+    ctx.fillRect(432, 108, 34, 54);
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(430, 134, 4, 4);
+
+    // Purple book with eye on the deck
     ctx.fillStyle = '#6a2a8a';
-    ctx.fillRect(70, 220, 50, 40);
+    ctx.fillRect(150, 200, 50, 40);
     ctx.fillStyle = '#8a3aaa';
-    ctx.fillRect(72, 222, 46, 36);
+    ctx.fillRect(152, 202, 46, 36);
     // Eye on cover
     ctx.fillStyle = '#fff';
     ctx.beginPath();
-    ctx.ellipse(95, 240, 12, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(175, 220, 12, 8, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#4a0a6a';
     ctx.beginPath();
-    ctx.arc(95, 240, 5, 0, Math.PI * 2);
+    ctx.arc(175, 220, 5, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#000';
     ctx.beginPath();
-    ctx.arc(95, 240, 2, 0, Math.PI * 2);
+    ctx.arc(175, 220, 2, 0, Math.PI * 2);
     ctx.fill();
-
-    // Door back inside (right side)
-    ctx.fillStyle = '#4488bb';
-    ctx.fillRect(420, 120, 50, 80);
-    ctx.fillStyle = '#1a3a5c';
-    ctx.fillRect(425, 125, 40, 70);
 
     drawRoomPlayer();
 
-    if (roomNearItem) {
+    if (roomNearItem && gameState === 'room') {
         promptEl.classList.add('visible');
         promptEl.textContent = isMobile() ? 'Tap LOOK to examine' : 'Press E or SPACE to examine';
-    } else {
+    } else if (gameState === 'room') {
         promptEl.classList.remove('visible');
     }
 }
@@ -1850,12 +1926,11 @@ function drawBookCloseup() {
     ctx.fillStyle = '#ffcc00';
     ctx.font = '14px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('Press E or SPACE to open', ROOM_W / 2, ROOM_H - 30);
+    ctx.fillText(isMobile() ? 'Tap LOOK to open' : 'Press E or SPACE to open', ROOM_W / 2, ROOM_H - 30);
     ctx.textAlign = 'left';
 }
 
 function drawBookOpen() {
-    // Book opening animation then fade to white
     ctx.fillStyle = '#0a0a12';
     ctx.fillRect(0, 0, ROOM_W, ROOM_H);
 
@@ -2206,11 +2281,12 @@ function update() {
     }
 
     if (gameState === 'room') {
-        // Door pounding
+        // Door pounding with sound
         doorPoundTimer++;
         if (!doorPoundPause) {
-            if (doorPoundTimer % 20 === 0) {
+            if (doorPoundTimer % 30 === 0) {
                 doorPoundCount++;
+                if (musicEnabled && roomState === 'room') playDoorPound();
                 if (doorPoundCount >= 3) {
                     doorPoundPause = true;
                     doorPoundTimer = 0;
@@ -2218,13 +2294,13 @@ function update() {
                 }
             }
         } else {
-            if (doorPoundTimer > 80) {
+            if (doorPoundTimer > 90) {
                 doorPoundPause = false;
                 doorPoundTimer = 0;
             }
         }
 
-        // Player movement in room
+        // Player movement in room with collision
         let moved = false;
         let newX = roomPlayerX;
         let newY = roomPlayerY;
@@ -2233,13 +2309,37 @@ function update() {
         if (keys['arrowup'] || keys['w']) { newY -= 2.5; roomPlayerFacing = 'up'; moved = true; }
         if (keys['arrowdown'] || keys['s']) { newY += 2.5; roomPlayerFacing = 'down'; moved = true; }
 
-        if (newX < 10) newX = 10;
-        if (newX > ROOM_W - 34) newX = ROOM_W - 34;
-        if (newY < 50) newY = 50;
-        if (newY > ROOM_H - 40) newY = ROOM_H - 40;
+        // Room-specific bounds and colliders
+        let minX, maxX, minY, maxY, colliders;
+        if (roomState === 'bathroom') {
+            minX = 140; maxX = 360; minY = 100; maxY = 240;
+            colliders = BATH_COLLIDERS;
+        } else if (roomState === 'balcony') {
+            minX = 90; maxX = 410; minY = 10; maxY = 270;
+            colliders = BALCONY_COLLIDERS;
+        } else {
+            minX = 34; maxX = 420; minY = 50; maxY = 252;
+            colliders = ROOM_COLLIDERS;
+        }
 
-        roomPlayerX = newX;
-        roomPlayerY = newY;
+        if (newX < minX) newX = minX;
+        if (newX > maxX) newX = maxX;
+        if (newY < minY) newY = minY;
+        if (newY > maxY) newY = maxY;
+
+        // Collision with objects
+        const pw = 24, ph = 36;
+        if (!collidesWithAny(newX, newY, pw, ph, colliders)) {
+            roomPlayerX = newX;
+            roomPlayerY = newY;
+        } else {
+            // Try sliding on each axis
+            if (!collidesWithAny(newX, roomPlayerY, pw, ph, colliders)) {
+                roomPlayerX = newX;
+            } else if (!collidesWithAny(roomPlayerX, newY, pw, ph, colliders)) {
+                roomPlayerY = newY;
+            }
+        }
         if (moved) player.animTimer++;
 
         // Proximity check for room items
