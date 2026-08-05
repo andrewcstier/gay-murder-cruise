@@ -1530,9 +1530,9 @@ const ROOM_H = 320;
 
 // Collision rects for room objects (player cannot walk over these)
 const ROOM_COLLIDERS = [
-    { x: 160, y: 50, w: 160, h: 100 },  // bed
-    { x: 120, y: 70, w: 40, h: 40 },    // left table
-    { x: 320, y: 70, w: 40, h: 40 },    // right table
+    { x: 150, y: 50, w: 180, h: 100 },  // bed
+    { x: 106, y: 70, w: 40, h: 40 },    // left table
+    { x: 334, y: 70, w: 40, h: 40 },    // right table
 ];
 const BATH_COLLIDERS = [
     { x: 170, y: 50, w: 60, h: 50 },    // shower
@@ -1541,10 +1541,8 @@ const BATH_COLLIDERS = [
 const BALCONY_COLLIDERS = [];
 
 const ROOM_ITEMS = [
-    { id: 'drawer-right', x: 320, y: 70, w: 40, h: 40 },
-    { id: 'drawer-left', x: 120, y: 70, w: 40, h: 40 },
-    { id: 'bathroom-door', x: 450, y: 130, w: 30, h: 60 },
-    { id: 'balcony-door', x: 0, y: 100, w: 30, h: 70 },
+    { id: 'drawer-right', x: 334, y: 70, w: 40, h: 40 },
+    { id: 'drawer-left', x: 106, y: 70, w: 40, h: 40 },
 ];
 const BATHROOM_ITEMS = [
     { id: 'mirror', x: 230, y: 50, w: 50, h: 40 },
@@ -1567,7 +1565,7 @@ function enterRoom405() {
     roomState = 'room';
     // Appear just inside the entry door (bottom wall)
     roomPlayerX = ROOM_W / 2 - 12;
-    roomPlayerY = 250;
+    roomPlayerY = 230;
     roomPlayerFacing = 'up';
     doorPoundTimer = 0;
     doorPoundCount = 0;
@@ -1588,41 +1586,19 @@ function examineRoomItem() {
         gameState = 'room-dialog';
         dialogBox.innerHTML = '<span style="color:#ffcc00;">You open the drawer...</span><br><br>This must be his douche— this could be useful... JK, now is NOT the time!<br><br><span style="color:#aaa">Press any key to close</span>';
         dialogBox.classList.add('visible');
-    } else if (item === 'bathroom-door') {
-        roomState = 'bathroom';
-        // Appear at the exit door (bottom of bathroom)
-        roomPlayerX = 230;
-        roomPlayerY = 190;
-        roomPlayerFacing = 'up';
-        roomNearItem = null;
-    } else if (item === 'balcony-door') {
-        roomState = 'balcony';
-        // Appear at the door back inside (right side)
-        roomPlayerX = 360;
-        roomPlayerY = 120;
-        roomPlayerFacing = 'left';
-        roomNearItem = null;
+    } else if (item === 'bathroom-door' || item === 'balcony-door') {
+        return;
     } else if (item === 'mirror') {
         gameState = 'room-dialog';
         dialogBox.innerHTML = '<span style="color:#ffcc00;">You look in the mirror...</span><br><br>I can reflect on my body dysmorphia later.<br><br><span style="color:#aaa">Press any key to close</span>';
         dialogBox.classList.add('visible');
     } else if (item === 'bath-exit') {
-        roomState = 'room';
-        // Appear near bathroom door in the room (right wall)
-        roomPlayerX = 390;
-        roomPlayerY = 160;
-        roomPlayerFacing = 'left';
-        roomNearItem = null;
+        return;
     } else if (item === 'book') {
         gameState = 'book-closeup';
         promptEl.classList.remove('visible');
     } else if (item === 'balcony-exit') {
-        roomState = 'room';
-        // Appear near balcony door in the room (left wall)
-        roomPlayerX = 60;
-        roomPlayerY = 140;
-        roomPlayerFacing = 'right';
-        roomNearItem = null;
+        return;
     }
 }
 
@@ -1659,7 +1635,7 @@ function drawRoom() {
         }
     }
 
-    // Walls on all four sides
+    // Walls on all four sides (tight around bed)
     // Top wall
     ctx.fillStyle = '#3a2a5c';
     ctx.fillRect(0, 0, ROOM_W, 50);
@@ -1667,74 +1643,78 @@ function drawRoom() {
     ctx.fillRect(0, 46, ROOM_W, 4);
     // Bottom wall
     ctx.fillStyle = '#3a2a5c';
-    ctx.fillRect(0, 290, ROOM_W, 30);
+    ctx.fillRect(0, 270, ROOM_W, 50);
     ctx.fillStyle = '#4a2a1a';
-    ctx.fillRect(0, 290, ROOM_W, 4);
+    ctx.fillRect(0, 270, ROOM_W, 4);
     // Left wall
     ctx.fillStyle = '#3a2a5c';
-    ctx.fillRect(0, 0, 30, ROOM_H);
+    ctx.fillRect(0, 0, 80, ROOM_H);
     ctx.fillStyle = '#4a2a1a';
-    ctx.fillRect(26, 0, 4, ROOM_H);
+    ctx.fillRect(76, 0, 4, ROOM_H);
     // Right wall
     ctx.fillStyle = '#3a2a5c';
-    ctx.fillRect(450, 0, 30, ROOM_H);
+    ctx.fillRect(400, 0, 80, ROOM_H);
     ctx.fillStyle = '#4a2a1a';
-    ctx.fillRect(450, 0, 4, ROOM_H);
+    ctx.fillRect(400, 0, 4, ROOM_H);
 
-    // Entry door in bottom wall (locked, shaking)
+    // Entry door in bottom wall (vertical/tall, locked, shaking)
     const doorShake = (!doorPoundPause && doorPoundCount > 0) ? Math.sin(doorPoundTimer * 0.8) * 2 : 0;
     ctx.fillStyle = '#d4a574';
-    ctx.fillRect(ROOM_W / 2 - 25 + doorShake, 290, 50, 30);
+    ctx.fillRect(ROOM_W / 2 - 20, 270, 40, 50);
     ctx.fillStyle = '#8B4513';
-    ctx.fillRect(ROOM_W / 2 - 22 + doorShake, 293, 44, 24);
+    ctx.fillRect(ROOM_W / 2 - 17 + doorShake, 274, 34, 42);
+    // Door panels
+    ctx.fillStyle = '#6d3a0a';
+    ctx.fillRect(ROOM_W / 2 - 13 + doorShake, 278, 26, 16);
+    ctx.fillRect(ROOM_W / 2 - 13 + doorShake, 298, 26, 14);
     ctx.fillStyle = '#ffd700';
-    ctx.fillRect(ROOM_W / 2 - 8 + doorShake, 304, 4, 4);
+    ctx.fillRect(ROOM_W / 2 + 10 + doorShake, 292, 4, 4);
 
     // Balcony sliding glass door in LEFT WALL
     ctx.fillStyle = '#1a3a5c';
-    ctx.fillRect(0, 100, 30, 70);
+    ctx.fillRect(60, 120, 20, 70);
     ctx.fillStyle = '#4488bb';
-    ctx.fillRect(2, 104, 26, 30);
-    ctx.fillRect(2, 138, 26, 28);
+    ctx.fillRect(62, 124, 16, 30);
+    ctx.fillRect(62, 158, 16, 28);
     ctx.fillStyle = '#0a2a4a';
-    ctx.fillRect(8, 120, 14, 26);
+    ctx.fillRect(66, 140, 10, 22);
 
     // Bathroom door in RIGHT WALL
     ctx.fillStyle = '#d4a574';
-    ctx.fillRect(450, 130, 30, 60);
+    ctx.fillRect(400, 130, 24, 60);
     ctx.fillStyle = '#8B4513';
-    ctx.fillRect(453, 134, 24, 52);
+    ctx.fillRect(404, 134, 18, 52);
     ctx.fillStyle = '#ffd700';
-    ctx.fillRect(455, 158, 4, 4);
+    ctx.fillRect(406, 158, 4, 4);
 
-    // Bed (centered, king size)
+    // Bed (centered, king size - tight fit)
     ctx.fillStyle = '#4a3a6a';
-    ctx.fillRect(160, 50, 160, 100);
+    ctx.fillRect(150, 50, 180, 100);
     ctx.fillStyle = '#5a4a7a';
-    ctx.fillRect(164, 54, 152, 35);
+    ctx.fillRect(154, 54, 172, 35);
     // Pillows
     ctx.fillStyle = '#ddd';
-    ctx.fillRect(170, 56, 40, 20);
-    ctx.fillRect(270, 56, 40, 20);
+    ctx.fillRect(160, 56, 40, 20);
+    ctx.fillRect(280, 56, 40, 20);
     // Blanket fold
     ctx.fillStyle = '#3a2a5a';
-    ctx.fillRect(164, 95, 152, 4);
+    ctx.fillRect(154, 95, 172, 4);
 
     // Bedside table LEFT
     ctx.fillStyle = '#5c3a1a';
-    ctx.fillRect(120, 70, 40, 40);
+    ctx.fillRect(106, 70, 40, 40);
     ctx.fillStyle = '#4a2a0a';
-    ctx.fillRect(124, 82, 32, 14);
+    ctx.fillRect(110, 82, 32, 14);
     ctx.fillStyle = '#ffd700';
-    ctx.fillRect(138, 87, 4, 4);
+    ctx.fillRect(124, 87, 4, 4);
 
     // Bedside table RIGHT
     ctx.fillStyle = '#5c3a1a';
-    ctx.fillRect(320, 70, 40, 40);
+    ctx.fillRect(334, 70, 40, 40);
     ctx.fillStyle = '#4a2a0a';
-    ctx.fillRect(324, 82, 32, 14);
+    ctx.fillRect(338, 82, 32, 14);
     ctx.fillStyle = '#ffd700';
-    ctx.fillRect(338, 87, 4, 4);
+    ctx.fillRect(352, 87, 4, 4);
 
     // Player
     drawRoomPlayer();
@@ -1831,10 +1811,10 @@ function drawBalcony() {
         ctx.fillRect(40 + wave * 0.6, y + 9, 30, 2);
     }
 
-    // Balcony deck floor
+    // Balcony deck floor (extends beyond railings)
     ctx.fillStyle = '#5c4a2a';
-    ctx.fillRect(110, 40, 290, 240);
-    for (let y = 40; y < 280; y += 20) {
+    ctx.fillRect(110, 0, 290, ROOM_H);
+    for (let y = 0; y < ROOM_H; y += 20) {
         ctx.fillStyle = '#4a3a1a';
         ctx.fillRect(110, y, 290, 2);
     }
@@ -2330,10 +2310,10 @@ function update() {
             minX = 170; maxX = 330; minY = 70; maxY = 200;
             colliders = BATH_COLLIDERS;
         } else if (roomState === 'balcony') {
-            minX = 130; maxX = 370; minY = 60; maxY = 220;
+            minX = 130; maxX = 380; minY = 10; maxY = 270;
             colliders = BALCONY_COLLIDERS;
         } else {
-            minX = 50; maxX = 400; minY = 100; maxY = 252;
+            minX = 82; maxX = 376; minY = 100; maxY = 235;
             colliders = ROOM_COLLIDERS;
         }
 
@@ -2348,7 +2328,6 @@ function update() {
             roomPlayerX = newX;
             roomPlayerY = newY;
         } else {
-            // Try sliding on each axis
             if (!collidesWithAny(newX, roomPlayerY, pw, ph, colliders)) {
                 roomPlayerX = newX;
             } else if (!collidesWithAny(roomPlayerX, newY, pw, ph, colliders)) {
@@ -2357,12 +2336,53 @@ function update() {
         }
         if (moved) player.animTimer++;
 
-        // Proximity check for room items
+        // Walk-through door transitions (no examine needed)
+        if (roomState === 'room') {
+            // Bathroom door in right wall - walk right near the door
+            if (roomPlayerX >= 376 && roomPlayerY > 120 && roomPlayerY < 200) {
+                roomState = 'bathroom';
+                roomPlayerX = 230;
+                roomPlayerY = 190;
+                roomPlayerFacing = 'up';
+                roomNearItem = null;
+                return;
+            }
+            // Balcony door in left wall - walk left near the door
+            if (roomPlayerX <= 82 && roomPlayerY > 110 && roomPlayerY < 200) {
+                roomState = 'balcony';
+                roomPlayerX = 360;
+                roomPlayerY = 140;
+                roomPlayerFacing = 'left';
+                roomNearItem = null;
+                return;
+            }
+        } else if (roomState === 'bathroom') {
+            if (roomPlayerY >= 200) {
+                roomState = 'room';
+                roomPlayerX = 390;
+                roomPlayerY = 160;
+                roomPlayerFacing = 'left';
+                roomNearItem = null;
+                return;
+            }
+        } else if (roomState === 'balcony') {
+            if (roomPlayerX >= 380) {
+                roomState = 'room';
+                roomPlayerX = 60;
+                roomPlayerY = 140;
+                roomPlayerFacing = 'right';
+                roomNearItem = null;
+                return;
+            }
+        }
+
+        // Proximity check for room items (exclude door items since we walk through now)
         roomNearItem = null;
         const rpx = roomPlayerX + 12;
         const rpy = roomPlayerY + 18;
         const items = roomState === 'bathroom' ? BATHROOM_ITEMS : roomState === 'balcony' ? BALCONY_ITEMS : ROOM_ITEMS;
         for (const item of items) {
+            if (item.id === 'bathroom-door' || item.id === 'balcony-door' || item.id === 'bath-exit' || item.id === 'balcony-exit') continue;
             const icx = item.x + item.w / 2;
             const icy = item.y + item.h / 2;
             if (Math.abs(rpx - icx) < 50 && Math.abs(rpy - icy) < 50) {
