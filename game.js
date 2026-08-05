@@ -54,6 +54,7 @@ let roomNearItem = null;
 let doorPoundTimer = 0;
 let doorPoundCount = 0;
 let doorPoundPause = false;
+let doorPoundDelay = 120;
 let fadeWhiteAlpha = 0;
 
 // Character selection
@@ -1540,7 +1541,7 @@ const BATH_COLLIDERS = [
     { x: 290, y: 156, w: 30, h: 34 },   // toilet
 ];
 const BALCONY_COLLIDERS = [
-    { x: 210, y: 142, w: 46, h: 46 },   // book
+    { x: 222, y: 154, w: 28, h: 26 },   // book
 ];
 
 const ROOM_ITEMS = [
@@ -1551,7 +1552,7 @@ const BATHROOM_ITEMS = [
     { id: 'mirror', x: 220, y: 58, w: 30, h: 40 },
 ];
 const BALCONY_ITEMS = [
-    { id: 'book', x: 210, y: 142, w: 46, h: 46 },
+    { id: 'book', x: 222, y: 154, w: 28, h: 26 },
     { id: 'balcony-exit', x: 394, y: 120, w: 36, h: 60 },
 ];
 
@@ -1569,6 +1570,7 @@ function enterRoom405() {
     roomPlayerX = ROOM_W / 2 - 12;
     roomPlayerY = 180;
     roomPlayerFacing = 'up';
+    doorPoundDelay = 120;
     doorPoundTimer = 0;
     doorPoundCount = 0;
     doorPoundPause = false;
@@ -1822,12 +1824,12 @@ function drawBalcony() {
         ctx.fillRect(x + 5, 285 + wave, 10, 2);
     }
 
-    // Balcony deck floor (extends past railings top/bottom)
+    // Balcony deck floor (within railings only)
     ctx.fillStyle = '#5c4a2a';
-    ctx.fillRect(140, 20, 250, 280);
-    for (let y = 20; y < 300; y += 18) {
+    ctx.fillRect(146, 76, 244, 168);
+    for (let y = 76; y < 244; y += 18) {
         ctx.fillStyle = '#4a3a1a';
-        ctx.fillRect(140, y, 250, 2);
+        ctx.fillRect(146, y, 244, 2);
     }
 
     // Left railing (over water)
@@ -1863,20 +1865,20 @@ function drawBalcony() {
     ctx.fillStyle = '#9a9aa0';
     ctx.fillRect(394, 0, 2, ROOM_H);
 
-    // Portholes on ship wall (next to railings)
+    // Portholes on ship wall (above and below railings)
     ctx.fillStyle = '#555';
-    ctx.beginPath(); ctx.arc(430, 90, 14, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(430, 45, 14, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#1a3a5c';
-    ctx.beginPath(); ctx.arc(430, 90, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(430, 45, 10, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#2a5a8c';
-    ctx.beginPath(); ctx.arc(430, 90, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(430, 45, 7, 0, Math.PI * 2); ctx.fill();
 
     ctx.fillStyle = '#555';
-    ctx.beginPath(); ctx.arc(430, 230, 14, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(430, 275, 14, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#1a3a5c';
-    ctx.beginPath(); ctx.arc(430, 230, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(430, 275, 10, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#2a5a8c';
-    ctx.beginPath(); ctx.arc(430, 230, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(430, 275, 7, 0, Math.PI * 2); ctx.fill();
 
     // Door back inside (in silver ship wall)
     ctx.fillStyle = '#d4a574';
@@ -1886,42 +1888,40 @@ function drawBalcony() {
     ctx.fillStyle = '#ffd700';
     ctx.fillRect(400, 148, 4, 4);
 
-    // Purple book with eye on the deck (clearly book-shaped: taller than wide, with spine and pages)
-    // Shadow under book
+    // Purple book with eye (smaller)
+    // Shadow
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    ctx.fillRect(213, 186, 44, 4);
-    // Pages (visible from side, white edge)
+    ctx.fillRect(226, 178, 22, 3);
+    // Pages edge
     ctx.fillStyle = '#f0e8d0';
-    ctx.fillRect(212, 143, 3, 44);
+    ctx.fillRect(224, 155, 2, 24);
     // Spine
     ctx.fillStyle = '#4a0a6a';
-    ctx.fillRect(210, 142, 6, 46);
-    // Cover (tall rectangle - book proportions)
+    ctx.fillRect(222, 154, 4, 26);
+    // Cover
     ctx.fillStyle = '#6a2a8a';
-    ctx.fillRect(215, 142, 40, 46);
+    ctx.fillRect(226, 154, 22, 26);
     ctx.fillStyle = '#8a3aaa';
-    ctx.fillRect(217, 144, 36, 42);
-    // Border/emboss on cover
+    ctx.fillRect(228, 156, 18, 22);
+    // Border
     ctx.fillStyle = '#5a1a7a';
-    ctx.fillRect(217, 144, 36, 2);
-    ctx.fillRect(217, 184, 36, 2);
-    ctx.fillRect(217, 144, 2, 42);
-    ctx.fillRect(251, 144, 2, 42);
+    ctx.fillRect(228, 156, 18, 2);
+    ctx.fillRect(228, 176, 18, 2);
+    ctx.fillRect(228, 156, 2, 22);
+    ctx.fillRect(244, 156, 2, 22);
     // Eye on cover
     ctx.fillStyle = '#fff';
     ctx.beginPath();
-    ctx.ellipse(235, 165, 10, 7, 0, 0, Math.PI * 2);
+    ctx.ellipse(237, 167, 6, 4, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#4a0a6a';
     ctx.beginPath();
-    ctx.arc(235, 165, 4, 0, Math.PI * 2);
+    ctx.arc(237, 167, 3, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#000';
     ctx.beginPath();
-    ctx.arc(235, 165, 2, 0, Math.PI * 2);
+    ctx.arc(237, 167, 1.5, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(233, 162, 2, 2);
 
     drawRoomPlayer();
 
@@ -2321,22 +2321,26 @@ function update() {
     }
 
     if (gameState === 'room') {
-        // Door pounding with sound
-        doorPoundTimer++;
-        if (!doorPoundPause) {
-            if (doorPoundTimer % 30 === 0) {
-                doorPoundCount++;
-                if (musicEnabled && roomState === 'room') playDoorPound();
-                if (doorPoundCount >= 3) {
-                    doorPoundPause = true;
-                    doorPoundTimer = 0;
-                    doorPoundCount = 0;
-                }
-            }
+        // Door pounding with sound (delay before starting)
+        if (doorPoundDelay > 0) {
+            doorPoundDelay--;
         } else {
-            if (doorPoundTimer > 90) {
-                doorPoundPause = false;
-                doorPoundTimer = 0;
+            doorPoundTimer++;
+            if (!doorPoundPause) {
+                if (doorPoundTimer % 30 === 0) {
+                    doorPoundCount++;
+                    if (musicEnabled && roomState === 'room') playDoorPound();
+                    if (doorPoundCount >= 3) {
+                        doorPoundPause = true;
+                        doorPoundTimer = 0;
+                        doorPoundCount = 0;
+                    }
+                }
+            } else {
+                if (doorPoundTimer > 90) {
+                    doorPoundPause = false;
+                    doorPoundTimer = 0;
+                }
             }
         }
 
