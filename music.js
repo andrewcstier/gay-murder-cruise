@@ -39,4 +39,21 @@ function setMusicVolume(vol) {
     if (audio) audio.volume = vol;
 }
 
-window.GameMusic = { startMusic, stopMusic, setMusicVolume, initAudio, TRACKS };
+function playWhoosh() {
+    const actx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = actx.createOscillator();
+    const gain = actx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(200, actx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(800, actx.currentTime + 0.8);
+    osc.frequency.exponentialRampToValueAtTime(2000, actx.currentTime + 1.5);
+    gain.gain.setValueAtTime(0.3, actx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.5, actx.currentTime + 0.5);
+    gain.gain.linearRampToValueAtTime(0, actx.currentTime + 2.0);
+    osc.connect(gain);
+    gain.connect(actx.destination);
+    osc.start();
+    osc.stop(actx.currentTime + 2.0);
+}
+
+window.GameMusic = { startMusic, stopMusic, setMusicVolume, initAudio, playWhoosh, TRACKS };

@@ -38,6 +38,24 @@ let nearDoor = null;
 let currentDoorIsDead = false;
 let musicEnabled = true;
 
+// Cutscene / murderer chase state
+let cutsceneState = null; // 'murderer-appears', 'exclamation', 'step1', 'step2', 'chase'
+let cutsceneTimer = 0;
+let murdererY = 0;
+let murdererSpeed = 0.4;
+let playerDead = false;
+
+// Level 1.2 - Room 405
+let roomState = null; // 'room', 'bathroom', 'balcony', 'book-closeup', 'book-open', 'fade-white'
+let roomPlayerX = 0;
+let roomPlayerY = 0;
+let roomPlayerFacing = 'up';
+let roomNearItem = null;
+let doorPoundTimer = 0;
+let doorPoundCount = 0;
+let doorPoundPause = false;
+let fadeWhiteAlpha = 0;
+
 // Character selection
 let selectedCharIndex = 0;
 let selectedChar = null;
@@ -105,9 +123,15 @@ window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 function handleAction(key) {
     if (gameState === 'title') { startCharSelect(); return; }
     if (gameState === 'charselect') { handleCharSelectAction(key); return; }
-    if (gameState === 'dialog') { closeDialog(); return; }
+    if (gameState === 'dialog' || gameState === 'room-dialog') { closeDialog(); return; }
     if (gameState === 'playing' && (key.toLowerCase() === 'e' || key === ' ' || key === 'examine') && nearDoor !== null) {
         openDoorDialog(); return;
+    }
+    if (gameState === 'room' && (key.toLowerCase() === 'e' || key === ' ' || key === 'examine') && roomNearItem !== null) {
+        examineRoomItem(); return;
+    }
+    if (gameState === 'book-closeup' && (key.toLowerCase() === 'e' || key === ' ' || key === 'examine')) {
+        openBook(); return;
     }
     if (gameState === 'gameover') { location.reload(); }
 }
@@ -154,8 +178,13 @@ function startLevel1() {
 
 function closeDialog() {
     if (currentDoorIsDead) {
-        gameState = 'gameover';
-        gameOverScreen.classList.add('visible');
+        gameState = 'cutscene';
+        cutsceneState = 'murderer-appears';
+        cutsceneTimer = 0;
+        murdererY = player.y + 200;
+        dialogBox.classList.remove('visible');
+    } else if (gameState === 'room-dialog') {
+        gameState = 'room';
         dialogBox.classList.remove('visible');
     } else {
         gameState = 'playing';
@@ -199,7 +228,7 @@ const btnExamine = document.getElementById('btn-examine');
 btnExamine.addEventListener('touchstart', (e) => {
     e.preventDefault(); btnExamine.classList.add('active');
     if (gameState === 'charselect') handleAction('examine');
-    else if (gameState === 'dialog') closeDialog();
+    else if (gameState === 'dialog' || gameState === 'room-dialog') closeDialog();
     else handleAction('examine');
 });
 btnExamine.addEventListener('touchend', (e) => { e.preventDefault(); btnExamine.classList.remove('active'); });
@@ -275,7 +304,7 @@ musicToggle.addEventListener('click', () => {
     if (musicEnabled) {
         if (gameState === 'charselect') GameMusic.startMusic('hallway');
         else if (gameState === 'playing') GameMusic.startMusic('charselect');
-        else if (gameState === 'gameover') GameMusic.startMusic('panic');
+        else if (gameState === 'gameover' || gameState === 'cutscene' || gameState === 'chase' || gameState === 'room') GameMusic.startMusic('panic');
     } else {
         GameMusic.stopMusic();
     }
@@ -1468,6 +1497,406 @@ function drawWomanSide(px, py, bounce, legSwing, armSwing, dir, char) {
     ctx.fillRect(lipX, py + 3 + b, 3, 2);
 }
 
+// --- MURDERER ---
+function drawMurderer(x, y) {
+    // All-black figure with knife
+    ctx.fillStyle = '#111';
+    // Legs
+    ctx.fillRect(x + 6, y + 26, 5, 10);
+    ctx.fillRect(x + 13, y + 26, 5, 10);
+    // Body
+    ctx.fillRect(x + 4, y + 8, 16, 20);
+    // Arms
+    ctx.fillRect(x + 1, y + 10, 4, 12);
+    ctx.fillRect(x + 19, y + 10, 4, 12);
+    // Head
+    ctx.fillRect(x + 6, y - 4, 12, 12);
+    // Knife in right hand
+    ctx.fillStyle = '#888';
+    ctx.fillRect(x + 21, y + 6, 2, 10);
+    ctx.fillStyle = '#ccc';
+    ctx.fillRect(x + 20, y - 2, 4, 8);
+}
+
+function drawMurdererScreen(screenX, screenY) {
+    drawMurderer(screenX, screenY);
+}
+
+// --- ROOM 405 (Level 1.2) ---
+const ROOM_W = 480;
+const ROOM_H = 320;
+const ROOM_ITEMS = [
+    { id: 'drawer-right', x: 320, y: 80, w: 40, h: 30, label: 'Right drawer' },
+    { id: 'drawer-left', x: 120, y: 80, w: 40, h: 30, label: 'Left drawer' },
+    { id: 'bathroom-door', x: 400, y: 100, w: 40, h: 60, label: 'Bathroom' },
+    { id: 'balcony-door', x: 20, y: 80, w: 40, h: 70, label: 'Balcony' },
+];
+const BATHROOM_ITEMS = [
+    { id: 'mirror', x: 200, y: 40, w: 60, h: 40, label: 'Mirror' },
+    { id: 'bath-exit', x: 200, y: 260, w: 60, h: 40, label: 'Exit' },
+];
+const BALCONY_ITEMS = [
+    { id: 'book', x: 80, y: 120, w: 40, h: 40, label: 'Book' },
+    { id: 'balcony-exit', x: 420, y: 140, w: 40, h: 60, label: 'Back inside' },
+];
+
+function enterRoom405() {
+    gameState = 'room';
+    roomState = 'room';
+    roomPlayerX = ROOM_W / 2 - 12;
+    roomPlayerY = ROOM_H - 60;
+    roomPlayerFacing = 'up';
+    doorPoundTimer = 0;
+    doorPoundCount = 0;
+    doorPoundPause = false;
+}
+
+function examineRoomItem() {
+    const item = roomNearItem;
+    if (!item) return;
+    if (item === 'drawer-right') {
+        gameState = 'room-dialog';
+        dialogBox.innerHTML = '<span style="color:#ffcc00;">You open the drawer...</span><br><br>This just has poppers, not useful here.<br><br><span style="color:#aaa">Press any key to close</span>';
+        dialogBox.classList.add('visible');
+    } else if (item === 'drawer-left') {
+        gameState = 'room-dialog';
+        dialogBox.innerHTML = '<span style="color:#ffcc00;">You open the drawer...</span><br><br>This must be his douche— this could be useful... JK, now is NOT the time!<br><br><span style="color:#aaa">Press any key to close</span>';
+        dialogBox.classList.add('visible');
+    } else if (item === 'bathroom-door') {
+        roomState = 'bathroom';
+        roomPlayerX = ROOM_W / 2 - 12;
+        roomPlayerY = ROOM_H / 2;
+        roomNearItem = null;
+    } else if (item === 'balcony-door') {
+        roomState = 'balcony';
+        roomPlayerX = ROOM_W - 80;
+        roomPlayerY = ROOM_H / 2;
+        roomNearItem = null;
+    } else if (item === 'mirror') {
+        gameState = 'room-dialog';
+        dialogBox.innerHTML = '<span style="color:#ffcc00;">You look in the mirror...</span><br><br>I can reflect on my body dysmorphia later.<br><br><span style="color:#aaa">Press any key to close</span>';
+        dialogBox.classList.add('visible');
+    } else if (item === 'bath-exit') {
+        roomState = 'room';
+        roomPlayerX = 380;
+        roomPlayerY = 160;
+        roomNearItem = null;
+    } else if (item === 'book') {
+        gameState = 'book-closeup';
+    } else if (item === 'balcony-exit') {
+        roomState = 'room';
+        roomPlayerX = 60;
+        roomPlayerY = 140;
+        roomNearItem = null;
+    }
+}
+
+function openBook() {
+    gameState = 'book-open';
+    fadeWhiteAlpha = 0;
+    GameMusic.stopMusic();
+    GameMusic.playWhoosh();
+}
+
+function drawRoom() {
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, ROOM_W, ROOM_H);
+
+    // Floor
+    ctx.fillStyle = '#2a1a3a';
+    ctx.fillRect(0, 0, ROOM_W, ROOM_H);
+    for (let x = 0; x < ROOM_W; x += 24) {
+        for (let y = 0; y < ROOM_H; y += 24) {
+            ctx.fillStyle = '#321e44';
+            ctx.fillRect(x + 2, y + 2, 10, 10);
+        }
+    }
+
+    // Walls
+    ctx.fillStyle = '#3a2a5c';
+    ctx.fillRect(0, 0, ROOM_W, 50);
+    ctx.fillStyle = '#4a2a1a';
+    ctx.fillRect(0, 46, ROOM_W, 4);
+
+    // Door (bottom wall, locked)
+    ctx.fillStyle = '#6d3a0a';
+    ctx.fillRect(ROOM_W / 2 - 25, ROOM_H - 20, 50, 20);
+    ctx.fillStyle = '#8B4513';
+    ctx.fillRect(ROOM_W / 2 - 22, ROOM_H - 18, 44, 16);
+    // Door shaking from pounding
+    if (doorPoundCount > 0 && !doorPoundPause) {
+        const shake = Math.sin(doorPoundTimer * 0.5) * 2;
+        ctx.fillStyle = '#ff4444';
+        ctx.fillRect(ROOM_W / 2 - 22 + shake, ROOM_H - 18, 44, 2);
+    }
+
+    // Bed (center-ish, king size)
+    ctx.fillStyle = '#4a3a6a';
+    ctx.fillRect(150, 55, 180, 90);
+    ctx.fillStyle = '#5a4a7a';
+    ctx.fillRect(155, 60, 170, 30);
+    // Pillows
+    ctx.fillStyle = '#ddd';
+    ctx.fillRect(160, 58, 40, 20);
+    ctx.fillRect(280, 58, 40, 20);
+
+    // Bedside table LEFT
+    ctx.fillStyle = '#5c3a1a';
+    ctx.fillRect(120, 75, 30, 35);
+    ctx.fillStyle = '#4a2a0a';
+    ctx.fillRect(122, 85, 26, 12);
+
+    // Bedside table RIGHT
+    ctx.fillStyle = '#5c3a1a';
+    ctx.fillRect(330, 75, 30, 35);
+    ctx.fillStyle = '#4a2a0a';
+    ctx.fillRect(332, 85, 26, 12);
+
+    // Closet (right wall)
+    ctx.fillStyle = '#5c3a1a';
+    ctx.fillRect(420, 50, 50, 80);
+    ctx.fillStyle = '#4a2a0a';
+    ctx.fillRect(444, 50, 2, 80);
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(440, 88, 4, 4);
+    ctx.fillRect(448, 88, 4, 4);
+
+    // Bathroom door (right side)
+    ctx.fillStyle = '#d4a574';
+    ctx.fillRect(400, 100, 40, 60);
+    ctx.fillStyle = '#8B4513';
+    ctx.fillRect(404, 104, 32, 52);
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(406, 130, 4, 4);
+
+    // Balcony sliding glass door (left of bed)
+    ctx.fillStyle = '#1a3a5c';
+    ctx.fillRect(20, 50, 60, 90);
+    ctx.fillStyle = '#4488bb';
+    ctx.fillRect(24, 54, 26, 82);
+    ctx.fillRect(52, 54, 26, 82);
+    // Open gap
+    ctx.fillStyle = '#0a2a4a';
+    ctx.fillRect(36, 54, 14, 82);
+
+    // Player
+    drawRoomPlayer();
+
+    // Proximity prompt
+    if (roomNearItem) {
+        promptEl.classList.add('visible');
+        promptEl.textContent = isMobile() ? 'Tap LOOK to examine' : 'Press E or SPACE to examine';
+    } else {
+        promptEl.classList.remove('visible');
+    }
+}
+
+function drawBathroom() {
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, ROOM_W, ROOM_H);
+
+    // Tile floor
+    ctx.fillStyle = '#e8e8e0';
+    ctx.fillRect(0, 0, ROOM_W, ROOM_H);
+    for (let x = 0; x < ROOM_W; x += 20) {
+        for (let y = 0; y < ROOM_H; y += 20) {
+            ctx.fillStyle = '#d0d0c8';
+            ctx.fillRect(x, y, 1, 20);
+            ctx.fillRect(x, y, 20, 1);
+        }
+    }
+
+    // Walls
+    ctx.fillStyle = '#e0e0d8';
+    ctx.fillRect(0, 0, ROOM_W, 60);
+
+    // Shower (top left)
+    ctx.fillStyle = '#aaa';
+    ctx.fillRect(30, 20, 80, 80);
+    ctx.fillStyle = '#ccc';
+    ctx.fillRect(35, 25, 70, 70);
+    ctx.fillStyle = '#888';
+    ctx.fillRect(60, 20, 4, 10);
+
+    // Toilet (top right)
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(350, 30, 30, 40);
+    ctx.fillStyle = '#ddd';
+    ctx.fillRect(352, 20, 26, 14);
+    ctx.fillRect(355, 45, 20, 30);
+
+    // Sink with mirror (center top)
+    ctx.fillStyle = '#aaa';
+    ctx.fillRect(190, 30, 80, 10);
+    ctx.fillStyle = '#ddd';
+    ctx.fillRect(200, 10, 60, 30);
+    // Mirror
+    ctx.fillStyle = '#aaccee';
+    ctx.fillRect(205, 15, 50, 30);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(208, 18, 10, 6);
+
+    // Exit door (bottom)
+    ctx.fillStyle = '#8B4513';
+    ctx.fillRect(ROOM_W / 2 - 25, ROOM_H - 30, 50, 30);
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(ROOM_W / 2 - 10, ROOM_H - 18, 4, 4);
+
+    drawRoomPlayer();
+
+    if (roomNearItem) {
+        promptEl.classList.add('visible');
+        promptEl.textContent = isMobile() ? 'Tap LOOK to examine' : 'Press E or SPACE to examine';
+    } else {
+        promptEl.classList.remove('visible');
+    }
+}
+
+function drawBalcony() {
+    // Ocean background
+    ctx.fillStyle = '#0a2a4a';
+    ctx.fillRect(0, 0, ROOM_W, ROOM_H);
+
+    // Ocean
+    ctx.fillStyle = '#1a4a7a';
+    ctx.fillRect(0, 0, ROOM_W, 200);
+    for (let x = 0; x < ROOM_W; x += 25) {
+        const wave = Math.sin((Date.now() * 0.001) + x * 0.08) * 3;
+        ctx.fillStyle = '#2a5a8c';
+        ctx.fillRect(x, 60 + wave, 18, 3);
+        ctx.fillRect(x + 8, 120 + wave * 0.6, 14, 2);
+    }
+
+    // Balcony floor
+    ctx.fillStyle = '#5c4a2a';
+    ctx.fillRect(0, 200, ROOM_W, 120);
+    for (let x = 0; x < ROOM_W; x += 30) {
+        ctx.fillStyle = '#4a3a1a';
+        ctx.fillRect(x, 200, 2, 120);
+    }
+
+    // Railing
+    ctx.fillStyle = '#888';
+    ctx.fillRect(0, 195, ROOM_W, 6);
+    for (let x = 20; x < ROOM_W; x += 40) {
+        ctx.fillRect(x, 170, 3, 30);
+    }
+
+    // Purple book with eye
+    ctx.fillStyle = '#6a2a8a';
+    ctx.fillRect(70, 220, 50, 40);
+    ctx.fillStyle = '#8a3aaa';
+    ctx.fillRect(72, 222, 46, 36);
+    // Eye on cover
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.ellipse(95, 240, 12, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#4a0a6a';
+    ctx.beginPath();
+    ctx.arc(95, 240, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.arc(95, 240, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Door back inside (right side)
+    ctx.fillStyle = '#4488bb';
+    ctx.fillRect(420, 120, 50, 80);
+    ctx.fillStyle = '#1a3a5c';
+    ctx.fillRect(425, 125, 40, 70);
+
+    drawRoomPlayer();
+
+    if (roomNearItem) {
+        promptEl.classList.add('visible');
+        promptEl.textContent = isMobile() ? 'Tap LOOK to examine' : 'Press E or SPACE to examine';
+    } else {
+        promptEl.classList.remove('visible');
+    }
+}
+
+function drawBookCloseup() {
+    ctx.fillStyle = '#0a0a12';
+    ctx.fillRect(0, 0, ROOM_W, ROOM_H);
+
+    // Large purple book
+    ctx.fillStyle = '#5a1a7a';
+    ctx.fillRect(140, 40, 200, 240);
+    ctx.fillStyle = '#7a2a9a';
+    ctx.fillRect(145, 45, 190, 230);
+    // Spine
+    ctx.fillStyle = '#4a0a6a';
+    ctx.fillRect(140, 40, 8, 240);
+
+    // Giant eye
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.ellipse(240, 150, 50, 35, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#6a1a9a';
+    ctx.beginPath();
+    ctx.arc(240, 150, 20, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.arc(240, 150, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(234, 140, 4, 4);
+
+    // Open prompt
+    ctx.fillStyle = '#ffcc00';
+    ctx.font = '14px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('Press E or SPACE to open', ROOM_W / 2, ROOM_H - 30);
+    ctx.textAlign = 'left';
+}
+
+function drawBookOpen() {
+    // Book opening animation then fade to white
+    ctx.fillStyle = '#0a0a12';
+    ctx.fillRect(0, 0, ROOM_W, ROOM_H);
+
+    // Open book pages
+    ctx.fillStyle = '#f0e8d0';
+    ctx.fillRect(120, 50, 120, 220);
+    ctx.fillRect(240, 50, 120, 220);
+    // Spine crease
+    ctx.fillStyle = '#c0b090';
+    ctx.fillRect(238, 50, 4, 220);
+    // Mysterious symbols
+    ctx.fillStyle = '#6a2a8a';
+    for (let i = 0; i < 8; i++) {
+        ctx.fillRect(140 + (i % 4) * 22, 80 + Math.floor(i / 4) * 60, 12, 12);
+    }
+
+    // Fade to white
+    ctx.fillStyle = `rgba(255, 255, 255, ${fadeWhiteAlpha})`;
+    ctx.fillRect(0, 0, ROOM_W, ROOM_H);
+}
+
+function drawRoomPlayer() {
+    const px = Math.floor(roomPlayerX);
+    const py = Math.floor(roomPlayerY);
+    const char = selectedChar || CHARACTERS[0];
+    const moving = isMoving() && gameState === 'room';
+    const bounce = Math.sin(player.animTimer * 0.15) * (moving ? 1.5 : 0);
+    const legSwing = moving ? Math.sin(player.animTimer * 0.22) * 3 : 0;
+    const armSwing = moving ? Math.sin(player.animTimer * 0.18) * 2 : 0;
+
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(px + 12, py + 36, 13, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (roomPlayerFacing === 'up') drawCharBack(px, py, bounce, legSwing, armSwing, char);
+    else if (roomPlayerFacing === 'down') drawCharFront(px, py, bounce, legSwing, armSwing, char);
+    else if (roomPlayerFacing === 'left') drawCharSide(px, py, bounce, legSwing, armSwing, -1, char);
+    else drawCharSide(px, py, bounce, legSwing, armSwing, 1, char);
+}
+
 function isMoving() {
     return keys['arrowleft'] || keys['arrowright'] || keys['arrowup'] || keys['arrowdown'] ||
            keys['a'] || keys['d'] || keys['w'] || keys['s'];
@@ -1712,6 +2141,131 @@ function update() {
         }
         return;
     }
+
+    if (gameState === 'cutscene') {
+        cutsceneTimer++;
+        if (cutsceneState === 'murderer-appears' && cutsceneTimer > 60) {
+            cutsceneState = 'exclamation';
+            cutsceneTimer = 0;
+        } else if (cutsceneState === 'exclamation' && cutsceneTimer > 50) {
+            cutsceneState = 'step1';
+            cutsceneTimer = 0;
+        } else if (cutsceneState === 'step1' && cutsceneTimer > 40) {
+            murdererY -= 20;
+            cutsceneState = 'step2';
+            cutsceneTimer = 0;
+        } else if (cutsceneState === 'step2' && cutsceneTimer > 40) {
+            murdererY -= 20;
+            gameState = 'chase';
+            cutsceneState = null;
+        }
+        return;
+    }
+
+    if (gameState === 'chase') {
+        // Murderer slowly approaches
+        murdererY -= murdererSpeed;
+
+        // Player can move
+        let moved = false;
+        let newX = player.x;
+        let newY = player.y;
+        if (keys['arrowleft'] || keys['a']) { newX -= player.speed; player.facing = 'left'; moved = true; }
+        if (keys['arrowright'] || keys['d']) { newX += player.speed; player.facing = 'right'; moved = true; }
+        if (keys['arrowup'] || keys['w']) { newY -= player.speed; player.facing = 'up'; moved = true; }
+        if (keys['arrowdown'] || keys['s']) { newY += player.speed; player.facing = 'down'; moved = true; }
+
+        if (newX < HALL_LEFT + 6) newX = HALL_LEFT + 6;
+        if (newX > HALL_RIGHT - player.width - 6) newX = HALL_RIGHT - player.width - 6;
+        if (newY < 30) newY = 30;
+        if (newY > HALL_LENGTH - player.height - 10) newY = HALL_LENGTH - player.height - 10;
+
+        player.x = newX;
+        player.y = newY;
+        if (moved) player.animTimer++;
+
+        camera.y = player.y - HEIGHT / 2 + player.height / 2;
+        if (camera.y < -40) camera.y = -40;
+        if (camera.y > HALL_LENGTH - HEIGHT + 20) camera.y = HALL_LENGTH - HEIGHT + 20;
+
+        // Check if player entered room 405 (end door)
+        const pcx = player.x + player.width / 2;
+        const pcy = player.y + player.height / 2;
+        if (pcy < 60 && Math.abs(pcx - WIDTH / 2) < 40) {
+            enterRoom405();
+            return;
+        }
+
+        // Check if murderer catches player
+        if (Math.abs(murdererY - player.y) < 30 && Math.abs((HALL_LEFT + HALL_WIDTH / 2) - pcx) < 40) {
+            playerDead = true;
+            gameState = 'gameover';
+            gameOverScreen.classList.add('visible');
+        }
+        return;
+    }
+
+    if (gameState === 'room') {
+        // Door pounding
+        doorPoundTimer++;
+        if (!doorPoundPause) {
+            if (doorPoundTimer % 20 === 0) {
+                doorPoundCount++;
+                if (doorPoundCount >= 3) {
+                    doorPoundPause = true;
+                    doorPoundTimer = 0;
+                    doorPoundCount = 0;
+                }
+            }
+        } else {
+            if (doorPoundTimer > 80) {
+                doorPoundPause = false;
+                doorPoundTimer = 0;
+            }
+        }
+
+        // Player movement in room
+        let moved = false;
+        let newX = roomPlayerX;
+        let newY = roomPlayerY;
+        if (keys['arrowleft'] || keys['a']) { newX -= 2.5; roomPlayerFacing = 'left'; moved = true; }
+        if (keys['arrowright'] || keys['d']) { newX += 2.5; roomPlayerFacing = 'right'; moved = true; }
+        if (keys['arrowup'] || keys['w']) { newY -= 2.5; roomPlayerFacing = 'up'; moved = true; }
+        if (keys['arrowdown'] || keys['s']) { newY += 2.5; roomPlayerFacing = 'down'; moved = true; }
+
+        if (newX < 10) newX = 10;
+        if (newX > ROOM_W - 34) newX = ROOM_W - 34;
+        if (newY < 50) newY = 50;
+        if (newY > ROOM_H - 40) newY = ROOM_H - 40;
+
+        roomPlayerX = newX;
+        roomPlayerY = newY;
+        if (moved) player.animTimer++;
+
+        // Proximity check for room items
+        roomNearItem = null;
+        const rpx = roomPlayerX + 12;
+        const rpy = roomPlayerY + 18;
+        const items = roomState === 'bathroom' ? BATHROOM_ITEMS : roomState === 'balcony' ? BALCONY_ITEMS : ROOM_ITEMS;
+        for (const item of items) {
+            const icx = item.x + item.w / 2;
+            const icy = item.y + item.h / 2;
+            if (Math.abs(rpx - icx) < 50 && Math.abs(rpy - icy) < 50) {
+                roomNearItem = item.id;
+                break;
+            }
+        }
+        return;
+    }
+
+    if (gameState === 'book-open') {
+        fadeWhiteAlpha += 0.008;
+        if (fadeWhiteAlpha >= 1) {
+            fadeWhiteAlpha = 1;
+        }
+        return;
+    }
+
     if (gameState !== 'playing') return;
 
     let moved = false;
@@ -1787,7 +2341,70 @@ function draw() {
     }
 
     if (gameState === 'gameover') {
-        drawDeadBodyScene();
+        if (playerDead) {
+            drawHallway();
+            for (let i = 0; i < doors.length; i++) drawDoor(doors[i], i);
+            drawPlayer();
+            drawMurdererScreen(HALL_LEFT + HALL_WIDTH / 2 - 12, sy(murdererY));
+            // Dark overlay
+            ctx.fillStyle = 'rgba(139, 0, 0, 0.4)';
+            ctx.fillRect(0, 0, WIDTH, HEIGHT);
+        } else {
+            drawDeadBodyScene();
+        }
+        return;
+    }
+
+    if (gameState === 'cutscene') {
+        drawHallway();
+        for (let i = 0; i < doors.length; i++) drawDoor(doors[i], i);
+        drawPlayer();
+        // Murderer behind player
+        drawMurdererScreen(HALL_LEFT + HALL_WIDTH / 2 - 12, sy(murdererY));
+        // Exclamation point above player
+        if (cutsceneState === 'exclamation' || cutsceneState === 'step1' || cutsceneState === 'step2') {
+            const px = Math.floor(player.x);
+            const psy = sy(Math.floor(player.y));
+            ctx.fillStyle = '#ff4444';
+            ctx.font = 'bold 20px monospace';
+            ctx.textAlign = 'center';
+            if (cutsceneState === 'exclamation') {
+                ctx.fillText('!', px + 12, psy - 12);
+            }
+            ctx.textAlign = 'left';
+        }
+        return;
+    }
+
+    if (gameState === 'chase') {
+        drawHallway();
+        for (let i = 0; i < doors.length; i++) drawDoor(doors[i], i);
+        drawPlayer();
+        drawMurdererScreen(HALL_LEFT + HALL_WIDTH / 2 - 12, sy(murdererY));
+        // Ambient lighting
+        const psy2 = sy(player.y);
+        const gradient2 = ctx.createRadialGradient(player.x + 12, psy2 + 18, 20, player.x + 12, psy2 + 18, 180);
+        gradient2.addColorStop(0, 'rgba(255, 200, 100, 0.03)');
+        gradient2.addColorStop(1, 'rgba(0, 0, 0, 0.2)');
+        ctx.fillStyle = gradient2;
+        ctx.fillRect(HALL_LEFT, 0, HALL_WIDTH, HEIGHT);
+        return;
+    }
+
+    if (gameState === 'room' || gameState === 'room-dialog') {
+        if (roomState === 'bathroom') drawBathroom();
+        else if (roomState === 'balcony') drawBalcony();
+        else drawRoom();
+        return;
+    }
+
+    if (gameState === 'book-closeup') {
+        drawBookCloseup();
+        return;
+    }
+
+    if (gameState === 'book-open') {
+        drawBookOpen();
         return;
     }
 
