@@ -2271,8 +2271,8 @@ function update() {
             return;
         }
 
-        // Check if murderer catches player
-        if (Math.abs(murdererY - player.y) < 30 && Math.abs((HALL_LEFT + HALL_WIDTH / 2) - pcx) < 40) {
+        // Check if murderer catches player (too close or tried to walk past)
+        if (player.y >= murdererY - 30) {
             playerDead = true;
             gameState = 'gameover';
             gameOverScreen.classList.add('visible');
