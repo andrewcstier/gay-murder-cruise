@@ -1563,6 +1563,8 @@ function collidesWithAny(px, py, pw, ph, colliders) {
     return false;
 }
 
+let firstEntryRoom405 = true;
+
 function enterRoom405() {
     gameState = 'room';
     roomState = 'room';
@@ -1570,7 +1572,10 @@ function enterRoom405() {
     roomPlayerX = ROOM_W / 2 - 12;
     roomPlayerY = 180;
     roomPlayerFacing = 'up';
-    doorPoundDelay = 120;
+    if (firstEntryRoom405) {
+        doorPoundDelay = 120;
+        firstEntryRoom405 = false;
+    }
     doorPoundTimer = 0;
     doorPoundCount = 0;
     doorPoundPause = false;
