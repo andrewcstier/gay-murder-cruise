@@ -1535,8 +1535,8 @@ const ROOM_COLLIDERS = [
     { x: 334, y: 70, w: 40, h: 40 },    // right table
 ];
 const BATH_COLLIDERS = [
-    { x: 170, y: 50, w: 60, h: 50 },    // shower
-    { x: 310, y: 50, w: 40, h: 50 },    // toilet
+    { x: 184, y: 80, w: 50, h: 48 },    // shower
+    { x: 295, y: 80, w: 30, h: 34 },    // toilet
 ];
 const BALCONY_COLLIDERS = [];
 
@@ -1545,8 +1545,8 @@ const ROOM_ITEMS = [
     { id: 'drawer-left', x: 106, y: 70, w: 40, h: 40 },
 ];
 const BATHROOM_ITEMS = [
-    { id: 'mirror', x: 230, y: 50, w: 50, h: 40 },
-    { id: 'bath-exit', x: 220, y: 230, w: 50, h: 35 },
+    { id: 'mirror', x: 240, y: 50, w: 30, h: 40 },
+    { id: 'bath-exit', x: 235, y: 200, w: 40, h: 30 },
 ];
 const BALCONY_ITEMS = [
     { id: 'book', x: 200, y: 150, w: 50, h: 40 },
@@ -1729,61 +1729,64 @@ function drawRoom() {
 }
 
 function drawBathroom() {
-    // Tiny bathroom - barely room to turn around
+    // Extremely tiny bathroom - barely room to stand
     // Tile floor
     ctx.fillStyle = '#e8e8e0';
     ctx.fillRect(0, 0, ROOM_W, ROOM_H);
-    for (let x = 0; x < ROOM_W; x += 16) {
-        for (let y = 0; y < ROOM_H; y += 16) {
+    for (let x = 0; x < ROOM_W; x += 14) {
+        for (let y = 0; y < ROOM_H; y += 14) {
             ctx.fillStyle = '#d0d0c8';
-            ctx.fillRect(x, y, 1, 16);
-            ctx.fillRect(x, y, 16, 1);
+            ctx.fillRect(x, y, 1, 14);
+            ctx.fillRect(x, y, 14, 1);
         }
     }
 
-    // Walls on all sides (very close in)
+    // Walls on all sides (extremely tight)
     ctx.fillStyle = '#e0e0d8';
-    ctx.fillRect(0, 0, ROOM_W, 50);
-    ctx.fillRect(0, 0, 150, ROOM_H);
-    ctx.fillRect(370, 0, 110, ROOM_H);
-    ctx.fillRect(0, 240, ROOM_W, 80);
+    ctx.fillRect(0, 0, ROOM_W, 80);
+    ctx.fillRect(0, 0, 180, ROOM_H);
+    ctx.fillRect(330, 0, 150, ROOM_H);
+    ctx.fillRect(0, 200, ROOM_W, 120);
     // Trim
     ctx.fillStyle = '#bbb';
-    ctx.fillRect(150, 46, 220, 4);
-    ctx.fillRect(146, 0, 4, ROOM_H);
-    ctx.fillRect(370, 0, 4, ROOM_H);
-    ctx.fillRect(150, 240, 220, 4);
+    ctx.fillRect(180, 76, 150, 4);
+    ctx.fillRect(176, 80, 4, 120);
+    ctx.fillRect(330, 80, 4, 120);
+    ctx.fillRect(180, 200, 150, 4);
 
-    // Shower (top left)
+    // Shower (left wall, top)
     ctx.fillStyle = '#aaa';
-    ctx.fillRect(155, 50, 60, 50);
+    ctx.fillRect(184, 82, 50, 46);
     ctx.fillStyle = '#ccc';
-    ctx.fillRect(158, 53, 54, 44);
+    ctx.fillRect(187, 85, 44, 40);
     ctx.fillStyle = '#888';
-    ctx.fillRect(180, 50, 4, 6);
+    ctx.fillRect(205, 80, 4, 6);
 
-    // Sink with mirror (center top wall - reachable)
+    // Sink with mirror (top wall center - reachable)
     ctx.fillStyle = '#aaa';
-    ctx.fillRect(235, 50, 35, 10);
+    ctx.fillRect(240, 80, 30, 10);
     ctx.fillStyle = '#aaccee';
-    ctx.fillRect(238, 20, 30, 30);
+    ctx.fillRect(242, 50, 26, 28);
     ctx.fillStyle = '#fff';
-    ctx.fillRect(242, 24, 8, 5);
+    ctx.fillRect(246, 54, 8, 5);
 
-    // Toilet (top right)
+    // Toilet (right wall)
     ctx.fillStyle = '#fff';
-    ctx.fillRect(320, 54, 28, 32);
+    ctx.fillRect(295, 85, 26, 28);
     ctx.fillStyle = '#ddd';
-    ctx.fillRect(323, 50, 22, 8);
-    ctx.fillRect(326, 68, 16, 16);
+    ctx.fillRect(298, 80, 20, 8);
+    ctx.fillRect(300, 98, 14, 14);
 
-    // Exit door (bottom wall)
+    // Exit door (bottom wall, vertical)
     ctx.fillStyle = '#d4a574';
-    ctx.fillRect(225, 240, 50, 30);
+    ctx.fillRect(235, 200, 40, 30);
     ctx.fillStyle = '#8B4513';
-    ctx.fillRect(229, 243, 42, 24);
+    ctx.fillRect(238, 203, 34, 24);
+    ctx.fillStyle = '#6d3a0a';
+    ctx.fillRect(241, 206, 28, 8);
+    ctx.fillRect(241, 217, 28, 7);
     ctx.fillStyle = '#ffd700';
-    ctx.fillRect(245, 253, 4, 4);
+    ctx.fillRect(262, 213, 4, 4);
 
     drawRoomPlayer();
 
@@ -2307,7 +2310,7 @@ function update() {
         // Room-specific bounds and colliders
         let minX, maxX, minY, maxY, colliders;
         if (roomState === 'bathroom') {
-            minX = 170; maxX = 330; minY = 70; maxY = 200;
+            minX = 200; maxX = 290; minY = 100; maxY = 175;
             colliders = BATH_COLLIDERS;
         } else if (roomState === 'balcony') {
             minX = 130; maxX = 380; minY = 10; maxY = 270;
@@ -2341,8 +2344,8 @@ function update() {
             // Bathroom door in right wall - walk right near the door
             if (roomPlayerX >= 376 && roomPlayerY > 120 && roomPlayerY < 200) {
                 roomState = 'bathroom';
-                roomPlayerX = 230;
-                roomPlayerY = 190;
+                roomPlayerX = 240;
+                roomPlayerY = 155;
                 roomPlayerFacing = 'up';
                 roomNearItem = null;
                 return;
@@ -2350,25 +2353,25 @@ function update() {
             // Balcony door in left wall - walk left near the door
             if (roomPlayerX <= 82 && roomPlayerY > 110 && roomPlayerY < 200) {
                 roomState = 'balcony';
-                roomPlayerX = 360;
+                roomPlayerX = 350;
                 roomPlayerY = 140;
                 roomPlayerFacing = 'left';
                 roomNearItem = null;
                 return;
             }
         } else if (roomState === 'bathroom') {
-            if (roomPlayerY >= 200) {
+            if (roomPlayerY >= 175) {
                 roomState = 'room';
-                roomPlayerX = 390;
+                roomPlayerX = 350;
                 roomPlayerY = 160;
                 roomPlayerFacing = 'left';
                 roomNearItem = null;
                 return;
             }
         } else if (roomState === 'balcony') {
-            if (roomPlayerX >= 380) {
+            if (roomPlayerX >= 370) {
                 roomState = 'room';
-                roomPlayerX = 60;
+                roomPlayerX = 100;
                 roomPlayerY = 140;
                 roomPlayerFacing = 'right';
                 roomNearItem = null;
