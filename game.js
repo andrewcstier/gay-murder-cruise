@@ -2293,15 +2293,26 @@ function update() {
         if (cutsceneState === 'murderer-appears' && cutsceneTimer > 60) {
             cutsceneState = 'exclamation';
             cutsceneTimer = 0;
-        } else if (cutsceneState === 'exclamation' && cutsceneTimer > 50) {
+        } else if (cutsceneState === 'exclamation' && cutsceneTimer > 60) {
             cutsceneState = 'step1';
             cutsceneTimer = 0;
-        } else if (cutsceneState === 'step1' && cutsceneTimer > 40) {
-            murdererY -= 20;
-            cutsceneState = 'step2';
-            cutsceneTimer = 0;
-        } else if (cutsceneState === 'step2' && cutsceneTimer > 40) {
-            murdererY -= 20;
+        } else if (cutsceneState === 'step1') {
+            // Smooth steps: walk for 30 frames
+            if (cutsceneTimer <= 30) {
+                murdererY -= 0.8;
+            } else if (cutsceneTimer > 70) {
+                cutsceneState = 'step2';
+                cutsceneTimer = 0;
+            }
+        } else if (cutsceneState === 'step2') {
+            // More steps, then pause
+            if (cutsceneTimer <= 30) {
+                murdererY -= 0.8;
+            } else if (cutsceneTimer > 80) {
+                cutsceneState = 'final-pause';
+                cutsceneTimer = 0;
+            }
+        } else if (cutsceneState === 'final-pause' && cutsceneTimer > 60) {
             gameState = 'chase';
             cutsceneState = null;
         }
@@ -2416,40 +2427,41 @@ function update() {
         }
         if (moved) player.animTimer++;
 
-        // Walk-through door transitions (no examine needed)
+        // Walk-through door transitions - trigger at wall edge, spawn tight to door
         if (roomState === 'room') {
-            // Bathroom door in right wall - walk right near the door
-            if (roomPlayerX >= 376 && roomPlayerY > 120 && roomPlayerY < 200) {
+            // Bathroom door in right wall (door drawn at x=400, y=130-190)
+            if (roomPlayerX >= maxX && roomPlayerY > 130 && roomPlayerY < 190) {
                 roomState = 'bathroom';
                 roomPlayerX = 210;
-                roomPlayerY = 140;
+                roomPlayerY = 145;
                 roomPlayerFacing = 'right';
                 roomNearItem = null;
                 return;
             }
-            // Balcony door in left wall - walk left near the door
-            if (roomPlayerX <= 82 && roomPlayerY > 110 && roomPlayerY < 200) {
+            // Balcony door in left wall (door drawn at x=60, y=120-190)
+            if (roomPlayerX <= minX && roomPlayerY > 120 && roomPlayerY < 190) {
                 roomState = 'balcony';
-                roomPlayerX = 345;
-                roomPlayerY = 145;
+                roomPlayerX = 355;
+                roomPlayerY = 148;
                 roomPlayerFacing = 'left';
                 roomNearItem = null;
                 return;
             }
         } else if (roomState === 'bathroom') {
-            // Exit through left wall door
-            if (roomPlayerX <= 200) {
+            // Exit through left wall door (door at x=176, y=120-176)
+            if (roomPlayerX <= minX && roomPlayerY > 115 && roomPlayerY < 175) {
                 roomState = 'room';
-                roomPlayerX = 350;
-                roomPlayerY = 165;
+                roomPlayerX = 360;
+                roomPlayerY = 160;
                 roomPlayerFacing = 'left';
                 roomNearItem = null;
                 return;
             }
         } else if (roomState === 'balcony') {
-            if (roomPlayerX >= 360) {
+            // Exit through right wall door (door at x=394, y=120-180)
+            if (roomPlayerX >= maxX && roomPlayerY > 110 && roomPlayerY < 180) {
                 roomState = 'room';
-                roomPlayerX = 100;
+                roomPlayerX = 95;
                 roomPlayerY = 155;
                 roomPlayerFacing = 'right';
                 roomNearItem = null;
