@@ -1709,21 +1709,47 @@ function drawRoom() {
     ctx.fillStyle = '#3a2a5a';
     ctx.fillRect(134, 100, 212, 4);
 
-    // Bedside table LEFT (against bed)
+    // Bedside table LEFT (3D prism with visible top and drawer)
+    // Top surface (lighter, shows depth)
+    ctx.fillStyle = '#7a5020';
+    ctx.fillRect(86, 50, 44, 12);
+    // Front face
     ctx.fillStyle = '#5c3a1a';
-    ctx.fillRect(86, 50, 44, 60);
+    ctx.fillRect(86, 62, 44, 48);
+    // Drawer
     ctx.fillStyle = '#4a2a0a';
-    ctx.fillRect(90, 68, 36, 14);
+    ctx.fillRect(90, 70, 36, 18);
+    ctx.fillStyle = '#3a1a00';
+    ctx.fillRect(90, 70, 36, 2);
+    ctx.fillRect(90, 86, 36, 2);
+    // Drawer knob
     ctx.fillStyle = '#ffd700';
-    ctx.fillRect(106, 73, 4, 4);
+    ctx.fillRect(106, 77, 4, 4);
+    // Clock on top
+    ctx.fillStyle = '#222';
+    ctx.fillRect(100, 52, 14, 8);
+    ctx.fillStyle = '#111';
+    ctx.fillRect(102, 53, 10, 6);
+    ctx.fillStyle = '#0f0';
+    ctx.fillRect(104, 55, 3, 1);
+    ctx.fillRect(106, 54, 1, 3);
 
-    // Bedside table RIGHT (against bed)
+    // Bedside table RIGHT (3D prism with visible top and drawer)
+    // Top surface
+    ctx.fillStyle = '#7a5020';
+    ctx.fillRect(350, 50, 44, 12);
+    // Front face
     ctx.fillStyle = '#5c3a1a';
-    ctx.fillRect(350, 50, 44, 60);
+    ctx.fillRect(350, 62, 44, 48);
+    // Drawer
     ctx.fillStyle = '#4a2a0a';
-    ctx.fillRect(354, 68, 36, 14);
+    ctx.fillRect(354, 70, 36, 18);
+    ctx.fillStyle = '#3a1a00';
+    ctx.fillRect(354, 70, 36, 2);
+    ctx.fillRect(354, 86, 36, 2);
+    // Drawer knob
     ctx.fillStyle = '#ffd700';
-    ctx.fillRect(370, 73, 4, 4);
+    ctx.fillRect(370, 77, 4, 4);
 
     // Player
     drawRoomPlayer();
