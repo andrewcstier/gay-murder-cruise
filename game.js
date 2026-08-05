@@ -1529,10 +1529,11 @@ const ROOM_W = 480;
 const ROOM_H = 320;
 
 // Collision rects for room objects (player cannot walk over these)
+// Bed fills most of the room width, narrow corridors on each side
 const ROOM_COLLIDERS = [
-    { x: 150, y: 50, w: 180, h: 100 },  // bed
-    { x: 106, y: 70, w: 40, h: 40 },    // left table
-    { x: 334, y: 70, w: 40, h: 40 },    // right table
+    { x: 130, y: 50, w: 220, h: 110 },  // bed (wide, forces side corridors)
+    { x: 86, y: 50, w: 44, h: 60 },     // left table
+    { x: 350, y: 50, w: 44, h: 60 },    // right table
 ];
 const BATH_COLLIDERS = [
     { x: 184, y: 80, w: 50, h: 48 },    // shower
@@ -1541,16 +1542,16 @@ const BATH_COLLIDERS = [
 const BALCONY_COLLIDERS = [];
 
 const ROOM_ITEMS = [
-    { id: 'drawer-right', x: 334, y: 70, w: 40, h: 40 },
-    { id: 'drawer-left', x: 106, y: 70, w: 40, h: 40 },
+    { id: 'drawer-right', x: 350, y: 50, w: 44, h: 60 },
+    { id: 'drawer-left', x: 86, y: 50, w: 44, h: 60 },
 ];
 const BATHROOM_ITEMS = [
     { id: 'mirror', x: 240, y: 50, w: 30, h: 40 },
     { id: 'bath-exit', x: 235, y: 200, w: 40, h: 30 },
 ];
 const BALCONY_ITEMS = [
-    { id: 'book', x: 200, y: 150, w: 50, h: 40 },
-    { id: 'balcony-exit', x: 404, y: 80, w: 46, h: 70 },
+    { id: 'book', x: 200, y: 140, w: 50, h: 40 },
+    { id: 'balcony-exit', x: 404, y: 120, w: 40, h: 60 },
 ];
 
 function collidesWithAny(px, py, pw, ph, colliders) {
@@ -1687,34 +1688,34 @@ function drawRoom() {
     ctx.fillStyle = '#ffd700';
     ctx.fillRect(406, 158, 4, 4);
 
-    // Bed (centered, king size - tight fit)
+    // Bed (wide, fills most of room)
     ctx.fillStyle = '#4a3a6a';
-    ctx.fillRect(150, 50, 180, 100);
+    ctx.fillRect(130, 50, 220, 110);
     ctx.fillStyle = '#5a4a7a';
-    ctx.fillRect(154, 54, 172, 35);
+    ctx.fillRect(134, 54, 212, 40);
     // Pillows
     ctx.fillStyle = '#ddd';
-    ctx.fillRect(160, 56, 40, 20);
-    ctx.fillRect(280, 56, 40, 20);
+    ctx.fillRect(145, 56, 50, 24);
+    ctx.fillRect(285, 56, 50, 24);
     // Blanket fold
     ctx.fillStyle = '#3a2a5a';
-    ctx.fillRect(154, 95, 172, 4);
+    ctx.fillRect(134, 100, 212, 4);
 
-    // Bedside table LEFT
+    // Bedside table LEFT (against bed)
     ctx.fillStyle = '#5c3a1a';
-    ctx.fillRect(106, 70, 40, 40);
+    ctx.fillRect(86, 50, 44, 60);
     ctx.fillStyle = '#4a2a0a';
-    ctx.fillRect(110, 82, 32, 14);
+    ctx.fillRect(90, 68, 36, 14);
     ctx.fillStyle = '#ffd700';
-    ctx.fillRect(124, 87, 4, 4);
+    ctx.fillRect(106, 73, 4, 4);
 
-    // Bedside table RIGHT
+    // Bedside table RIGHT (against bed)
     ctx.fillStyle = '#5c3a1a';
-    ctx.fillRect(334, 70, 40, 40);
+    ctx.fillRect(350, 50, 44, 60);
     ctx.fillStyle = '#4a2a0a';
-    ctx.fillRect(338, 82, 32, 14);
+    ctx.fillRect(354, 68, 36, 14);
     ctx.fillStyle = '#ffd700';
-    ctx.fillRect(352, 87, 4, 4);
+    ctx.fillRect(370, 73, 4, 4);
 
     // Player
     drawRoomPlayer();
@@ -1799,51 +1800,50 @@ function drawBathroom() {
 }
 
 function drawBalcony() {
-    // Compact balcony: sea LEFT, railing LEFT, deck, ship wall+door RIGHT
-    // Upper and lower railings too
+    // Tiny balcony: sea LEFT, railing, small deck, ship wall+door RIGHT
 
     // Ocean (left portion)
     ctx.fillStyle = '#0a2a4a';
-    ctx.fillRect(0, 0, 110, ROOM_H);
+    ctx.fillRect(0, 0, 140, ROOM_H);
     ctx.fillStyle = '#1a4a7a';
-    ctx.fillRect(0, 0, 110, ROOM_H);
+    ctx.fillRect(0, 0, 140, ROOM_H);
     for (let y = 0; y < ROOM_H; y += 18) {
         const wave = Math.sin((Date.now() * 0.001) + y * 0.08) * 3;
         ctx.fillStyle = '#2a5a8c';
-        ctx.fillRect(15 + wave, y, 40, 3);
-        ctx.fillRect(40 + wave * 0.6, y + 9, 30, 2);
+        ctx.fillRect(20 + wave, y, 50, 3);
+        ctx.fillRect(50 + wave * 0.6, y + 9, 40, 2);
     }
 
-    // Balcony deck floor (extends beyond railings)
+    // Balcony deck floor (extends beyond railings top/bottom)
     ctx.fillStyle = '#5c4a2a';
-    ctx.fillRect(110, 0, 290, ROOM_H);
-    for (let y = 0; y < ROOM_H; y += 20) {
+    ctx.fillRect(140, 0, 260, ROOM_H);
+    for (let y = 0; y < ROOM_H; y += 18) {
         ctx.fillStyle = '#4a3a1a';
-        ctx.fillRect(110, y, 290, 2);
+        ctx.fillRect(140, y, 260, 2);
     }
 
     // Left railing (separates sea from deck)
     ctx.fillStyle = '#888';
-    ctx.fillRect(110, 40, 6, 240);
-    for (let y = 50; y < 280; y += 25) {
+    ctx.fillRect(140, 80, 6, 160);
+    for (let y = 90; y < 240; y += 20) {
         ctx.fillStyle = '#666';
-        ctx.fillRect(108, y, 10, 3);
+        ctx.fillRect(138, y, 10, 3);
     }
 
-    // Upper railing (top edge)
+    // Upper railing
     ctx.fillStyle = '#888';
-    ctx.fillRect(110, 40, 290, 6);
-    for (let x = 120; x < 400; x += 25) {
+    ctx.fillRect(140, 80, 260, 6);
+    for (let x = 150; x < 400; x += 20) {
         ctx.fillStyle = '#666';
-        ctx.fillRect(x, 38, 3, 10);
+        ctx.fillRect(x, 78, 3, 10);
     }
 
-    // Lower railing (bottom edge)
+    // Lower railing
     ctx.fillStyle = '#888';
-    ctx.fillRect(110, 274, 290, 6);
-    for (let x = 120; x < 400; x += 25) {
+    ctx.fillRect(140, 234, 260, 6);
+    for (let x = 150; x < 400; x += 20) {
         ctx.fillStyle = '#666';
-        ctx.fillRect(x, 272, 3, 10);
+        ctx.fillRect(x, 232, 3, 10);
     }
 
     // Ship wall (right side)
@@ -1854,31 +1854,31 @@ function drawBalcony() {
 
     // Door back inside (in right wall)
     ctx.fillStyle = '#d4a574';
-    ctx.fillRect(404, 80, 46, 70);
+    ctx.fillRect(404, 120, 40, 60);
     ctx.fillStyle = '#4488bb';
-    ctx.fillRect(408, 84, 38, 62);
+    ctx.fillRect(408, 124, 32, 52);
     ctx.fillStyle = '#1a3a5c';
-    ctx.fillRect(412, 88, 30, 54);
+    ctx.fillRect(412, 128, 24, 44);
     ctx.fillStyle = '#ffd700';
-    ctx.fillRect(410, 112, 4, 4);
+    ctx.fillRect(410, 148, 4, 4);
 
     // Purple book with eye on the deck
     ctx.fillStyle = '#6a2a8a';
-    ctx.fillRect(200, 150, 50, 40);
+    ctx.fillRect(200, 140, 50, 40);
     ctx.fillStyle = '#8a3aaa';
-    ctx.fillRect(202, 152, 46, 36);
+    ctx.fillRect(202, 142, 46, 36);
     // Eye on cover
     ctx.fillStyle = '#fff';
     ctx.beginPath();
-    ctx.ellipse(225, 170, 12, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(225, 160, 12, 8, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#4a0a6a';
     ctx.beginPath();
-    ctx.arc(225, 170, 5, 0, Math.PI * 2);
+    ctx.arc(225, 160, 5, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#000';
     ctx.beginPath();
-    ctx.arc(225, 170, 2, 0, Math.PI * 2);
+    ctx.arc(225, 160, 2, 0, Math.PI * 2);
     ctx.fill();
 
     drawRoomPlayer();
@@ -2313,7 +2313,7 @@ function update() {
             minX = 200; maxX = 290; minY = 100; maxY = 175;
             colliders = BATH_COLLIDERS;
         } else if (roomState === 'balcony') {
-            minX = 130; maxX = 380; minY = 10; maxY = 270;
+            minX = 160; maxX = 370; minY = 100; maxY = 210;
             colliders = BALCONY_COLLIDERS;
         } else {
             minX = 82; maxX = 376; minY = 100; maxY = 235;
@@ -2369,10 +2369,10 @@ function update() {
                 return;
             }
         } else if (roomState === 'balcony') {
-            if (roomPlayerX >= 370) {
+            if (roomPlayerX >= 365) {
                 roomState = 'room';
                 roomPlayerX = 100;
-                roomPlayerY = 140;
+                roomPlayerY = 155;
                 roomPlayerFacing = 'right';
                 roomNearItem = null;
                 return;
