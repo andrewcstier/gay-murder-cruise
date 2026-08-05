@@ -2552,15 +2552,16 @@ function draw() {
         // Murderer behind player
         drawMurdererScreen(HALL_LEFT + HALL_WIDTH / 2 - 12, sy(murdererY));
         // Exclamation point above player
-        if (cutsceneState === 'exclamation' || cutsceneState === 'step1' || cutsceneState === 'step2') {
+        if (cutsceneState === 'exclamation') {
             const px = Math.floor(player.x);
             const psy = sy(Math.floor(player.y));
-            ctx.fillStyle = '#ff4444';
-            ctx.font = 'bold 20px monospace';
+            // White background box
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(px + 4, psy - 28, 16, 22);
+            ctx.fillStyle = '#ff0000';
+            ctx.font = 'bold 18px monospace';
             ctx.textAlign = 'center';
-            if (cutsceneState === 'exclamation') {
-                ctx.fillText('!', px + 12, psy - 12);
-            }
+            ctx.fillText('!', px + 12, psy - 10);
             ctx.textAlign = 'left';
         }
         return;
