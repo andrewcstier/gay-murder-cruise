@@ -1539,7 +1539,9 @@ const BATH_COLLIDERS = [
     { x: 280, y: 90, w: 56, h: 50 },    // shower
     { x: 290, y: 156, w: 30, h: 34 },   // toilet
 ];
-const BALCONY_COLLIDERS = [];
+const BALCONY_COLLIDERS = [
+    { x: 210, y: 142, w: 46, h: 46 },   // book
+];
 
 const ROOM_ITEMS = [
     { id: 'drawer-right', x: 350, y: 50, w: 44, h: 60 },
@@ -1549,7 +1551,7 @@ const BATHROOM_ITEMS = [
     { id: 'mirror', x: 220, y: 58, w: 30, h: 40 },
 ];
 const BALCONY_ITEMS = [
-    { id: 'book', x: 210, y: 145, w: 50, h: 40 },
+    { id: 'book', x: 210, y: 142, w: 46, h: 46 },
     { id: 'balcony-exit', x: 394, y: 120, w: 36, h: 60 },
 ];
 
@@ -1884,24 +1886,42 @@ function drawBalcony() {
     ctx.fillStyle = '#ffd700';
     ctx.fillRect(400, 148, 4, 4);
 
-    // Purple book with eye on the deck
+    // Purple book with eye on the deck (clearly book-shaped: taller than wide, with spine and pages)
+    // Shadow under book
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(213, 186, 44, 4);
+    // Pages (visible from side, white edge)
+    ctx.fillStyle = '#f0e8d0';
+    ctx.fillRect(212, 143, 3, 44);
+    // Spine
+    ctx.fillStyle = '#4a0a6a';
+    ctx.fillRect(210, 142, 6, 46);
+    // Cover (tall rectangle - book proportions)
     ctx.fillStyle = '#6a2a8a';
-    ctx.fillRect(210, 145, 50, 40);
+    ctx.fillRect(215, 142, 40, 46);
     ctx.fillStyle = '#8a3aaa';
-    ctx.fillRect(212, 147, 46, 36);
+    ctx.fillRect(217, 144, 36, 42);
+    // Border/emboss on cover
+    ctx.fillStyle = '#5a1a7a';
+    ctx.fillRect(217, 144, 36, 2);
+    ctx.fillRect(217, 184, 36, 2);
+    ctx.fillRect(217, 144, 2, 42);
+    ctx.fillRect(251, 144, 2, 42);
     // Eye on cover
     ctx.fillStyle = '#fff';
     ctx.beginPath();
-    ctx.ellipse(235, 165, 12, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(235, 165, 10, 7, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#4a0a6a';
     ctx.beginPath();
-    ctx.arc(235, 165, 5, 0, Math.PI * 2);
+    ctx.arc(235, 165, 4, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#000';
     ctx.beginPath();
     ctx.arc(235, 165, 2, 0, Math.PI * 2);
     ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(233, 162, 2, 2);
 
     drawRoomPlayer();
 
