@@ -694,7 +694,7 @@ function drawPlayer() {
     const pyScreen = sy(Math.floor(player.y));
     const w = player.width;
     const h = player.height;
-    const moving = isMoving();
+    const moving = isMoving() && gameState === 'playing' || gameState === 'chase';
     const bounce = Math.sin(player.animTimer * 0.15) * (moving ? 1.5 : 0);
     const legSwing = moving ? Math.sin(player.animTimer * 0.22) * 3 : 0;
     const armSwing = moving ? Math.sin(player.animTimer * 0.18) * 2 : 0;
