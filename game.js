@@ -122,7 +122,8 @@ window.addEventListener('keydown', (e) => {
 window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 
 function handleAction(key) {
-    if (gameState === 'title') { startCharSelect(); return; }
+    if (gameState === 'title') { showLevelSelect(); return; }
+    if (gameState === 'levelselect') { return; }
     if (gameState === 'charselect') { handleCharSelectAction(key); return; }
     if (gameState === 'dialog' || gameState === 'room-dialog') { closeDialog(); return; }
     if (gameState === 'playing' && (key.toLowerCase() === 'e' || key === ' ' || key === 'examine') && nearDoor !== null) {
@@ -137,6 +138,22 @@ function handleAction(key) {
     if (gameState === 'gameover') { location.reload(); }
     if (gameState === 'level2') { handleLevel2Action(key); return; }
     if (gameState === 'level2-complete') { location.reload(); }
+}
+
+function showLevelSelect() {
+    gameState = 'levelselect';
+    titleScreen.style.display = 'none';
+    document.getElementById('level-select').style.display = 'flex';
+}
+
+function selectLevel(level) {
+    document.getElementById('level-select').style.display = 'none';
+    if (level === 1) {
+        startCharSelect();
+    } else if (level === 2) {
+        selectedChar = selectedChar || CHARACTERS[0];
+        startLevel2();
+    }
 }
 
 function startCharSelect() {
@@ -2852,7 +2869,8 @@ function openLevel2Chat(npcKey) {
     document.getElementById('chat-portrait').style.boxShadow = `0 0 10px ${npc.color}66`;
     document.getElementById('chat-npc-name').style.color = npc.color;
     document.getElementById('chat-npc-name').textContent = `─── ${npc.name} ───`;
-    document.getElementById('chat-input-row').style.display = 'none';
+    document.getElementById('chat-next').textContent = 'NEXT';
+    document.getElementById('chat-next').style.display = 'block';
 
     drawLevel2Portrait(npcKey);
 
@@ -2924,8 +2942,9 @@ function updateAccusationButton() {
         btn.addEventListener('click', openAccusation);
         document.getElementById('chat-panel').appendChild(btn);
     }
-    // Show accuse button when talking to Blake after he's given the notebook
-    btn.style.display = (l2TalkingTo === 'blake' && l2BlakeGaveNotebook && !l2SayingBye && !l2Solved && !l2AccusationOpen) ? 'block' : 'none';
+    // Show accuse button only when talking to Blake AFTER his first dialog is complete
+    const blakeFirstDone = l2DialogIndex.blake >= L2_DIALOG.blake.length;
+    btn.style.display = (l2TalkingTo === 'blake' && blakeFirstDone && !l2SayingBye && !l2Solved && !l2AccusationOpen) ? 'block' : 'none';
 }
 
 function openAccusation() {
@@ -2944,6 +2963,7 @@ function renderAccusation() {
     html += '</div>';
     container.innerHTML = html;
 
+    document.getElementById('chat-next').style.display = 'none';
     const accuseBtn = document.getElementById('chat-accuse');
     if (accuseBtn) accuseBtn.style.display = 'none';
 
@@ -2970,6 +2990,7 @@ function handleAccusation(target) {
             renderChatLine('blake', "Abraham doesn't have it. The lube explosion would have revealed it. Try again!");
         }, 2000);
     } else if (target === 'vanessa') {
+        document.getElementById('chat-next').style.display = 'none';
         container.innerHTML = '<div class="msg-npc"><span style="color:#ff69b4">BLAKE:</span> Vanessa...</div>';
         setTimeout(() => {
             container.innerHTML = '<div class="msg-npc"><span style="color:#cc44ff">VANESSA:</span> Oh... OH! *reaches into bosoms* ...Is THIS what everyone\'s been looking for?!</div>';
@@ -2977,11 +2998,12 @@ function handleAccusation(target) {
                 container.innerHTML += '<div class="msg-npc"><span style="color:#cc44ff">VANESSA:</span> I stuck it in my bosoms last night and completely forgot! Girls, I am SO sorry!</div>';
                 setTimeout(() => {
                     container.innerHTML += '<div class="msg-npc" style="color:#ffcc00; text-align:center; margin-top:8px;">🔑 Room key found! You can now leave.</div>';
-                    container.innerHTML += '<div style="color:#aaa; font-size:10px; margin-top:8px; text-align:center;">Press E/SPACE to close...</div>';
                     l2Solved = true;
                     l2AccusationOpen = false;
                     const accuseBtn = document.getElementById('chat-accuse');
                     if (accuseBtn) accuseBtn.style.display = 'none';
+                    document.getElementById('chat-next').textContent = 'CLOSE';
+                    document.getElementById('chat-next').style.display = 'block';
                 }, 1500);
             }, 1500);
         }, 1500);
@@ -3042,11 +3064,7 @@ function renderChatLine(npcKey, text) {
     const displayText = (l2Typewriting && l2Typewriting.current !== l2Typewriting.full)
         ? l2Typewriting.current : text;
     container.innerHTML = `<div class="msg-npc"><span style="color:${npc.color}">${npc.name}:</span> ${displayText}</div>`;
-    // Show advance prompt
-    const prompt = document.createElement('div');
-    prompt.style.cssText = 'color:#aaa; font-size:10px; margin-top:8px; text-align:center;';
-    prompt.textContent = isMobile() ? 'Tap to continue...' : 'Press E/SPACE to continue...';
-    container.appendChild(prompt);
+    document.getElementById('chat-next').style.display = 'block';
 }
 
 function updateChatDisplay() {
@@ -3744,9 +3762,10 @@ function drawLevel2Portrait(npcKey) {
 }
 
 // Chat event listeners
-// Chat panel click — advance dialog or skip typewriter
-document.getElementById('chat-panel').addEventListener('click', (e) => {
-    if (l2AccusationOpen) return; // don't interfere with accusation buttons
+// NEXT button — advance dialog
+document.getElementById('chat-next').addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (l2AccusationOpen) return;
     if (l2State === 'chat') advanceLevel2Dialog();
 });
 

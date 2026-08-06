@@ -284,7 +284,12 @@
             <h1>GAY MURDER CRUISE</h1>
             <div class="subtitle">A Mystery at Sea</div>
             <div class="start-prompt" id="start-btn">Tap to start</div>
-            <div style="position:absolute; bottom:12px; right:14px; font-size:10px; color:#555;">v0.10.1</div>
+            <div style="position:absolute; bottom:12px; right:14px; font-size:10px; color:#555;">v0.10.2</div>
+        </div>
+        <div id="level-select" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:#000; flex-direction:column; justify-content:center; align-items:center; color:#fff; font-family:monospace; z-index:10;">
+            <h2 style="color:#ff69b4; font-size:20px; margin-bottom:30px; text-shadow:2px 2px 0 #8b0000;">SELECT LEVEL</h2>
+            <button onclick="selectLevel(1)" style="display:block; width:200px; margin-bottom:12px; padding:14px 20px; font-family:monospace; font-size:14px; cursor:pointer; background:rgba(255,105,180,0.15); border:2px solid #ff69b4; border-radius:6px; color:#ff69b4;">Level 1: The Hallway</button>
+            <button onclick="selectLevel(2)" style="display:block; width:200px; padding:14px 20px; font-family:monospace; font-size:14px; cursor:pointer; background:rgba(204,68,255,0.15); border:2px solid #cc44ff; border-radius:6px; color:#cc44ff;">Level 2: The Mystery</button>
         </div>
         <div id="game-over">
             <div class="go-text" id="restart-btn">
@@ -302,7 +307,7 @@
         </div>
         <div id="chat-npc-name" style="text-align:center; font-family:monospace; font-size:12px; margin-bottom:8px;"></div>
         <div id="chat-messages" style="max-height:140px; overflow-y:auto; margin-bottom:8px; padding:0 8px;"></div>
-        <div id="chat-input-row" style="display:none;"></div>
+        <button id="chat-next" style="width:calc(100% - 16px); margin:0 8px; background:rgba(232,208,112,0.15); border:2px solid #e8d070; border-radius:4px; color:#e8d070; font-family:monospace; font-size:12px; padding:8px; cursor:pointer;">NEXT</button>
     </div>
 
     <!-- Notebook -->
