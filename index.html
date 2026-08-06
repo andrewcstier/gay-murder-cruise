@@ -236,6 +236,33 @@
             background: rgba(255, 255, 255, 0.2);
         }
 
+        /* Chat panel */
+        #chat-panel {
+            background: #1a1420;
+            border: 3px solid #ff69b4;
+            border-radius: 6px;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        #chat-portrait {
+            border: 3px solid #ff69b4;
+            box-shadow: 0 0 10px rgba(255,105,180,0.4);
+        }
+        #chat-messages .msg-npc {
+            color: #e8d070;
+            font-size: 12px;
+            line-height: 18px;
+            margin-bottom: 6px;
+            word-break: break-word;
+        }
+        #chat-messages .msg-player {
+            color: #70e870;
+            font-size: 12px;
+            line-height: 18px;
+            margin-bottom: 6px;
+            word-break: break-word;
+        }
+
         @media (pointer: coarse), (max-width: 768px) {
             #mobile-controls {
                 display: flex;
@@ -257,7 +284,7 @@
             <h1>GAY MURDER CRUISE</h1>
             <div class="subtitle">A Mystery at Sea</div>
             <div class="start-prompt" id="start-btn">Tap to start</div>
-            <div style="position:absolute; bottom:12px; right:14px; font-size:10px; color:#555;">v0.9.0</div>
+            <div style="position:absolute; bottom:12px; right:14px; font-size:10px; color:#555;">v0.10.0</div>
         </div>
         <div id="game-over">
             <div class="go-text" id="restart-btn">
@@ -267,6 +294,26 @@
         </div>
         <button id="music-toggle">Music: ON</button>
     </div>
+
+    <!-- Level 2 Chat UI -->
+    <div id="chat-panel" style="display:none; width:480px; max-width:100vw; margin-top:6px;">
+        <div id="chat-portrait-wrap" style="display:flex; justify-content:center; margin-bottom:8px;">
+            <canvas id="chat-portrait" width="96" height="96" style="image-rendering:pixelated; border-radius:4px;"></canvas>
+        </div>
+        <div id="chat-npc-name" style="text-align:center; font-family:monospace; font-size:12px; margin-bottom:8px;"></div>
+        <div id="chat-messages" style="max-height:140px; overflow-y:auto; margin-bottom:8px; padding:0 8px;"></div>
+        <div id="chat-input-row" style="display:flex; gap:6px; padding:0 8px;">
+            <input id="chat-input" type="text" placeholder="Ask a question..." style="flex:1; background:#0e0c14; border:2px solid #3a3040; border-radius:4px; color:#ddd; font-family:monospace; font-size:12px; padding:6px 8px; outline:none;" />
+            <button id="chat-send" style="background:#e8d070; border:none; border-radius:4px; font-family:monospace; font-size:12px; padding:6px 10px; cursor:pointer; color:#1a1420;">▶</button>
+        </div>
+        <button id="chat-goodbye" style="margin-top:6px; width:calc(100% - 16px); margin-left:8px; background:transparent; border:1px solid #8a7a50; border-radius:4px; color:#a09070; font-family:monospace; font-size:11px; padding:6px 8px; cursor:pointer;">THANKS, GOODBYE</button>
+    </div>
+
+    <!-- Notebook -->
+    <div id="notebook-overlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.92); z-index:200; overflow-y:auto; padding:20px;">
+        <div id="notebook-content" style="background:#1a1420; border:3px solid #e8d070; border-radius:8px; padding:16px; max-width:500px; width:100%; margin:0 auto; font-family:monospace;"></div>
+    </div>
+    <button id="notebook-btn" style="display:none; position:fixed; bottom:10px; left:10px; z-index:100; width:40px; height:40px; background:#1a1420; border:2px solid #e8d070; border-radius:6px; cursor:pointer; font-size:20px; padding:0;">📓</button>
 
     <div id="mobile-controls">
         <div class="dpad">

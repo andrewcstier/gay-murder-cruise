@@ -135,6 +135,8 @@ function handleAction(key) {
         openBook(); return;
     }
     if (gameState === 'gameover') { location.reload(); }
+    if (gameState === 'level2') { handleLevel2Action(key); return; }
+    if (gameState === 'level2-complete') { location.reload(); }
 }
 
 function startCharSelect() {
@@ -306,6 +308,7 @@ musicToggle.addEventListener('click', () => {
     if (musicEnabled) {
         if (gameState === 'charselect') GameMusic.startMusic('hallway');
         else if (gameState === 'playing') GameMusic.startMusic('charselect');
+        else if (gameState === 'level2') GameMusic.startMusic('charselect');
         else if (gameState === 'gameover' || gameState === 'cutscene' || gameState === 'chase' || gameState === 'room') GameMusic.startMusic('panic');
     } else {
         GameMusic.stopMusic();
@@ -2490,7 +2493,13 @@ function update() {
         fadeWhiteAlpha += 0.008;
         if (fadeWhiteAlpha >= 1) {
             fadeWhiteAlpha = 1;
+            startLevel2();
         }
+        return;
+    }
+
+    if (gameState === 'level2') {
+        updateLevel2();
         return;
     }
 
@@ -2637,6 +2646,11 @@ function draw() {
         return;
     }
 
+    if (gameState === 'level2' || gameState === 'level2-complete') {
+        drawLevel2();
+        return;
+    }
+
     drawHallway();
     for (let i = 0; i < doors.length; i++) drawDoor(doors[i], i);
     drawPlayer();
@@ -2649,6 +2663,1171 @@ function draw() {
     ctx.fillStyle = gradient;
     ctx.fillRect(HALL_LEFT, 0, HALL_WIDTH, HEIGHT);
 }
+
+// ═══════════════════════════════════════════════════════════════
+// LEVEL 2 — The Hotel Room Mystery
+// ═══════════════════════════════════════════════════════════════
+
+// Level 2 state
+let l2State = 'in-bed';  // 'in-bed', 'wakeup-text', 'exclamation', 'blake-intro', 'free', 'chat', 'notebook'
+let l2Timer = 0;
+let l2TextAlpha = 0;
+let l2TextPhase = 'fadein'; // 'fadein', 'hold', 'fadeout'
+let l2ExclTimer = 0;
+let l2PlayerX = 0;
+let l2PlayerY = 0;
+let l2PlayerFacing = 'down';
+let l2ChatOpen = false;
+let l2TalkingTo = null;
+let l2ChatMessages = { blake: [], abraham: [], vanessa: [] };
+let l2SayingBye = false;
+let l2ByeTimer = 0;
+let l2Typewriting = null; // { full, current, charIndex }
+let l2TypeTimer = 0;
+let l2HasNotebook = false;
+let l2DiscoveredClues = [];
+let l2NearNpc = null;
+let l2BlakeGaveNotebook = false;
+let l2BlakeIntroSaid = false;
+let l2ShowTimeText = false;
+let l2TimeTextAlpha = 0;
+let l2TimeTextPhase = 'fadein';
+
+let l2Solved = false;
+let l2AccusationOpen = false;
+let l2AccusationTarget = null;
+let l2AccusationResult = null; // null, 'wrong-blake', 'wrong-abraham', 'found'
+let l2ExitBlocked = false;
+let l2ExitBlockTimer = 0;
+let l2NearItem = null;
+
+// Notebook state — rows are ITEMS, columns are PEOPLE
+let l2Notebook = {
+    open: false,
+    // rows: Credit Card, Room Key, Vodka Shot; cols: Blake, Abraham, Vanessa
+    grid: [['','',''], ['','',''], ['','','']],
+    autoMarks: {},
+};
+
+const L2_SUSPECTS = ['Blake', 'Abraham', 'Vanessa'];
+const L2_ITEMS = ['Credit Card', 'Room Key', 'Vodka Shot'];
+
+// Examinable items
+const L2_EXAMINE_ITEMS = [
+    { id: 'credit-card', x: 50, y: 260, w: 44, h: 20, label: 'Credit Card' },
+];
+
+// Room is rotated 90° from room 405: bed runs top-to-bottom on the LEFT side
+// Walls tight around everything
+const L2_ROOM_W = 480;
+const L2_ROOM_H = 320;
+
+// Colliders: bed on left, NPCs in the right area
+const L2_COLLIDERS = [
+    { x: 50, y: 60, w: 110, h: 200 },   // bed (tall, on left side)
+    { x: 50, y: 40, w: 44, h: 20 },      // top bedside table
+    { x: 50, y: 260, w: 44, h: 20 },     // bottom bedside table
+];
+
+// NPC positions (in the open area right of the bed, facing each other)
+const L2_NPCS = {
+    blake: { x: 260, y: 100, facing: 'down', name: 'BLAKE', color: '#ff69b4' },
+    abraham: { x: 320, y: 180, facing: 'left', name: 'ABRAHAM', color: '#44cc88' },
+    vanessa: { x: 240, y: 200, facing: 'right', name: 'VANESSA', color: '#cc44ff' },
+};
+
+// Dialog responses (keyword-matched, case-insensitive)
+const L2_RESPONSES = {
+    blake: {
+        _greeting: "Hey babe, you might want your notebook. I know you like using it when you solve mysteries.",
+        _greeting_after: "Need help with the notebook? Just ask! Or if you're ready to guess, I can take your accusation.",
+        'notebook': "Here you go! I drew a grid for you. Items are on the left, people across the top. Use ✓ for 'had it', ✗ for 'didn't have it'. When you mark ✓, the rest of that row and column get ✗ automatically!",
+        'tutorial': "Sure! Open the notebook with C (or tap the 📓 button). Items are on the left side — credit card, room key, vodka shot. People are across the top — me, Abraham, Vanessa. Click a cell to cycle through ✓, ✗, ?, or empty. When you place a ✓, the other cells in that row and column auto-fill with ✗. Use the clues to figure out who had what!",
+        'help': "Talk to everyone! Abraham and Vanessa might remember something. We each agreed to carry a separate item with us, but we were pretty — uh — under the influence when we came back so we can't remember who had what. The credit card and room key couldn't be carried together or they'd deactivate, and then we also had a vodka shot, and we each said we'd carry one thing.",
+        'key': "I really can't remember who had it... sorry babe. But I know the credit card and key had to be separated!",
+        'credit card': "The credit card and room key couldn't be in the same person's pocket — the magnetic strips mess each other up.",
+        'vodka': "Hah, yeah someone was carrying a vodka shot back to the room. Classy, right?",
+        'item': "We each agreed to carry one thing — a credit card, the room key, or a vodka shot. But we can't remember who had what!",
+        '_default': "Hmm, I'm not sure about that. Try asking Abraham or Vanessa — maybe they remember more.",
+    },
+    abraham: {
+        _greeting: "Ugh, hey. I'm having a rough day. My chocolate lube exploded in my fanny pack. There's... there's chocolate lube EVERYWHERE.",
+        'key': "I definitely did NOT have the room key. I remember that much. I was too busy dealing with my fanny pack situation.",
+        'credit card': "The credit card? I dunno, check the bedside table — I think someone left one there. It's probably covered in my chocolate lube at this point, everything is.",
+        'lube': "Don't even START. I keep my chocolate lube in my fanny pack and it burst open. It got on EVERYTHING near me.",
+        'fanny': "My fanny pack is a DISASTER ZONE right now. Chocolate lube everywhere. I'm having a crisis.",
+        'vodka': "The vodka shot? I mean... I know I didn't have the key, that's all I'm certain about.",
+        'blake': "Blake was being really careful about something. Very protective.",
+        'vanessa': "Vanessa was being very theatrical about 'guarding her precious cargo' — her words, not mine.",
+        'notebook': "Blake has that notebook of yours, ask him!",
+        'help': "I know for sure I didn't have the room key. That's all I can say with confidence. Sorry, I'm too stressed about the lube situation.",
+        '_default': "Sorry, I can't think straight right now. Chocolate lube crisis. I just know I didn't have the key!",
+    },
+    vanessa: {
+        _greeting: "Morning, sunshine! Yes, this is a DISASTER. We're locked in and nobody knows who has the key! Also I look AMAZING considering the circumstances.",
+        'key': "The key? Hmm... I have absolutely no idea where it could be. *adjusts bosoms innocently*",
+        'credit card': "Credit card? Absolutely not, darling! I would NEVER have carried that. I don't drink alcohol anymore — I only do drugs now. I'm a good girl.",
+        'vodka': "Vodka? Honey, no. I don't drink alcohol anymore. I only do drugs now. I'm a GOOD GIRL. I would never have carried alcohol.",
+        'alcohol': "I don't drink anymore, darling. Only drugs for me now. Clean living!",
+        'drug': "It's called self-care, sweetie. But that's not relevant to the key situation!",
+        'blake': "Blake was fussing over something all night. Very protective of whatever he was carrying.",
+        'abraham': "Abraham's a mess. His chocolate lube exploded — it got everywhere. Poor thing.",
+        'notebook': "Ooh, a detective notebook? How very Agatha Christie! Love it.",
+        'help': "I didn't carry the vodka — I don't drink anymore! Beyond that... the evening is a gorgeous blur.",
+        '_default': "Oh honey, I wish I could remember more. But I definitely did NOT have the vodka!",
+    },
+};
+
+const L2_GOODBYES = {
+    blake: "Good luck babe! You've got this. Talk to me when you're ready to accuse someone!",
+    abraham: "Let me know when you figure it out! I'll be here... cleaning chocolate lube off everything.",
+    vanessa: "Go solve it, detective! *finger guns* *adjusts wig*",
+};
+
+function startLevel2() {
+    if (gameState === 'level2') return;
+    gameState = 'level2';
+    l2State = 'in-bed';
+    l2Timer = 0;
+    l2TextAlpha = 0;
+    l2TextPhase = 'fadein';
+    GameMusic.stopMusic();
+    if (musicEnabled) GameMusic.startMusic('charselect');
+}
+
+function handleLevel2Action(key) {
+    const k = key.toLowerCase();
+    if (l2State === 'in-bed' && (k === 'e' || k === ' ' || k === 'examine')) {
+        l2State = 'wakeup-text';
+        l2Timer = 0;
+        l2TextAlpha = 0;
+        l2TextPhase = 'fadein';
+        // Place player next to bed
+        l2PlayerX = 180;
+        l2PlayerY = 140;
+        l2PlayerFacing = 'right';
+        return;
+    }
+    if (l2State === 'wakeup-text') return; // auto-advances
+    if (l2State === 'exclamation') return; // auto-advances
+    if (l2State === 'blake-intro') {
+        // Dismiss blake-intro text
+        if (l2ShowTimeText) return; // wait for time text to finish
+        closeLevel2Dialog();
+        return;
+    }
+    if (l2State === 'chat') {
+        if (k === 'escape') {
+            closeLevel2Chat();
+            return;
+        }
+        return;
+    }
+    if (l2State === 'notebook') {
+        if (k === 'escape' || k === 'c') {
+            l2Notebook.open = false;
+            l2State = 'free';
+            document.getElementById('notebook-overlay').style.display = 'none';
+            return;
+        }
+        return;
+    }
+    if (l2State === 'free') {
+        if (k === 'c' && l2HasNotebook) {
+            openNotebook();
+            return;
+        }
+        if ((k === 'e' || k === ' ' || k === 'examine') && l2NearNpc) {
+            openLevel2Chat(l2NearNpc);
+            return;
+        }
+        if ((k === 'e' || k === ' ' || k === 'examine') && l2NearItem) {
+            examineLevel2Item(l2NearItem);
+            return;
+        }
+    }
+    if (l2State === 'exit-blocked') {
+        closeLevel2Dialog();
+        return;
+    }
+    if (l2State === 'examine-dialog') {
+        closeLevel2Dialog();
+        return;
+    }
+}
+
+function openLevel2Chat(npcKey) {
+    l2State = 'chat';
+    l2ChatOpen = true;
+    l2TalkingTo = npcKey;
+    l2SayingBye = false;
+
+    const npc = L2_NPCS[npcKey];
+    const panel = document.getElementById('chat-panel');
+    panel.style.display = 'block';
+    panel.style.borderColor = npc.color;
+    document.getElementById('chat-portrait').style.borderColor = npc.color;
+    document.getElementById('chat-portrait').style.boxShadow = `0 0 10px ${npc.color}66`;
+    document.getElementById('chat-npc-name').style.color = npc.color;
+    document.getElementById('chat-npc-name').textContent = `─── ${npc.name} ───`;
+
+    // Draw portrait
+    drawLevel2Portrait(npcKey);
+
+    // Greeting on first talk
+    if (l2ChatMessages[npcKey].length === 0) {
+        let greeting;
+        if (npcKey === 'blake' && !l2BlakeGaveNotebook) {
+            greeting = L2_RESPONSES.blake._greeting;
+        } else if (npcKey === 'blake') {
+            greeting = L2_RESPONSES.blake._greeting_after;
+        } else {
+            greeting = L2_RESPONSES[npcKey]._greeting;
+        }
+        l2ChatMessages[npcKey].push({ role: 'assistant', text: greeting });
+        startLevel2Typing(greeting);
+
+        // Blake gives notebook on first greeting
+        if (npcKey === 'blake' && !l2BlakeGaveNotebook) {
+            l2BlakeGaveNotebook = true;
+            l2HasNotebook = true;
+            document.getElementById('notebook-btn').style.display = 'flex';
+            addL2Clue("The credit card and room key can't be carried together (deactivation).");
+            addL2Clue("Each person carried exactly one item.");
+        }
+        // Discover clues from greetings
+        if (npcKey === 'abraham') {
+            addL2Clue("Abraham's chocolate lube exploded in his fanny pack — it got on everything near him.");
+        }
+        if (npcKey === 'vanessa') {
+            addL2Clue("Vanessa says she doesn't drink alcohol anymore — she wouldn't have carried the vodka.");
+        }
+    }
+
+    renderChatMessages(npcKey);
+    document.getElementById('chat-input-row').style.display = 'flex';
+    document.getElementById('chat-goodbye').style.display = 'block';
+    document.getElementById('chat-input').value = '';
+    updateAccusationButton();
+}
+
+function closeLevel2Chat() {
+    l2ChatOpen = false;
+    l2TalkingTo = null;
+    l2SayingBye = false;
+    l2State = 'free';
+    l2Typewriting = null;
+    document.getElementById('chat-panel').style.display = 'none';
+}
+
+function closeLevel2Dialog() {
+    l2State = 'free';
+    dialogBox.classList.remove('visible');
+    l2ExitBlocked = false;
+}
+
+function examineLevel2Item(itemId) {
+    if (itemId === 'credit-card') {
+        l2State = 'examine-dialog';
+        promptEl.classList.remove('visible');
+        dialogBox.innerHTML = '<span style="color:#ffcc00;">You pick up the credit card...</span><br><br>It\'s covered in chocolate lube. Gross. This must have been Abraham\'s — his fanny pack exploded all over this table.<br><br><span style="color:#aaa">Press any key to close</span>';
+        dialogBox.classList.add('visible');
+        addL2Clue("The credit card on the bedside table is covered in Abraham's chocolate lube — Abraham had the credit card.");
+    }
+}
+
+function updateAccusationButton() {
+    let btn = document.getElementById('chat-accuse');
+    if (!btn) {
+        btn = document.createElement('button');
+        btn.id = 'chat-accuse';
+        btn.style.cssText = 'margin-top:6px; width:calc(100% - 16px); margin-left:8px; background:#cc3030; border:2px solid #ff4444; border-radius:4px; color:#fff; font-family:monospace; font-size:11px; padding:6px 8px; cursor:pointer; box-shadow:0 0 10px rgba(204,48,48,0.3);';
+        btn.textContent = 'READY TO ACCUSE';
+        btn.addEventListener('click', openAccusation);
+        document.getElementById('chat-panel').appendChild(btn);
+    }
+    btn.style.display = (l2TalkingTo === 'blake' && l2BlakeGaveNotebook && !l2SayingBye && !l2Solved) ? 'block' : 'none';
+}
+
+function openAccusation() {
+    l2AccusationOpen = true;
+    l2AccusationTarget = null;
+    renderAccusation();
+}
+
+function renderAccusation() {
+    const container = document.getElementById('chat-messages');
+    let html = '<div class="msg-npc"><span style="color:#ff69b4">BLAKE:</span> Okay babe, who do you think had the room key?</div>';
+    html += '<div style="margin-top:8px;">';
+    html += '<button class="accuse-btn" data-target="blake" style="display:block; width:100%; margin-bottom:4px; padding:6px 8px; font-family:monospace; font-size:11px; cursor:pointer; background:#2a1020; border:1px solid #cc3030; border-radius:3px; color:#e8d070; text-align:left;">Blake (me)</button>';
+    html += '<button class="accuse-btn" data-target="abraham" style="display:block; width:100%; margin-bottom:4px; padding:6px 8px; font-family:monospace; font-size:11px; cursor:pointer; background:#2a1020; border:1px solid #cc3030; border-radius:3px; color:#e8d070; text-align:left;">Abraham</button>';
+    html += '<button class="accuse-btn" data-target="vanessa" style="display:block; width:100%; margin-bottom:4px; padding:6px 8px; font-family:monospace; font-size:11px; cursor:pointer; background:#2a1020; border:1px solid #cc3030; border-radius:3px; color:#e8d070; text-align:left;">Vanessa</button>';
+    html += '</div>';
+    container.innerHTML = html;
+
+    document.getElementById('chat-input-row').style.display = 'none';
+    document.getElementById('chat-goodbye').style.display = 'none';
+    const accuseBtn = document.getElementById('chat-accuse');
+    if (accuseBtn) accuseBtn.style.display = 'none';
+
+    container.querySelectorAll('.accuse-btn').forEach(btn => {
+        btn.addEventListener('click', () => handleAccusation(btn.dataset.target));
+    });
+}
+
+function handleAccusation(target) {
+    const container = document.getElementById('chat-messages');
+
+    if (target === 'blake') {
+        container.innerHTML = '<div class="msg-npc"><span style="color:#ff69b4">BLAKE:</span> Babe... it\'s not me. I checked my pockets three times already. Try again?</div>';
+        setTimeout(() => {
+            l2AccusationOpen = false;
+            document.getElementById('chat-input-row').style.display = 'flex';
+            document.getElementById('chat-goodbye').style.display = 'block';
+            updateAccusationButton();
+            l2ChatMessages.blake.push({ role: 'assistant', text: "It's not me, babe. I checked my pockets three times. Try again?" });
+            renderChatMessages('blake');
+        }, 2000);
+    } else if (target === 'abraham') {
+        container.innerHTML = '<div class="msg-npc"><span style="color:#ff69b4">BLAKE:</span> Abraham checks everywhere... nope. He doesn\'t have it either. The lube explosion would have revealed it anyway. Try again?</div>';
+        setTimeout(() => {
+            l2AccusationOpen = false;
+            document.getElementById('chat-input-row').style.display = 'flex';
+            document.getElementById('chat-goodbye').style.display = 'block';
+            updateAccusationButton();
+            l2ChatMessages.blake.push({ role: 'assistant', text: "Abraham doesn't have it. The lube explosion would have revealed it. Try again?" });
+            renderChatMessages('blake');
+        }, 2000);
+    } else if (target === 'vanessa') {
+        container.innerHTML = '<div class="msg-npc"><span style="color:#ff69b4">BLAKE:</span> Vanessa...</div>';
+        setTimeout(() => {
+            container.innerHTML = '<div class="msg-npc"><span style="color:#cc44ff">VANESSA:</span> Oh... OH! *reaches into bosoms* ...Is THIS what everyone\'s been looking for?!</div>';
+            setTimeout(() => {
+                container.innerHTML += '<div class="msg-npc"><span style="color:#cc44ff">VANESSA:</span> I stuck it in my bosoms last night and completely forgot! Girls, I am SO sorry!</div>';
+                setTimeout(() => {
+                    container.innerHTML += '<div class="msg-npc" style="color:#ffcc00; text-align:center; margin-top:8px;">🔑 Room key found! You can now leave.</div>';
+                    l2Solved = true;
+                    l2AccusationOpen = false;
+                    document.getElementById('chat-input-row').style.display = 'none';
+                    const accuseBtn = document.getElementById('chat-accuse');
+                    if (accuseBtn) accuseBtn.style.display = 'none';
+                    document.getElementById('chat-goodbye').style.display = 'block';
+                }, 1500);
+            }, 1500);
+        }, 1500);
+    }
+}
+
+function tryExitRoom() {
+    if (l2Solved) return true;
+    l2State = 'exit-blocked';
+    l2ExitBlocked = true;
+    promptEl.classList.remove('visible');
+    dialogBox.innerHTML = '<span style="color:#ff69b4;">Blake:</span> Babe! We can\'t leave yet — we still need to find the key! Talk to everyone and figure out who has it.<br><br><span style="color:#aaa">Press any key...</span>';
+    dialogBox.classList.add('visible');
+    return false;
+}
+
+function sendLevel2Message() {
+    const input = document.getElementById('chat-input');
+    const text = input.value.trim();
+    if (!text || !l2TalkingTo || l2SayingBye) return;
+
+    l2ChatMessages[l2TalkingTo].push({ role: 'user', text });
+    input.value = '';
+
+    // Match keywords
+    const lower = text.toLowerCase();
+    const responses = L2_RESPONSES[l2TalkingTo];
+    let response = responses._default;
+    let matchedKey = null;
+
+    for (const keyword of Object.keys(responses)) {
+        if (keyword.startsWith('_')) continue;
+        if (lower.includes(keyword)) {
+            response = responses[keyword];
+            matchedKey = keyword;
+            break;
+        }
+    }
+
+    l2ChatMessages[l2TalkingTo].push({ role: 'assistant', text: response });
+    startLevel2Typing(response);
+
+    // Discover clues based on specific responses
+    if (l2TalkingTo === 'abraham' && matchedKey === 'key') {
+        addL2Clue("Abraham confirms: he did NOT have the room key.");
+    }
+    if (l2TalkingTo === 'abraham' && (matchedKey === 'credit card' || matchedKey === 'lube' || matchedKey === 'fanny')) {
+        addL2Clue("Abraham's lube got on everything near him — check the bedside table for the credit card.");
+    }
+    if (l2TalkingTo === 'vanessa' && (matchedKey === 'vodka' || matchedKey === 'alcohol')) {
+        addL2Clue("Vanessa doesn't drink — she did NOT carry the vodka shot.");
+    }
+    if (l2TalkingTo === 'vanessa' && matchedKey === 'credit card') {
+        addL2Clue("Vanessa refuses to carry a credit card — 'I'm a good girl, I only do drugs now.'");
+    }
+    if (l2TalkingTo === 'blake' && matchedKey === 'credit card') {
+        addL2Clue("Blake says the credit card and room key couldn't be in the same pocket.");
+    }
+    if (l2TalkingTo === 'blake' && matchedKey === 'help') {
+        addL2Clue("Blake says they each carried one item: credit card, room key, or vodka shot.");
+    }
+
+    renderChatMessages(l2TalkingTo);
+}
+
+function startLevel2Typing(text) {
+    l2Typewriting = { full: text, current: '', charIndex: 0 };
+    l2TypeTimer = 0;
+}
+
+function renderChatMessages(npcKey) {
+    const container = document.getElementById('chat-messages');
+    const npc = L2_NPCS[npcKey];
+    container.innerHTML = '';
+    const msgs = l2SayingBye ? [{ role: 'assistant', text: L2_GOODBYES[npcKey] }] : l2ChatMessages[npcKey];
+    for (let i = 0; i < msgs.length; i++) {
+        const m = msgs[i];
+        const div = document.createElement('div');
+        div.className = m.role === 'assistant' ? 'msg-npc' : 'msg-player';
+        const label = m.role === 'assistant' ? npc.name : 'YOU';
+        const isLast = i === msgs.length - 1 && m.role === 'assistant';
+        const displayText = (isLast && l2Typewriting && l2Typewriting.current !== l2Typewriting.full)
+            ? l2Typewriting.current : m.text;
+        div.innerHTML = `<span style="color:${m.role === 'assistant' ? npc.color : '#70e870'}">${label}:</span> ${displayText}`;
+        container.appendChild(div);
+    }
+    container.scrollTop = container.scrollHeight;
+}
+
+function addL2Clue(text) {
+    if (!l2DiscoveredClues.includes(text)) l2DiscoveredClues.push(text);
+}
+
+function openNotebook() {
+    l2State = 'notebook';
+    l2Notebook.open = true;
+    renderNotebook();
+    document.getElementById('notebook-overlay').style.display = 'flex';
+}
+
+function renderNotebook() {
+    const content = document.getElementById('notebook-content');
+    let html = '<div style="color:#e8d070; font-size:12px; margin-bottom:12px; text-align:center; letter-spacing:2px;">─── DETECTIVE\'S NOTEBOOK ───</div>';
+
+    // Grid — items on left (rows), people on top (columns)
+    html += '<table style="border-collapse:collapse; margin:0 auto 12px; font-family:monospace;">';
+    html += '<thead><tr><td style="width:80px;"></td>';
+    for (let c = 0; c < 3; c++) {
+        const npcKey = Object.keys(L2_NPCS)[c];
+        html += `<td style="width:36px; text-align:center; color:${L2_NPCS[npcKey].color}; font-size:10px; padding:2px;">${L2_SUSPECTS[c]}</td>`;
+    }
+    html += '</tr></thead><tbody>';
+    for (let r = 0; r < 3; r++) {
+        html += `<tr><td style="color:#e8d070; font-size:10px; text-align:right; padding-right:6px;">${L2_ITEMS[r]}</td>`;
+        for (let c = 0; c < 3; c++) {
+            const val = l2Notebook.grid[r][c];
+            const display = val === 'check' ? '✓' : val === 'x' ? '✗' : val === '?' ? '?' : '';
+            const color = val === 'check' ? '#44ff44' : val === 'x' ? '#ff4444' : val === '?' ? '#e8d070' : '#888';
+            html += `<td data-r="${r}" data-c="${c}" class="nb-cell" style="width:36px; height:36px; border:1px solid #3a3060; background:#1a1420; text-align:center; cursor:pointer; font-size:16px; color:${color}; user-select:none;">${display}</td>`;
+        }
+        html += '</tr>';
+    }
+    html += '</tbody></table>';
+
+    // Clues
+    html += '<div style="border-top:1px solid #3a3060; padding-top:10px; margin-bottom:10px;">';
+    html += '<div style="color:#e8d070; font-size:10px; margin-bottom:6px; text-align:center;">─── CLUES & EVIDENCE ───</div>';
+    if (l2DiscoveredClues.length === 0) {
+        html += '<div style="color:#8a8a7a; font-size:10px; line-height:18px; font-style:italic;">No clues discovered yet. Talk to people.</div>';
+    } else {
+        for (const clue of l2DiscoveredClues) {
+            html += `<div style="color:#c8b880; font-size:10px; line-height:18px; margin-bottom:4px;">• ${clue}</div>`;
+        }
+    }
+    html += '</div>';
+
+    // Buttons
+    html += '<div style="display:flex; gap:8px; justify-content:center;">';
+    html += '<button id="nb-reset" style="font-family:monospace; font-size:10px; padding:6px 12px; background:transparent; color:#ff6644; border:1px solid #ff6644; border-radius:4px; cursor:pointer;">RESET GRID</button>';
+    html += '<button id="nb-close" style="font-family:monospace; font-size:10px; padding:6px 12px; background:transparent; color:#e8d070; border:2px solid #e8d070; border-radius:4px; cursor:pointer;">CLOSE (ESC)</button>';
+    html += '</div>';
+
+    content.innerHTML = html;
+
+    // Attach cell click handlers
+    content.querySelectorAll('.nb-cell').forEach(cell => {
+        cell.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const r = parseInt(cell.dataset.r);
+            const c = parseInt(cell.dataset.c);
+            toggleNotebookCell(r, c);
+            renderNotebook();
+        });
+    });
+
+    document.getElementById('nb-reset').addEventListener('click', (e) => {
+        e.stopPropagation();
+        l2Notebook.grid = [['','',''], ['','',''], ['','','']];
+        l2Notebook.autoMarks = {};
+        renderNotebook();
+    });
+    document.getElementById('nb-close').addEventListener('click', (e) => {
+        e.stopPropagation();
+        l2Notebook.open = false;
+        l2State = 'free';
+        document.getElementById('notebook-overlay').style.display = 'none';
+    });
+}
+
+function toggleNotebookCell(row, col) {
+    const current = l2Notebook.grid[row][col];
+    const cycle = { '': 'check', 'check': 'x', 'x': '?', '?': '' };
+    const next = cycle[current] || '';
+
+    // Remove old auto-marks from this cell's previous check
+    const cellKey = `${row}-${col}`;
+    if (l2Notebook.autoMarks[cellKey]) {
+        for (const mark of l2Notebook.autoMarks[cellKey]) {
+            if (l2Notebook.grid[mark.r][mark.c] === 'x') {
+                l2Notebook.grid[mark.r][mark.c] = '';
+            }
+        }
+        delete l2Notebook.autoMarks[cellKey];
+    }
+
+    l2Notebook.grid[row][col] = next;
+
+    // If placing a check, auto-x the rest of row and column
+    if (next === 'check') {
+        const marked = [];
+        for (let c = 0; c < 3; c++) {
+            if (c !== col && l2Notebook.grid[row][c] === '') {
+                l2Notebook.grid[row][c] = 'x';
+                marked.push({ r: row, c });
+            }
+        }
+        for (let r = 0; r < 3; r++) {
+            if (r !== row && l2Notebook.grid[r][col] === '') {
+                l2Notebook.grid[r][col] = 'x';
+                marked.push({ r, c: col });
+            }
+        }
+        l2Notebook.autoMarks[cellKey] = marked;
+    }
+}
+
+function updateLevel2() {
+    // Typewriter advancement
+    if (l2Typewriting && l2Typewriting.charIndex < l2Typewriting.full.length) {
+        l2TypeTimer++;
+        if (l2TypeTimer >= 2) {
+            l2TypeTimer = 0;
+            l2Typewriting.charIndex++;
+            l2Typewriting.current = l2Typewriting.full.substring(0, l2Typewriting.charIndex);
+            if (l2TalkingTo) renderChatMessages(l2TalkingTo);
+        }
+    }
+
+    if (l2State === 'in-bed') {
+        // Just waiting for player to press LOOK
+        return;
+    }
+
+    if (l2State === 'wakeup-text') {
+        l2Timer++;
+        if (l2TextPhase === 'fadein') {
+            l2TextAlpha += 0.02;
+            if (l2TextAlpha >= 1) { l2TextAlpha = 1; l2TextPhase = 'hold'; l2Timer = 0; }
+        } else if (l2TextPhase === 'hold') {
+            if (l2Timer > 120) { l2TextPhase = 'fadeout'; }
+        } else if (l2TextPhase === 'fadeout') {
+            l2TextAlpha -= 0.02;
+            if (l2TextAlpha <= 0) {
+                l2TextAlpha = 0;
+                l2State = 'exclamation';
+                l2ExclTimer = 0;
+            }
+        }
+        return;
+    }
+
+    if (l2State === 'exclamation') {
+        l2ExclTimer++;
+        if (l2ExclTimer > 60) {
+            l2State = 'blake-intro';
+            l2BlakeIntroSaid = true;
+            gameState = 'level2';
+            dialogBox.innerHTML = '<span style="color:#ff69b4;">Blake:</span> Oh finally, you\'re awake! We need your help. We can\'t remember which one of us had the hotel key! We can\'t leave until we find it. You\'re good at mysteries, so we\'re hoping you can help us.<br><br><span style="color:#aaa">Press any key...</span>';
+            dialogBox.classList.add('visible');
+        }
+        return;
+    }
+
+    if (l2State === 'blake-intro') {
+        // Show "Time to gather clues" text after dismissing dialog
+        if (!dialogBox.classList.contains('visible') && !l2ShowTimeText) {
+            l2ShowTimeText = true;
+            l2TimeTextAlpha = 0;
+            l2TimeTextPhase = 'fadein';
+            l2Timer = 0;
+        }
+        if (l2ShowTimeText) {
+            l2Timer++;
+            if (l2TimeTextPhase === 'fadein') {
+                l2TimeTextAlpha += 0.03;
+                if (l2TimeTextAlpha >= 1) { l2TimeTextAlpha = 1; l2TimeTextPhase = 'hold'; l2Timer = 0; }
+            } else if (l2TimeTextPhase === 'hold') {
+                if (l2Timer > 90) { l2TimeTextPhase = 'fadeout'; }
+            } else if (l2TimeTextPhase === 'fadeout') {
+                l2TimeTextAlpha -= 0.03;
+                if (l2TimeTextAlpha <= 0) {
+                    l2TimeTextAlpha = 0;
+                    l2ShowTimeText = false;
+                    l2State = 'free';
+                }
+            }
+        }
+        return;
+    }
+
+    if (l2State === 'chat') {
+        // Goodbye timer
+        if (l2SayingBye) {
+            l2ByeTimer++;
+            if (l2ByeTimer > 90) {
+                closeLevel2Chat();
+            }
+        }
+        return;
+    }
+
+    if (l2State !== 'free') return;
+
+    // Player movement
+    let moved = false;
+    let newX = l2PlayerX;
+    let newY = l2PlayerY;
+    const spd = 2.5;
+
+    if (keys['arrowleft'] || keys['a']) { newX -= spd; l2PlayerFacing = 'left'; moved = true; }
+    if (keys['arrowright'] || keys['d']) { newX += spd; l2PlayerFacing = 'right'; moved = true; }
+    if (keys['arrowup'] || keys['w']) { newY -= spd; l2PlayerFacing = 'up'; moved = true; }
+    if (keys['arrowdown'] || keys['s']) { newY += spd; l2PlayerFacing = 'down'; moved = true; }
+
+    // Bounds (walls)
+    const minX = 54;
+    const maxX = 430;
+    const minY = 50;
+    const maxY = 260;
+
+    if (newX < minX) newX = minX;
+    if (newX > maxX) newX = maxX;
+    if (newY < minY) newY = minY;
+    if (newY > maxY) newY = maxY;
+
+    // Collision (furniture + NPCs)
+    const pw = 24, ph = 36;
+    const npcColliders = Object.values(L2_NPCS).map(n => ({ x: n.x + 4, y: n.y + 8, w: 16, h: 28 }));
+    const allColliders = L2_COLLIDERS.concat(npcColliders);
+    if (!collidesWithAny(newX, newY, pw, ph, allColliders)) {
+        l2PlayerX = newX;
+        l2PlayerY = newY;
+    } else {
+        if (!collidesWithAny(newX, l2PlayerY, pw, ph, allColliders)) {
+            l2PlayerX = newX;
+        } else if (!collidesWithAny(l2PlayerX, newY, pw, ph, allColliders)) {
+            l2PlayerY = newY;
+        }
+    }
+    if (moved) player.animTimer++;
+
+    // NPC proximity check
+    l2NearNpc = null;
+    l2NearItem = null;
+    const pcx = l2PlayerX + 12;
+    const pcy = l2PlayerY + 18;
+    for (const key of Object.keys(L2_NPCS)) {
+        const npc = L2_NPCS[key];
+        const ncx = npc.x + 12;
+        const ncy = npc.y + 18;
+        if (Math.abs(pcx - ncx) < 50 && Math.abs(pcy - ncy) < 50) {
+            l2NearNpc = key;
+            break;
+        }
+    }
+
+    // Item proximity check (only if no NPC nearby)
+    if (!l2NearNpc) {
+        for (const item of L2_EXAMINE_ITEMS) {
+            const icx = item.x + item.w / 2;
+            const icy = item.y + item.h / 2;
+            if (Math.abs(pcx - icx) < 50 && Math.abs(pcy - icy) < 50) {
+                l2NearItem = item.id;
+                break;
+            }
+        }
+    }
+
+    // Door exit check (right wall, door at y=130-190)
+    if (l2PlayerX >= maxX - 10 && l2PlayerY > 120 && l2PlayerY < 190) {
+        if (!tryExitRoom()) {
+            l2PlayerX = maxX - 20;
+            return;
+        }
+        // Level 2 complete!
+        gameState = 'level2-complete';
+        GameMusic.stopMusic();
+        dialogBox.innerHTML = '<span style="color:#ffcc00; font-size:16px;">Level 2 Complete!</span><br><br>You solved the mystery! Vanessa had the room key in her bosoms the whole time.<br><br><span style="color:#aaa">Thanks for playing!</span>';
+        dialogBox.classList.add('visible');
+        return;
+    }
+
+    if (l2NearNpc && gameState === 'level2') {
+        promptEl.classList.add('visible');
+        promptEl.textContent = isMobile() ? 'Tap LOOK to talk' : 'Press E or SPACE to talk';
+    } else if (l2NearItem && gameState === 'level2') {
+        promptEl.classList.add('visible');
+        promptEl.textContent = isMobile() ? 'Tap LOOK to examine' : 'Press E or SPACE to examine';
+    } else {
+        promptEl.classList.remove('visible');
+    }
+}
+
+function drawLevel2() {
+    // Floor (warm hotel carpet)
+    ctx.fillStyle = '#2a1a3a';
+    ctx.fillRect(0, 0, L2_ROOM_W, L2_ROOM_H);
+    for (let x = 0; x < L2_ROOM_W; x += 24) {
+        for (let y = 0; y < L2_ROOM_H; y += 24) {
+            ctx.fillStyle = '#321e44';
+            ctx.fillRect(x + 2, y + 2, 10, 10);
+        }
+    }
+
+    // Walls
+    // Top wall
+    ctx.fillStyle = '#3a2a5c';
+    ctx.fillRect(0, 0, L2_ROOM_W, 50);
+    ctx.fillStyle = '#4a2a1a';
+    ctx.fillRect(0, 46, L2_ROOM_W, 4);
+    // Bottom wall
+    ctx.fillStyle = '#3a2a5c';
+    ctx.fillRect(0, 270, L2_ROOM_W, 50);
+    ctx.fillStyle = '#4a2a1a';
+    ctx.fillRect(0, 270, L2_ROOM_W, 4);
+    // Left wall
+    ctx.fillStyle = '#3a2a5c';
+    ctx.fillRect(0, 0, 50, L2_ROOM_H);
+    ctx.fillStyle = '#4a2a1a';
+    ctx.fillRect(46, 0, 4, L2_ROOM_H);
+    // Right wall
+    ctx.fillStyle = '#3a2a5c';
+    ctx.fillRect(440, 0, 40, L2_ROOM_H);
+    ctx.fillStyle = '#4a2a1a';
+    ctx.fillRect(440, 0, 4, L2_ROOM_H);
+
+    // Door in right wall (locked)
+    ctx.fillStyle = '#d4a574';
+    ctx.fillRect(440, 130, 24, 60);
+    ctx.fillStyle = '#8B4513';
+    ctx.fillRect(444, 134, 18, 52);
+    ctx.fillStyle = '#6d3a0a';
+    ctx.fillRect(448, 138, 10, 20);
+    ctx.fillRect(448, 162, 10, 18);
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(450, 156, 4, 4);
+
+    // Bed (vertical, on left side) — rotated 90° from original
+    ctx.fillStyle = '#4a3a6a';
+    ctx.fillRect(50, 60, 110, 200);
+    ctx.fillStyle = '#5a4a7a';
+    ctx.fillRect(54, 64, 102, 50);
+    // Pillows (at top of bed)
+    ctx.fillStyle = '#ddd';
+    ctx.fillRect(60, 68, 40, 30);
+    ctx.fillRect(104, 68, 40, 30);
+    // Blanket fold
+    ctx.fillStyle = '#3a2a5a';
+    ctx.fillRect(54, 120, 102, 4);
+
+    // Bedside tables
+    ctx.fillStyle = '#7a5020';
+    ctx.fillRect(50, 40, 44, 12);
+    ctx.fillStyle = '#5c3a1a';
+    ctx.fillRect(50, 52, 44, 8);
+
+    ctx.fillStyle = '#7a5020';
+    ctx.fillRect(50, 260, 44, 12);
+    ctx.fillStyle = '#5c3a1a';
+    ctx.fillRect(50, 272, 44, 8);
+
+    // Credit card on bottom bedside table (with chocolate lube smear)
+    ctx.fillStyle = '#8B6040';
+    ctx.fillRect(60, 262, 22, 14);
+    ctx.fillStyle = '#cc9944';
+    ctx.fillRect(62, 264, 18, 10);
+    ctx.fillStyle = '#5c3a1a';
+    ctx.fillRect(63, 266, 6, 3);
+    // Chocolate lube smear
+    ctx.fillStyle = '#4a2810';
+    ctx.fillRect(56, 265, 8, 4);
+    ctx.fillRect(78, 268, 6, 3);
+
+    // Draw NPCs
+    for (const key of Object.keys(L2_NPCS)) {
+        const npc = L2_NPCS[key];
+        drawLevel2NPC(npc, key);
+    }
+
+    // Draw player (if not in bed)
+    if (l2State !== 'in-bed') {
+        drawLevel2Player();
+    } else {
+        // Player in bed (just a head poking out)
+        ctx.fillStyle = COLORS.skin;
+        ctx.fillRect(78, 130, 12, 10);
+        ctx.fillStyle = selectedChar ? (selectedChar.type === 'redhead' ? '#cc3300' : COLORS.hair) : COLORS.hair;
+        ctx.fillRect(76, 126, 16, 6);
+        // Blanket over body
+        ctx.fillStyle = '#5a4a7a';
+        ctx.fillRect(54, 140, 102, 60);
+    }
+
+    // Exclamation point over Blake
+    if (l2State === 'exclamation') {
+        const bx = L2_NPCS.blake.x;
+        const by = L2_NPCS.blake.y;
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(bx + 4, by - 24, 16, 18);
+        ctx.fillStyle = '#ff0000';
+        ctx.font = 'bold 14px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('!', bx + 12, by - 10);
+        ctx.textAlign = 'left';
+    }
+
+    // NPC highlight when near
+    if (l2NearNpc && l2State === 'free') {
+        const npc = L2_NPCS[l2NearNpc];
+        const bob = Math.sin(Date.now() * 0.005) * 3;
+        ctx.fillStyle = '#ffcc00';
+        ctx.beginPath();
+        ctx.moveTo(npc.x + 12, npc.y - 10 + bob);
+        ctx.lineTo(npc.x + 7, npc.y - 18 + bob);
+        ctx.lineTo(npc.x + 17, npc.y - 18 + bob);
+        ctx.fill();
+    }
+
+    // Prompt for bed
+    if (l2State === 'in-bed') {
+        ctx.fillStyle = '#ffcc00';
+        ctx.font = '11px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(isMobile() ? 'Tap LOOK to get out of bed' : 'Press E or SPACE to get out of bed', L2_ROOM_W / 2, L2_ROOM_H - 20);
+        ctx.textAlign = 'left';
+    }
+
+    // Wakeup text overlay
+    if (l2State === 'wakeup-text') {
+        ctx.fillStyle = `rgba(0, 0, 20, ${l2TextAlpha * 0.7})`;
+        ctx.fillRect(0, L2_ROOM_H / 2 - 30, L2_ROOM_W, 60);
+        ctx.fillStyle = `rgba(255, 255, 255, ${l2TextAlpha})`;
+        ctx.font = '14px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('Wow, that was a wild dream...', L2_ROOM_W / 2, L2_ROOM_H / 2 + 5);
+        ctx.textAlign = 'left';
+    }
+
+    // "Time to gather clues" text
+    if (l2ShowTimeText) {
+        ctx.fillStyle = `rgba(0, 0, 20, ${l2TimeTextAlpha * 0.7})`;
+        ctx.fillRect(0, L2_ROOM_H / 2 - 30, L2_ROOM_W, 60);
+        ctx.fillStyle = `rgba(255, 204, 0, ${l2TimeTextAlpha})`;
+        ctx.font = '14px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('Time to gather clues...', L2_ROOM_W / 2, L2_ROOM_H / 2 + 5);
+        ctx.textAlign = 'left';
+    }
+}
+
+function drawLevel2Player() {
+    const px = Math.floor(l2PlayerX);
+    const py = Math.floor(l2PlayerY);
+    const char = selectedChar || CHARACTERS[0];
+    const moving = isMoving() && l2State === 'free';
+    const bounce = Math.sin(player.animTimer * 0.15) * (moving ? 1.5 : 0);
+    const legSwing = moving ? Math.sin(player.animTimer * 0.22) * 3 : 0;
+    const armSwing = moving ? Math.sin(player.animTimer * 0.18) * 2 : 0;
+
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(px + 12, py + 36, 13, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (l2PlayerFacing === 'up') drawCharBack(px, py, bounce, legSwing, armSwing, char);
+    else if (l2PlayerFacing === 'down') drawCharFront(px, py, bounce, legSwing, armSwing, char);
+    else if (l2PlayerFacing === 'left') drawCharSide(px, py, bounce, legSwing, armSwing, -1, char);
+    else drawCharSide(px, py, bounce, legSwing, armSwing, 1, char);
+}
+
+function drawLevel2NPC(npc, key) {
+    const x = npc.x;
+    const y = npc.y;
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(x + 12, y + 36, 13, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (key === 'blake') drawBlakeSprite(x, y, npc.facing);
+    else if (key === 'abraham') drawAbrahamSprite(x, y, npc.facing);
+    else if (key === 'vanessa') drawVanessaSprite(x, y, npc.facing);
+}
+
+function drawBlakeSprite(x, y, facing) {
+    // Blake: boyfriend, warm tones, tank top, brown hair
+    const b = 0;
+    // Legs
+    ctx.fillStyle = '#2b4570';
+    ctx.fillRect(x + 6, y + 26 + b, 5, 10);
+    ctx.fillRect(x + 13, y + 26 + b, 5, 10);
+    // Shorts
+    ctx.fillStyle = '#1e3350';
+    ctx.fillRect(x + 5, y + 22 + b, 14, 6);
+    // Torso (pink tank top)
+    ctx.fillStyle = '#ff69b4';
+    ctx.fillRect(x + 3, y + 7 + b, 18, 16);
+    ctx.fillStyle = '#cc5590';
+    ctx.fillRect(x + 3, y + 21 + b, 18, 2);
+    // Arms
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(x + 1, y + 8 + b, 3, 12);
+    ctx.fillRect(x + 20, y + 8 + b, 3, 12);
+    // Head
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(x + 6, y - 2 + b, 12, 10);
+    // Hair (brown, styled)
+    ctx.fillStyle = '#5c3a1a';
+    ctx.fillRect(x + 5, y - 6 + b, 14, 5);
+    ctx.fillRect(x + 6, y - 8 + b, 12, 3);
+    // Eyes (if facing down)
+    if (facing === 'down') {
+        ctx.fillStyle = '#333';
+        ctx.fillRect(x + 8, y + 1, 2, 2);
+        ctx.fillRect(x + 14, y + 1, 2, 2);
+        ctx.fillStyle = '#cc4444';
+        ctx.fillRect(x + 9, y + 5, 6, 2);
+    }
+}
+
+function drawAbrahamSprite(x, y, facing) {
+    // Abraham: friend, green shirt, dark skin, short black hair
+    const b = 0;
+    // Legs
+    ctx.fillStyle = '#4a4a4a';
+    ctx.fillRect(x + 6, y + 26 + b, 5, 10);
+    ctx.fillRect(x + 13, y + 26 + b, 5, 10);
+    // Shorts
+    ctx.fillStyle = '#333';
+    ctx.fillRect(x + 5, y + 22 + b, 14, 6);
+    // Torso (green shirt)
+    ctx.fillStyle = '#44cc88';
+    ctx.fillRect(x + 3, y + 7 + b, 18, 16);
+    ctx.fillStyle = '#339966';
+    ctx.fillRect(x + 3, y + 21 + b, 18, 2);
+    // Arms
+    ctx.fillStyle = '#8b6040';
+    ctx.fillRect(x + 1, y + 8 + b, 3, 12);
+    ctx.fillRect(x + 20, y + 8 + b, 3, 12);
+    // Head
+    ctx.fillStyle = '#8b6040';
+    ctx.fillRect(x + 6, y - 2 + b, 12, 10);
+    // Hair (short black)
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(x + 5, y - 5 + b, 14, 4);
+    // Eyes/face
+    if (facing === 'left' || facing === 'down') {
+        ctx.fillStyle = '#111';
+        ctx.fillRect(x + 8, y + 1, 2, 2);
+        ctx.fillRect(x + 14, y + 1, 2, 2);
+    }
+}
+
+function drawVanessaSprite(x, y, facing) {
+    // Vanessa: drag queen, purple dress, big wig, dramatic
+    const b = 0;
+    // Legs (heels)
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(x + 7, y + 28 + b, 4, 8);
+    ctx.fillRect(x + 13, y + 28 + b, 4, 8);
+    ctx.fillStyle = '#cc44ff';
+    ctx.fillRect(x + 6, y + 34 + b, 5, 3);
+    ctx.fillRect(x + 12, y + 34 + b, 5, 3);
+    // Dress
+    ctx.fillStyle = '#cc44ff';
+    ctx.fillRect(x + 3, y + 7 + b, 18, 22);
+    ctx.fillStyle = '#9933cc';
+    ctx.fillRect(x + 3, y + 27 + b, 18, 3);
+    // Bodice detail
+    ctx.fillStyle = '#ff66ff';
+    ctx.fillRect(x + 7, y + 8 + b, 10, 4);
+    // Arms
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(x + 1, y + 8 + b, 3, 10);
+    ctx.fillRect(x + 20, y + 8 + b, 3, 10);
+    // Head
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(x + 6, y - 2 + b, 12, 10);
+    // Wig (big, purple)
+    ctx.fillStyle = '#9900cc';
+    ctx.fillRect(x + 3, y - 10 + b, 18, 10);
+    ctx.fillRect(x + 2, y - 6 + b, 20, 6);
+    ctx.fillRect(x + 1, y - 3 + b, 4, 8);
+    ctx.fillRect(x + 19, y - 3 + b, 4, 8);
+    // Eyes/lips
+    if (facing === 'right' || facing === 'down') {
+        ctx.fillStyle = '#333';
+        ctx.fillRect(x + 8, y + 1, 2, 2);
+        ctx.fillRect(x + 14, y + 1, 2, 2);
+        ctx.fillStyle = '#ff3366';
+        ctx.fillRect(x + 9, y + 5, 6, 2);
+    }
+}
+
+function drawLevel2Portrait(npcKey) {
+    const pCanvas = document.getElementById('chat-portrait');
+    const pCtx = pCanvas.getContext('2d');
+    pCtx.fillStyle = '#1a1420';
+    pCtx.fillRect(0, 0, 96, 96);
+
+    if (npcKey === 'blake') {
+        // Blake portrait: warm, pink tank, brown hair
+        // Shoulders/torso
+        pCtx.fillStyle = '#ff69b4';
+        pCtx.fillRect(16, 60, 64, 36);
+        pCtx.fillStyle = '#cc5590';
+        pCtx.fillRect(16, 90, 64, 6);
+        // Neck
+        pCtx.fillStyle = '#d4a076';
+        pCtx.fillRect(38, 50, 20, 14);
+        // Head
+        pCtx.fillStyle = '#d4a076';
+        pCtx.fillRect(28, 20, 40, 34);
+        // Hair
+        pCtx.fillStyle = '#5c3a1a';
+        pCtx.fillRect(26, 10, 44, 14);
+        pCtx.fillRect(28, 8, 40, 6);
+        pCtx.fillRect(24, 14, 6, 14);
+        pCtx.fillRect(66, 14, 6, 14);
+        // Eyes
+        pCtx.fillStyle = '#333';
+        pCtx.fillRect(34, 32, 6, 6);
+        pCtx.fillRect(54, 32, 6, 6);
+        pCtx.fillStyle = '#fff';
+        pCtx.fillRect(35, 33, 2, 2);
+        pCtx.fillRect(55, 33, 2, 2);
+        // Smile
+        pCtx.fillStyle = '#cc4444';
+        pCtx.fillRect(38, 44, 20, 4);
+    } else if (npcKey === 'abraham') {
+        // Abraham portrait: green shirt, dark skin
+        pCtx.fillStyle = '#44cc88';
+        pCtx.fillRect(16, 60, 64, 36);
+        pCtx.fillStyle = '#339966';
+        pCtx.fillRect(16, 90, 64, 6);
+        pCtx.fillStyle = '#8b6040';
+        pCtx.fillRect(38, 50, 20, 14);
+        pCtx.fillStyle = '#8b6040';
+        pCtx.fillRect(28, 20, 40, 34);
+        // Hair
+        pCtx.fillStyle = '#1a1a1a';
+        pCtx.fillRect(26, 12, 44, 12);
+        pCtx.fillRect(28, 10, 40, 6);
+        // Eyes
+        pCtx.fillStyle = '#222';
+        pCtx.fillRect(34, 32, 6, 6);
+        pCtx.fillRect(54, 32, 6, 6);
+        pCtx.fillStyle = '#fff';
+        pCtx.fillRect(35, 33, 2, 2);
+        pCtx.fillRect(55, 33, 2, 2);
+        // Smile
+        pCtx.fillStyle = '#664030';
+        pCtx.fillRect(38, 44, 20, 3);
+    } else if (npcKey === 'vanessa') {
+        // Vanessa portrait: drag queen, purple wig, glamorous
+        // Dress
+        pCtx.fillStyle = '#cc44ff';
+        pCtx.fillRect(16, 60, 64, 36);
+        pCtx.fillStyle = '#ff66ff';
+        pCtx.fillRect(26, 62, 44, 8);
+        // Neck
+        pCtx.fillStyle = '#d4a076';
+        pCtx.fillRect(38, 50, 20, 14);
+        // Head
+        pCtx.fillStyle = '#d4a076';
+        pCtx.fillRect(28, 20, 40, 34);
+        // Wig (big purple)
+        pCtx.fillStyle = '#9900cc';
+        pCtx.fillRect(20, 4, 56, 22);
+        pCtx.fillRect(18, 12, 60, 14);
+        pCtx.fillRect(16, 20, 10, 20);
+        pCtx.fillRect(70, 20, 10, 20);
+        // Eyes (dramatic makeup)
+        pCtx.fillStyle = '#333';
+        pCtx.fillRect(34, 30, 6, 6);
+        pCtx.fillRect(54, 30, 6, 6);
+        pCtx.fillStyle = '#cc44ff';
+        pCtx.fillRect(32, 28, 10, 3);
+        pCtx.fillRect(52, 28, 10, 3);
+        pCtx.fillStyle = '#fff';
+        pCtx.fillRect(35, 31, 2, 2);
+        pCtx.fillRect(55, 31, 2, 2);
+        // Lips
+        pCtx.fillStyle = '#ff3366';
+        pCtx.fillRect(36, 44, 24, 5);
+        pCtx.fillRect(38, 48, 20, 3);
+    }
+}
+
+// Chat event listeners
+document.getElementById('chat-send').addEventListener('click', sendLevel2Message);
+document.getElementById('chat-input').addEventListener('keydown', (e) => {
+    e.stopPropagation();
+    if (e.key === 'Enter') sendLevel2Message();
+    if (e.key === 'Escape') closeLevel2Chat();
+});
+document.getElementById('chat-goodbye').addEventListener('click', () => {
+    if (!l2TalkingTo || l2SayingBye) return;
+    l2SayingBye = true;
+    l2ByeTimer = 0;
+    const goodbye = L2_GOODBYES[l2TalkingTo];
+    startLevel2Typing(goodbye);
+    document.getElementById('chat-input-row').style.display = 'none';
+    document.getElementById('chat-goodbye').style.display = 'none';
+    renderChatMessages(l2TalkingTo);
+});
+
+// Notebook button
+document.getElementById('notebook-btn').addEventListener('click', () => {
+    if (l2State === 'free' && l2HasNotebook) openNotebook();
+});
+document.getElementById('notebook-overlay').addEventListener('click', () => {
+    l2Notebook.open = false;
+    l2State = 'free';
+    document.getElementById('notebook-overlay').style.display = 'none';
+});
+
+// Skip typewriter by clicking messages
+document.getElementById('chat-messages').addEventListener('click', () => {
+    if (l2Typewriting && l2Typewriting.current !== l2Typewriting.full) {
+        l2Typewriting.current = l2Typewriting.full;
+        l2Typewriting.charIndex = l2Typewriting.full.length;
+        if (l2TalkingTo) renderChatMessages(l2TalkingTo);
+    }
+});
 
 function gameLoop() {
     update();
