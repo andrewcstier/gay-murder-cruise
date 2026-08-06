@@ -2736,52 +2736,28 @@ const L2_NPCS = {
     vanessa: { x: 240, y: 200, facing: 'right', name: 'VANESSA', color: '#cc44ff' },
 };
 
-// Dialog responses (keyword-matched, case-insensitive)
-const L2_RESPONSES = {
-    blake: {
-        _greeting: "Hey babe, you might want your notebook. I know you like using it when you solve mysteries.",
-        _greeting_after: "Need help with the notebook? Just ask! Or if you're ready to guess, I can take your accusation.",
-        'notebook': "Here you go! I drew a grid for you. Items are on the left, people across the top. Use ✓ for 'had it', ✗ for 'didn't have it'. When you mark ✓, the rest of that row and column get ✗ automatically!",
-        'tutorial': "Sure! Open the notebook with C (or tap the 📓 button). Items are on the left side — credit card, room key, vodka shot. People are across the top — me, Abraham, Vanessa. Click a cell to cycle through ✓, ✗, ?, or empty. When you place a ✓, the other cells in that row and column auto-fill with ✗. Use the clues to figure out who had what!",
-        'help': "Talk to everyone! Abraham and Vanessa might remember something. We each agreed to carry a separate item with us, but we were pretty — uh — under the influence when we came back so we can't remember who had what. The credit card and room key couldn't be carried together or they'd deactivate, and then we also had a vodka shot, and we each said we'd carry one thing.",
-        'key': "I really can't remember who had it... sorry babe. But I know the credit card and key had to be separated!",
-        'credit card': "The credit card and room key couldn't be in the same person's pocket — the magnetic strips mess each other up.",
-        'vodka': "Hah, yeah someone was carrying a vodka shot back to the room. Classy, right?",
-        'item': "We each agreed to carry one thing — a credit card, the room key, or a vodka shot. But we can't remember who had what!",
-        '_default': "Hmm, I'm not sure about that. Try asking Abraham or Vanessa — maybe they remember more.",
-    },
-    abraham: {
-        _greeting: "Ugh, hey. I'm having a rough day. My chocolate lube exploded in my fanny pack. There's... there's chocolate lube EVERYWHERE.",
-        'key': "I definitely did NOT have the room key. I remember that much. I was too busy dealing with my fanny pack situation.",
-        'credit card': "The credit card? I dunno, check the bedside table — I think someone left one there. It's probably covered in my chocolate lube at this point, everything is.",
-        'lube': "Don't even START. I keep my chocolate lube in my fanny pack and it burst open. It got on EVERYTHING near me.",
-        'fanny': "My fanny pack is a DISASTER ZONE right now. Chocolate lube everywhere. I'm having a crisis.",
-        'vodka': "The vodka shot? I mean... I know I didn't have the key, that's all I'm certain about.",
-        'blake': "Blake was being really careful about something. Very protective.",
-        'vanessa': "Vanessa was being very theatrical about 'guarding her precious cargo' — her words, not mine.",
-        'notebook': "Blake has that notebook of yours, ask him!",
-        'help': "I know for sure I didn't have the room key. That's all I can say with confidence. Sorry, I'm too stressed about the lube situation.",
-        '_default': "Sorry, I can't think straight right now. Chocolate lube crisis. I just know I didn't have the key!",
-    },
-    vanessa: {
-        _greeting: "Morning, sunshine! Yes, this is a DISASTER. We're locked in and nobody knows who has the key! Also I look AMAZING considering the circumstances.",
-        'key': "The key? Hmm... I have absolutely no idea where it could be. *adjusts bosoms innocently*",
-        'credit card': "Credit card? Absolutely not, darling! I would NEVER have carried that. I don't drink alcohol anymore — I only do drugs now. I'm a good girl.",
-        'vodka': "Vodka? Honey, no. I don't drink alcohol anymore. I only do drugs now. I'm a GOOD GIRL. I would never have carried alcohol.",
-        'alcohol': "I don't drink anymore, darling. Only drugs for me now. Clean living!",
-        'drug': "It's called self-care, sweetie. But that's not relevant to the key situation!",
-        'blake': "Blake was fussing over something all night. Very protective of whatever he was carrying.",
-        'abraham': "Abraham's a mess. His chocolate lube exploded — it got everywhere. Poor thing.",
-        'notebook': "Ooh, a detective notebook? How very Agatha Christie! Love it.",
-        'help': "I didn't carry the vodka — I don't drink anymore! Beyond that... the evening is a gorgeous blur.",
-        '_default': "Oh honey, I wish I could remember more. But I definitely did NOT have the vodka!",
-    },
-};
-
-const L2_GOODBYES = {
-    blake: "Good luck babe! You've got this. Talk to me when you're ready to accuse someone!",
-    abraham: "Let me know when you figure it out! I'll be here... cleaning chocolate lube off everything.",
-    vanessa: "Go solve it, detective! *finger guns* *adjusts wig*",
+// Hardcoded dialog lines — each NPC has a sequence that plays through on each talk
+const L2_DIALOG = {
+    blake: [
+        "Hey babe, you might want your notebook. I know you like using it when you solve mysteries.",
+        "We each agreed to carry a separate item with us, but we were pretty — uh — under the influence when we came back so we can't remember who had what.",
+        "The credit card and room key couldn't be carried together or they'd deactivate. And then we also had a vodka shot.",
+        "So each of us carried one thing. Talk to the others — maybe they remember more than me!",
+    ],
+    blake_after: [
+        "Any luck? Talk to me when you're ready to accuse someone!",
+    ],
+    abraham: [
+        "Ugh, hey. I'm having a ROUGH day.",
+        "My chocolate lube exploded in my fanny pack. There's chocolate lube EVERYWHERE.",
+        "I definitely did NOT have the room key. I remember that much because I kept saying 'don't give me anything important!'",
+        "Sorry I can't be more help... I'm in crisis mode right now.",
+    ],
+    vanessa: [
+        "Morning, sunshine! Yes, this is a DISASTER. We're locked in!",
+        "I'll tell you right now — I did NOT carry the vodka. I don't drink alcohol anymore. I only do drugs now. I'm a good girl.",
+        "A queen has her standards, darling.",
+    ],
 };
 
 function startLevel2() {
@@ -2821,6 +2797,10 @@ function handleLevel2Action(key) {
             closeLevel2Chat();
             return;
         }
+        if (k === 'e' || k === ' ' || k === 'examine') {
+            advanceLevel2Dialog();
+            return;
+        }
         return;
     }
     if (l2State === 'notebook') {
@@ -2856,6 +2836,8 @@ function handleLevel2Action(key) {
     }
 }
 
+let l2DialogIndex = { blake: 0, abraham: 0, vanessa: 0 };
+
 function openLevel2Chat(npcKey) {
     l2State = 'chat';
     l2ChatOpen = true;
@@ -2870,44 +2852,40 @@ function openLevel2Chat(npcKey) {
     document.getElementById('chat-portrait').style.boxShadow = `0 0 10px ${npc.color}66`;
     document.getElementById('chat-npc-name').style.color = npc.color;
     document.getElementById('chat-npc-name').textContent = `─── ${npc.name} ───`;
+    document.getElementById('chat-input-row').style.display = 'none';
 
-    // Draw portrait
     drawLevel2Portrait(npcKey);
 
-    // Greeting on first talk
-    if (l2ChatMessages[npcKey].length === 0) {
-        let greeting;
-        if (npcKey === 'blake' && !l2BlakeGaveNotebook) {
-            greeting = L2_RESPONSES.blake._greeting;
-        } else if (npcKey === 'blake') {
-            greeting = L2_RESPONSES.blake._greeting_after;
-        } else {
-            greeting = L2_RESPONSES[npcKey]._greeting;
-        }
-        l2ChatMessages[npcKey].push({ role: 'assistant', text: greeting });
-        startLevel2Typing(greeting);
-
-        // Blake gives notebook on first greeting
-        if (npcKey === 'blake' && !l2BlakeGaveNotebook) {
-            l2BlakeGaveNotebook = true;
-            l2HasNotebook = true;
-            document.getElementById('notebook-btn').style.display = 'flex';
-            addL2Clue("The credit card and room key can't be carried together (deactivation).");
-            addL2Clue("Each person carried exactly one item.");
-        }
-        // Discover clues from greetings
-        if (npcKey === 'abraham') {
-            addL2Clue("Abraham's chocolate lube exploded in his fanny pack — it got on everything near him.");
-        }
-        if (npcKey === 'vanessa') {
-            addL2Clue("Vanessa says she doesn't drink alcohol anymore — she wouldn't have carried the vodka.");
-        }
+    // Determine which line to show
+    let lines;
+    if (npcKey === 'blake' && l2BlakeGaveNotebook) {
+        lines = L2_DIALOG.blake_after;
+    } else {
+        lines = L2_DIALOG[npcKey];
     }
 
-    renderChatMessages(npcKey);
-    document.getElementById('chat-input-row').style.display = 'flex';
-    document.getElementById('chat-goodbye').style.display = 'block';
-    document.getElementById('chat-input').value = '';
+    const idx = l2DialogIndex[npcKey];
+    const line = lines[Math.min(idx, lines.length - 1)];
+    startLevel2Typing(line);
+
+    // Show the current line
+    renderChatLine(npcKey, line);
+
+    // First time talking to Blake — give notebook and clues after all lines
+    if (npcKey === 'blake' && !l2BlakeGaveNotebook) {
+        l2BlakeGaveNotebook = true;
+        l2HasNotebook = true;
+        document.getElementById('notebook-btn').style.display = 'flex';
+        addL2Clue("The credit card and room key can't be carried together (deactivation).");
+        addL2Clue("Each person carried exactly one item.");
+    }
+    if (npcKey === 'abraham' && l2DialogIndex.abraham === 0) {
+        addL2Clue("Abraham did NOT have the room key.");
+    }
+    if (npcKey === 'vanessa' && l2DialogIndex.vanessa === 0) {
+        addL2Clue("Vanessa did NOT carry the vodka — she doesn't drink.");
+    }
+
     updateAccusationButton();
 }
 
@@ -2930,9 +2908,9 @@ function examineLevel2Item(itemId) {
     if (itemId === 'credit-card') {
         l2State = 'examine-dialog';
         promptEl.classList.remove('visible');
-        dialogBox.innerHTML = '<span style="color:#ffcc00;">You pick up the credit card...</span><br><br>It\'s covered in chocolate lube. Gross. This must have been Abraham\'s — his fanny pack exploded all over this table.<br><br><span style="color:#aaa">Press any key to close</span>';
+        dialogBox.innerHTML = '<span style="color:#ffcc00;">You pick up the credit card...</span><br><br>It smells like chocolate. Ew.<br><br><span style="color:#aaa">Press any key to close</span>';
         dialogBox.classList.add('visible');
-        addL2Clue("The credit card on the bedside table is covered in Abraham's chocolate lube — Abraham had the credit card.");
+        addL2Clue("The credit card on the bedside table smells like chocolate.");
     }
 }
 
@@ -2946,7 +2924,8 @@ function updateAccusationButton() {
         btn.addEventListener('click', openAccusation);
         document.getElementById('chat-panel').appendChild(btn);
     }
-    btn.style.display = (l2TalkingTo === 'blake' && l2BlakeGaveNotebook && !l2SayingBye && !l2Solved) ? 'block' : 'none';
+    // Show accuse button when talking to Blake after he's given the notebook
+    btn.style.display = (l2TalkingTo === 'blake' && l2BlakeGaveNotebook && !l2SayingBye && !l2Solved && !l2AccusationOpen) ? 'block' : 'none';
 }
 
 function openAccusation() {
@@ -2965,8 +2944,6 @@ function renderAccusation() {
     html += '</div>';
     container.innerHTML = html;
 
-    document.getElementById('chat-input-row').style.display = 'none';
-    document.getElementById('chat-goodbye').style.display = 'none';
     const accuseBtn = document.getElementById('chat-accuse');
     if (accuseBtn) accuseBtn.style.display = 'none';
 
@@ -2982,21 +2959,15 @@ function handleAccusation(target) {
         container.innerHTML = '<div class="msg-npc"><span style="color:#ff69b4">BLAKE:</span> Babe... it\'s not me. I checked my pockets three times already. Try again?</div>';
         setTimeout(() => {
             l2AccusationOpen = false;
-            document.getElementById('chat-input-row').style.display = 'flex';
-            document.getElementById('chat-goodbye').style.display = 'block';
             updateAccusationButton();
-            l2ChatMessages.blake.push({ role: 'assistant', text: "It's not me, babe. I checked my pockets three times. Try again?" });
-            renderChatMessages('blake');
+            renderChatLine('blake', "It's not me, babe. I checked my pockets. Try again when you're ready!");
         }, 2000);
     } else if (target === 'abraham') {
         container.innerHTML = '<div class="msg-npc"><span style="color:#ff69b4">BLAKE:</span> Abraham checks everywhere... nope. He doesn\'t have it either. The lube explosion would have revealed it anyway. Try again?</div>';
         setTimeout(() => {
             l2AccusationOpen = false;
-            document.getElementById('chat-input-row').style.display = 'flex';
-            document.getElementById('chat-goodbye').style.display = 'block';
             updateAccusationButton();
-            l2ChatMessages.blake.push({ role: 'assistant', text: "Abraham doesn't have it. The lube explosion would have revealed it. Try again?" });
-            renderChatMessages('blake');
+            renderChatLine('blake', "Abraham doesn't have it. The lube explosion would have revealed it. Try again!");
         }, 2000);
     } else if (target === 'vanessa') {
         container.innerHTML = '<div class="msg-npc"><span style="color:#ff69b4">BLAKE:</span> Vanessa...</div>';
@@ -3006,12 +2977,11 @@ function handleAccusation(target) {
                 container.innerHTML += '<div class="msg-npc"><span style="color:#cc44ff">VANESSA:</span> I stuck it in my bosoms last night and completely forgot! Girls, I am SO sorry!</div>';
                 setTimeout(() => {
                     container.innerHTML += '<div class="msg-npc" style="color:#ffcc00; text-align:center; margin-top:8px;">🔑 Room key found! You can now leave.</div>';
+                    container.innerHTML += '<div style="color:#aaa; font-size:10px; margin-top:8px; text-align:center;">Press E/SPACE to close...</div>';
                     l2Solved = true;
                     l2AccusationOpen = false;
-                    document.getElementById('chat-input-row').style.display = 'none';
                     const accuseBtn = document.getElementById('chat-accuse');
                     if (accuseBtn) accuseBtn.style.display = 'none';
-                    document.getElementById('chat-goodbye').style.display = 'block';
                 }, 1500);
             }, 1500);
         }, 1500);
@@ -3028,53 +2998,37 @@ function tryExitRoom() {
     return false;
 }
 
-function sendLevel2Message() {
-    const input = document.getElementById('chat-input');
-    const text = input.value.trim();
-    if (!text || !l2TalkingTo || l2SayingBye) return;
+function advanceLevel2Dialog() {
+    if (!l2TalkingTo || l2SayingBye || l2AccusationOpen) return;
 
-    l2ChatMessages[l2TalkingTo].push({ role: 'user', text });
-    input.value = '';
-
-    // Match keywords
-    const lower = text.toLowerCase();
-    const responses = L2_RESPONSES[l2TalkingTo];
-    let response = responses._default;
-    let matchedKey = null;
-
-    for (const keyword of Object.keys(responses)) {
-        if (keyword.startsWith('_')) continue;
-        if (lower.includes(keyword)) {
-            response = responses[keyword];
-            matchedKey = keyword;
-            break;
-        }
+    // If typewriter still going, skip to end
+    if (l2Typewriting && l2Typewriting.current !== l2Typewriting.full) {
+        l2Typewriting.current = l2Typewriting.full;
+        l2Typewriting.charIndex = l2Typewriting.full.length;
+        renderChatLine(l2TalkingTo, l2Typewriting.full);
+        return;
     }
 
-    l2ChatMessages[l2TalkingTo].push({ role: 'assistant', text: response });
-    startLevel2Typing(response);
-
-    // Discover clues based on specific responses
-    if (l2TalkingTo === 'abraham' && matchedKey === 'key') {
-        addL2Clue("Abraham confirms: he did NOT have the room key.");
-    }
-    if (l2TalkingTo === 'abraham' && (matchedKey === 'credit card' || matchedKey === 'lube' || matchedKey === 'fanny')) {
-        addL2Clue("Abraham's lube got on everything near him — check the bedside table for the credit card.");
-    }
-    if (l2TalkingTo === 'vanessa' && (matchedKey === 'vodka' || matchedKey === 'alcohol')) {
-        addL2Clue("Vanessa doesn't drink — she did NOT carry the vodka shot.");
-    }
-    if (l2TalkingTo === 'vanessa' && matchedKey === 'credit card') {
-        addL2Clue("Vanessa refuses to carry a credit card — 'I'm a good girl, I only do drugs now.'");
-    }
-    if (l2TalkingTo === 'blake' && matchedKey === 'credit card') {
-        addL2Clue("Blake says the credit card and room key couldn't be in the same pocket.");
-    }
-    if (l2TalkingTo === 'blake' && matchedKey === 'help') {
-        addL2Clue("Blake says they each carried one item: credit card, room key, or vodka shot.");
+    const npcKey = l2TalkingTo;
+    let lines;
+    if (npcKey === 'blake' && l2DialogIndex.blake >= L2_DIALOG.blake.length) {
+        lines = L2_DIALOG.blake_after;
+    } else {
+        lines = L2_DIALOG[npcKey];
     }
 
-    renderChatMessages(l2TalkingTo);
+    l2DialogIndex[npcKey]++;
+    const idx = l2DialogIndex[npcKey];
+
+    if (idx >= lines.length) {
+        // Done with all lines — close chat
+        closeLevel2Chat();
+        return;
+    }
+
+    const line = lines[idx];
+    startLevel2Typing(line);
+    renderChatLine(npcKey, line);
 }
 
 function startLevel2Typing(text) {
@@ -3082,23 +3036,27 @@ function startLevel2Typing(text) {
     l2TypeTimer = 0;
 }
 
-function renderChatMessages(npcKey) {
+function renderChatLine(npcKey, text) {
     const container = document.getElementById('chat-messages');
     const npc = L2_NPCS[npcKey];
-    container.innerHTML = '';
-    const msgs = l2SayingBye ? [{ role: 'assistant', text: L2_GOODBYES[npcKey] }] : l2ChatMessages[npcKey];
-    for (let i = 0; i < msgs.length; i++) {
-        const m = msgs[i];
-        const div = document.createElement('div');
-        div.className = m.role === 'assistant' ? 'msg-npc' : 'msg-player';
-        const label = m.role === 'assistant' ? npc.name : 'YOU';
-        const isLast = i === msgs.length - 1 && m.role === 'assistant';
-        const displayText = (isLast && l2Typewriting && l2Typewriting.current !== l2Typewriting.full)
-            ? l2Typewriting.current : m.text;
-        div.innerHTML = `<span style="color:${m.role === 'assistant' ? npc.color : '#70e870'}">${label}:</span> ${displayText}`;
-        container.appendChild(div);
+    const displayText = (l2Typewriting && l2Typewriting.current !== l2Typewriting.full)
+        ? l2Typewriting.current : text;
+    container.innerHTML = `<div class="msg-npc"><span style="color:${npc.color}">${npc.name}:</span> ${displayText}</div>`;
+    // Show advance prompt
+    const prompt = document.createElement('div');
+    prompt.style.cssText = 'color:#aaa; font-size:10px; margin-top:8px; text-align:center;';
+    prompt.textContent = isMobile() ? 'Tap to continue...' : 'Press E/SPACE to continue...';
+    container.appendChild(prompt);
+}
+
+function updateChatDisplay() {
+    if (!l2TalkingTo || !l2Typewriting) return;
+    const container = document.getElementById('chat-messages');
+    const npc = L2_NPCS[l2TalkingTo];
+    const firstDiv = container.querySelector('.msg-npc');
+    if (firstDiv) {
+        firstDiv.innerHTML = `<span style="color:${npc.color}">${npc.name}:</span> ${l2Typewriting.current}`;
     }
-    container.scrollTop = container.scrollHeight;
 }
 
 function addL2Clue(text) {
@@ -3226,7 +3184,7 @@ function updateLevel2() {
             l2TypeTimer = 0;
             l2Typewriting.charIndex++;
             l2Typewriting.current = l2Typewriting.full.substring(0, l2Typewriting.charIndex);
-            if (l2TalkingTo) renderChatMessages(l2TalkingTo);
+            if (l2TalkingTo) updateChatDisplay();
         }
     }
 
@@ -3293,13 +3251,6 @@ function updateLevel2() {
     }
 
     if (l2State === 'chat') {
-        // Goodbye timer
-        if (l2SayingBye) {
-            l2ByeTimer++;
-            if (l2ByeTimer > 90) {
-                closeLevel2Chat();
-            }
-        }
         return;
     }
 
@@ -3793,21 +3744,10 @@ function drawLevel2Portrait(npcKey) {
 }
 
 // Chat event listeners
-document.getElementById('chat-send').addEventListener('click', sendLevel2Message);
-document.getElementById('chat-input').addEventListener('keydown', (e) => {
-    e.stopPropagation();
-    if (e.key === 'Enter') sendLevel2Message();
-    if (e.key === 'Escape') closeLevel2Chat();
-});
-document.getElementById('chat-goodbye').addEventListener('click', () => {
-    if (!l2TalkingTo || l2SayingBye) return;
-    l2SayingBye = true;
-    l2ByeTimer = 0;
-    const goodbye = L2_GOODBYES[l2TalkingTo];
-    startLevel2Typing(goodbye);
-    document.getElementById('chat-input-row').style.display = 'none';
-    document.getElementById('chat-goodbye').style.display = 'none';
-    renderChatMessages(l2TalkingTo);
+// Chat panel click — advance dialog or skip typewriter
+document.getElementById('chat-panel').addEventListener('click', (e) => {
+    if (l2AccusationOpen) return; // don't interfere with accusation buttons
+    if (l2State === 'chat') advanceLevel2Dialog();
 });
 
 // Notebook button
@@ -3818,15 +3758,6 @@ document.getElementById('notebook-overlay').addEventListener('click', () => {
     l2Notebook.open = false;
     l2State = 'free';
     document.getElementById('notebook-overlay').style.display = 'none';
-});
-
-// Skip typewriter by clicking messages
-document.getElementById('chat-messages').addEventListener('click', () => {
-    if (l2Typewriting && l2Typewriting.current !== l2Typewriting.full) {
-        l2Typewriting.current = l2Typewriting.full;
-        l2Typewriting.charIndex = l2Typewriting.full.length;
-        if (l2TalkingTo) renderChatMessages(l2TalkingTo);
-    }
 });
 
 function gameLoop() {
