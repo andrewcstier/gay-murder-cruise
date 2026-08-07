@@ -2913,9 +2913,6 @@ function openLevel2Chat(npcKey) {
         addL2Clue("The credit card and room key can't be carried together (deactivation).");
         addL2Clue("Each person carried exactly one item.");
     }
-    if (npcKey === 'abraham' && l2DialogIndex.abraham === 0) {
-        addL2Clue("Abraham can't remember which item he had at all.");
-    }
     if (npcKey === 'vanessa' && l2DialogIndex.vanessa === 0) {
         addL2Clue("Vanessa did NOT carry the vodka — she doesn't drink.");
     }
