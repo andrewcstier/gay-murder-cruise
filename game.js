@@ -148,7 +148,9 @@ function showLevelSelect() {
 
 function selectLevel(level) {
     document.getElementById('level-select').style.display = 'none';
-    if (level === 1) {
+    if (level === 0) {
+        startCharSelect();
+    } else if (level === 1) {
         startCharSelect();
     } else if (level === 2) {
         selectedChar = selectedChar || CHARACTERS[0];
@@ -2706,6 +2708,8 @@ let l2DiscoveredClues = [];
 let l2NearNpc = null;
 let l2BlakeGaveNotebook = false;
 let l2BlakeIntroSaid = false;
+let l2BlakeTutorialDone = false;
+let l2BlakeInTutorial = false;
 let l2ShowTimeText = false;
 let l2TimeTextAlpha = 0;
 let l2TimeTextPhase = 'fadein';
@@ -2761,13 +2765,20 @@ const L2_DIALOG = {
         "The credit card and room key couldn't be carried together or they'd deactivate. And then we also had a vodka shot.",
         "So each of us carried one thing. Talk to the others — maybe they remember more than me!",
     ],
+    blake_tutorial: [
+        "Want me to show you how to use the notebook?",
+        "It's a logic grid! Each row is an ITEM and each column is a PERSON.",
+        "Tap a cell to cycle through marks: ✓ means YES they had it, ✗ means NO, and ? means MAYBE.",
+        "When you place a ✓, the rest of that row and column auto-fill with ✗ — since each person had exactly one item.",
+        "Use the clues we give you to figure out who had what. When you're ready, come accuse someone!",
+    ],
     blake_after: [
         "Any luck? Talk to me when you're ready to accuse someone!",
     ],
     abraham: [
         "Ugh, hey. I'm having a ROUGH day.",
         "My chocolate lube exploded in my fanny pack. There's chocolate lube EVERYWHERE.",
-        "I definitely did NOT have the room key. I remember that much because I kept saying 'don't give me anything important!'",
+        "I honestly cannot remember which item I had. We were SO drunk. It could have been anything.",
         "Sorry I can't be more help... I'm in crisis mode right now.",
     ],
     vanessa: [
@@ -2876,7 +2887,12 @@ function openLevel2Chat(npcKey) {
 
     // Determine which line to show
     let lines;
-    if (npcKey === 'blake' && l2BlakeGaveNotebook) {
+    if (npcKey === 'blake' && l2BlakeGaveNotebook && !l2BlakeTutorialDone) {
+        lines = L2_DIALOG.blake_tutorial;
+        l2BlakeTutorialDone = true;
+        l2BlakeInTutorial = true;
+        l2DialogIndex[npcKey] = 0;
+    } else if (npcKey === 'blake' && l2BlakeGaveNotebook) {
         lines = L2_DIALOG.blake_after;
     } else {
         lines = L2_DIALOG[npcKey];
@@ -2898,7 +2914,7 @@ function openLevel2Chat(npcKey) {
         addL2Clue("Each person carried exactly one item.");
     }
     if (npcKey === 'abraham' && l2DialogIndex.abraham === 0) {
-        addL2Clue("Abraham did NOT have the room key.");
+        addL2Clue("Abraham can't remember which item he had at all.");
     }
     if (npcKey === 'vanessa' && l2DialogIndex.vanessa === 0) {
         addL2Clue("Vanessa did NOT carry the vodka — she doesn't drink.");
@@ -2911,6 +2927,7 @@ function closeLevel2Chat() {
     l2ChatOpen = false;
     l2TalkingTo = null;
     l2SayingBye = false;
+    l2BlakeInTutorial = false;
     l2State = 'free';
     l2Typewriting = null;
     document.getElementById('chat-panel').style.display = 'none';
@@ -2922,13 +2939,28 @@ function closeLevel2Dialog() {
     l2ExitBlocked = false;
 }
 
+let l2CreditCardExamined = false;
+
 function examineLevel2Item(itemId) {
     if (itemId === 'credit-card') {
         l2State = 'examine-dialog';
         promptEl.classList.remove('visible');
-        dialogBox.innerHTML = '<span style="color:#ffcc00;">You pick up the credit card...</span><br><br>It smells like chocolate. Ew.<br><br><span style="color:#aaa">Press any key to close</span>';
-        dialogBox.classList.add('visible');
-        addL2Clue("The credit card on the bedside table smells like chocolate.");
+        if (!l2CreditCardExamined) {
+            l2CreditCardExamined = true;
+            dialogBox.innerHTML = '<span style="color:#ffcc00;">You discover a credit card on the bedside table.</span><br><br><button id="examine-cc-btn" style="background:rgba(232,208,112,0.15); border:2px solid #e8d070; border-radius:4px; color:#e8d070; font-family:monospace; font-size:12px; padding:8px 16px; cursor:pointer; pointer-events:auto;">Examine it</button>';
+            dialogBox.classList.add('visible');
+            setTimeout(() => {
+                const btn = document.getElementById('examine-cc-btn');
+                if (btn) btn.addEventListener('click', () => {
+                    dialogBox.innerHTML = '<span style="color:#ffcc00;">You pick up the credit card...</span><br><br>It smells like chocolate. Ew.<br><br><span style="color:#aaa">Press any key to close</span>';
+                    addL2Clue("The credit card on the bedside table smells like chocolate.");
+                });
+            }, 0);
+        } else {
+            dialogBox.innerHTML = '<span style="color:#ffcc00;">You pick up the credit card...</span><br><br>It smells like chocolate. Ew.<br><br><span style="color:#aaa">Press any key to close</span>';
+            dialogBox.classList.add('visible');
+            addL2Clue("The credit card on the bedside table smells like chocolate.");
+        }
     }
 }
 
@@ -3033,7 +3065,9 @@ function advanceLevel2Dialog() {
 
     const npcKey = l2TalkingTo;
     let lines;
-    if (npcKey === 'blake' && l2DialogIndex.blake >= L2_DIALOG.blake.length) {
+    if (npcKey === 'blake' && l2BlakeInTutorial) {
+        lines = L2_DIALOG.blake_tutorial;
+    } else if (npcKey === 'blake' && l2DialogIndex.blake >= L2_DIALOG.blake.length) {
         lines = L2_DIALOG.blake_after;
     } else {
         lines = L2_DIALOG[npcKey];
