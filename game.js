@@ -2764,9 +2764,9 @@ const L2_DIALOG = {
         "We each agreed to carry a separate item with us, but we were pretty — uh — under the influence when we came back so we can't remember who had what.",
         "The credit card and room key couldn't be carried together or they'd deactivate. And then we also had a vodka shot.",
         "So each of us carried one thing. Talk to the others — maybe they remember more than me!",
+        "Want me to show you how to use the notebook?",
     ],
     blake_tutorial: [
-        "Want me to show you how to use the notebook?",
         "It's a logic grid! Each row is an ITEM and each column is a PERSON.",
         "Tap a cell to cycle through marks: ✓ means YES they had it, ✗ means NO, and ? means MAYBE.",
         "When you place a ✓, the rest of that row and column auto-fill with ✗ — since each person had exactly one item.",
@@ -2778,11 +2778,12 @@ const L2_DIALOG = {
     abraham: [
         "Ugh, hey. I'm having a ROUGH day.",
         "My chocolate lube exploded in my fanny pack. There's chocolate lube EVERYWHERE.",
-        "I honestly cannot remember which item I had. We were SO drunk. It could have been anything.",
+        "And now we can't find the hotel key. And worse, I can't remember if I was the one who had it last. Last night is a blur.",
         "Sorry I can't be more help... I'm in crisis mode right now.",
     ],
     vanessa: [
-        "Morning, sunshine! Yes, this is a DISASTER. We're locked in!",
+        "Morning, sunshine! Yes, this is a DISASTER. We'll be locked out if we leave!",
+        "Part and parcel, I suppose. Totally worth it. You should have stayed out later with us!",
         "I'll tell you right now — I did NOT carry the vodka. I don't drink alcohol anymore. I only do drugs now. I'm a good girl.",
         "A queen has her standards, darling.",
     ],
@@ -2887,11 +2888,8 @@ function openLevel2Chat(npcKey) {
 
     // Determine which line to show
     let lines;
-    if (npcKey === 'blake' && l2BlakeGaveNotebook && !l2BlakeTutorialDone) {
+    if (npcKey === 'blake' && l2BlakeInTutorial) {
         lines = L2_DIALOG.blake_tutorial;
-        l2BlakeTutorialDone = true;
-        l2BlakeInTutorial = true;
-        l2DialogIndex[npcKey] = 0;
     } else if (npcKey === 'blake' && l2BlakeGaveNotebook) {
         lines = L2_DIALOG.blake_after;
     } else {
@@ -2971,9 +2969,28 @@ function updateAccusationButton() {
         btn.addEventListener('click', openAccusation);
         document.getElementById('chat-panel').appendChild(btn);
     }
+    let tutBtn = document.getElementById('chat-tutorial');
+    if (!tutBtn) {
+        tutBtn = document.createElement('button');
+        tutBtn.id = 'chat-tutorial';
+        tutBtn.style.cssText = 'margin-top:6px; width:calc(100% - 16px); margin-left:8px; background:rgba(232,208,112,0.15); border:2px solid #e8d070; border-radius:4px; color:#e8d070; font-family:monospace; font-size:11px; padding:6px 8px; cursor:pointer;';
+        tutBtn.textContent = 'NOTEBOOK TUTORIAL';
+        tutBtn.addEventListener('click', startBlakeTutorial);
+        document.getElementById('chat-panel').appendChild(tutBtn);
+    }
     // Show accuse button only when talking to Blake AFTER his first dialog is complete
     const blakeFirstDone = l2DialogIndex.blake >= L2_DIALOG.blake.length;
-    btn.style.display = (l2TalkingTo === 'blake' && blakeFirstDone && !l2SayingBye && !l2Solved && !l2AccusationOpen) ? 'block' : 'none';
+    btn.style.display = (l2TalkingTo === 'blake' && blakeFirstDone && !l2SayingBye && !l2Solved && !l2AccusationOpen && !l2BlakeInTutorial) ? 'block' : 'none';
+    tutBtn.style.display = (l2TalkingTo === 'blake' && blakeFirstDone && !l2SayingBye && !l2Solved && !l2AccusationOpen && !l2BlakeInTutorial) ? 'block' : 'none';
+}
+
+function startBlakeTutorial() {
+    l2BlakeInTutorial = true;
+    l2DialogIndex.blake = 0;
+    const line = L2_DIALOG.blake_tutorial[0];
+    startLevel2Typing(line);
+    renderChatLine('blake', line);
+    updateAccusationButton();
 }
 
 function openAccusation() {
@@ -3006,18 +3023,24 @@ function handleAccusation(target) {
 
     if (target === 'blake') {
         container.innerHTML = '<div class="msg-npc"><span style="color:#ff69b4">BLAKE:</span> Babe... it\'s not me. I checked my pockets three times already. Try again?</div>';
-        setTimeout(() => {
+        document.getElementById('chat-next').textContent = 'NEXT';
+        document.getElementById('chat-next').style.display = 'block';
+        document.getElementById('chat-next').onclick = () => {
             l2AccusationOpen = false;
+            document.getElementById('chat-next').onclick = null;
             updateAccusationButton();
             renderChatLine('blake', "It's not me, babe. I checked my pockets. Try again when you're ready!");
-        }, 2000);
+        };
     } else if (target === 'abraham') {
         container.innerHTML = '<div class="msg-npc"><span style="color:#ff69b4">BLAKE:</span> Abraham checks everywhere... nope. He doesn\'t have it either. The lube explosion would have revealed it anyway. Try again?</div>';
-        setTimeout(() => {
+        document.getElementById('chat-next').textContent = 'NEXT';
+        document.getElementById('chat-next').style.display = 'block';
+        document.getElementById('chat-next').onclick = () => {
             l2AccusationOpen = false;
+            document.getElementById('chat-next').onclick = null;
             updateAccusationButton();
             renderChatLine('blake', "Abraham doesn't have it. The lube explosion would have revealed it. Try again!");
-        }, 2000);
+        };
     } else if (target === 'vanessa') {
         document.getElementById('chat-next').style.display = 'none';
         container.innerHTML = '<div class="msg-npc"><span style="color:#ff69b4">BLAKE:</span> Vanessa...</div>';
@@ -3082,6 +3105,24 @@ function advanceLevel2Dialog() {
     const line = lines[idx];
     startLevel2Typing(line);
     renderChatLine(npcKey, line);
+
+    // If Blake just said "Want me to show you how to use the notebook?" — show YES/NO
+    if (npcKey === 'blake' && !l2BlakeInTutorial && line === L2_DIALOG.blake[L2_DIALOG.blake.length - 1]) {
+        document.getElementById('chat-next').style.display = 'none';
+        setTimeout(() => {
+            const container = document.getElementById('chat-messages');
+            container.innerHTML += '<div style="margin-top:8px; display:flex; gap:8px; justify-content:center;">' +
+                '<button id="tut-yes" style="padding:6px 16px; font-family:monospace; font-size:11px; cursor:pointer; background:rgba(232,208,112,0.15); border:2px solid #e8d070; border-radius:4px; color:#e8d070;">YES</button>' +
+                '<button id="tut-no" style="padding:6px 16px; font-family:monospace; font-size:11px; cursor:pointer; background:rgba(255,255,255,0.1); border:2px solid #888; border-radius:4px; color:#aaa;">NO</button>' +
+                '</div>';
+            document.getElementById('tut-yes').addEventListener('click', () => {
+                startBlakeTutorial();
+            });
+            document.getElementById('tut-no').addEventListener('click', () => {
+                closeLevel2Chat();
+            });
+        }, 0);
+    }
 }
 
 function startLevel2Typing(text) {
@@ -3229,9 +3270,10 @@ function updateLevel2() {
     // Typewriter advancement
     if (l2Typewriting && l2Typewriting.charIndex < l2Typewriting.full.length) {
         l2TypeTimer++;
-        if (l2TypeTimer >= 2) {
+        if (l2TypeTimer >= 1) {
             l2TypeTimer = 0;
-            l2Typewriting.charIndex++;
+            l2Typewriting.charIndex += 2;
+            if (l2Typewriting.charIndex > l2Typewriting.full.length) l2Typewriting.charIndex = l2Typewriting.full.length;
             l2Typewriting.current = l2Typewriting.full.substring(0, l2Typewriting.charIndex);
             if (l2TalkingTo) updateChatDisplay();
         }
