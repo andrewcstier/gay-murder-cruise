@@ -5332,19 +5332,19 @@ const L3_DOORS = {
         { x: 0, y: 100, w: 28, h: 100, target: 'roundabout', playerX: 410, playerY: 160, facing: 'left', label: 'Exit to Roundabout' },
     ],
     roundabout: [
-        { x: 440, y: 120, w: 30, h: 80, target: 'shop', playerX: 30, playerY: 160, facing: 'right', label: 'Shop' },
-        { x: 200, y: 0, w: 80, h: 30, target: 'theater', playerX: 228, playerY: 270, facing: 'up', label: 'Theater' },
-        { x: 0, y: 120, w: 30, h: 80, target: 'jewelry', playerX: 410, playerY: 160, facing: 'left', label: 'Jewelry' },
-        { x: 130, y: 430, w: 44, h: 60, target: 'chucks-room', playerX: 228, playerY: 270, facing: 'up', label: "Chuck's Room" },
+        { x: 420, y: 120, w: 60, h: 80, target: 'shop', playerX: 30, playerY: 160, facing: 'right', label: 'Antique Shop' },
+        { x: 190, y: 0, w: 100, h: 40, target: 'theater', playerX: 228, playerY: 270, facing: 'up', label: 'Theater' },
+        { x: 0, y: 120, w: 60, h: 80, target: 'jewelry', playerX: 410, playerY: 160, facing: 'left', label: 'Jewelry' },
+        { x: 130, y: 430, w: 44, h: 60, target: 'chucks-room', playerX: 430, playerY: 160, facing: 'left', label: "Chuck's Room" },
     ],
     theater: [
-        { x: 200, y: 296, w: 80, h: 30, target: 'roundabout', playerX: 228, playerY: 50, facing: 'down', label: 'Roundabout' },
+        { x: 190, y: 286, w: 100, h: 40, target: 'roundabout', playerX: 228, playerY: 50, facing: 'down', label: 'Roundabout' },
     ],
     jewelry: [
-        { x: 440, y: 120, w: 30, h: 80, target: 'roundabout', playerX: 50, playerY: 160, facing: 'right', label: 'Roundabout' },
+        { x: 440, y: 120, w: 40, h: 80, target: 'roundabout', playerX: 50, playerY: 160, facing: 'right', label: 'Roundabout' },
     ],
     'chucks-room': [
-        { x: 200, y: 296, w: 80, h: 30, target: 'roundabout', playerX: 180, playerY: 480, facing: 'up', label: 'Hallway' },
+        { x: 440, y: 120, w: 40, h: 80, target: 'roundabout', playerX: 180, playerY: 460, facing: 'right', label: 'Hallway' },
     ],
 };
 
@@ -5358,12 +5358,22 @@ const L3_COLLIDERS = {
     ],
     roundabout: [
         { x: 155, y: 105, w: 115, h: 105 }, // piano + bench
+        // Roundabout section walls (with gaps for doors)
+        // Top wall — gap at x:190-290 for theater door
+        { x: 0, y: 0, w: 190, h: 40 },
+        { x: 290, y: 0, w: 190, h: 40 },
+        // Left wall — gap at y:120-200 for jewelry door
+        { x: 0, y: 0, w: 40, h: 120 },
+        { x: 0, y: 200, w: 40, h: 120 },
+        // Right wall — gap at y:120-200 for shop door
+        { x: 440, y: 0, w: 40, h: 120 },
+        { x: 440, y: 200, w: 40, h: 120 },
         // Hallway section walls (narrow corridor from y:340 downward)
         // Left wall — gap for Chuck's door at y:430-490
-        { x: 0, y: 340, w: 130, h: 90 },    // left wall above Chuck's door
-        { x: 0, y: 490, w: 130, h: 220 },   // left wall below Chuck's door
+        { x: 0, y: 340, w: 130, h: 90 },
+        { x: 0, y: 490, w: 130, h: 220 },
         // Right wall — decorative doors but solid
-        { x: 340, y: 340, w: 140, h: 370 },  // right wall solid
+        { x: 340, y: 340, w: 140, h: 370 },
     ],
     theater: [
         { x: 60, y: 40, w: 360, h: 80 },  // stage
@@ -5918,7 +5928,7 @@ function updateLevel3() {
     // Bounds — roundabout room has variable width (wide top, narrow hallway bottom)
     if (l3Room === 'roundabout') {
         // Outer bounds for full room
-        let minX = 44, maxX = 430, minY = 4, maxY = L3_ROUNDABOUT_HEIGHT - 40;
+        let minX = 4, maxX = 450, minY = 4, maxY = L3_ROUNDABOUT_HEIGHT - 40;
         if (newX < minX) newX = minX;
         if (newX > maxX) newX = maxX;
         if (newY < minY) newY = minY;
@@ -6648,12 +6658,12 @@ function drawL3ChucksRoom() {
     ctx.fillStyle = '#5c3a1a';
     ctx.fillRect(50, 52, 44, 8);
 
-    // Door (south wall)
+    // Door (right wall)
     for (const door of L3_DOORS['chucks-room']) drawL3DoorIndicator(door);
     ctx.fillStyle = '#d4a574';
-    ctx.fillRect(195, 300, 90, 20);
+    ctx.fillRect(440, 115, 20, 90);
     ctx.fillStyle = '#030305';
-    ctx.fillRect(200, 304, 80, 14);
+    ctx.fillRect(444, 120, 14, 80);
 
     // Chuck NPC
     drawChuckSprite(L3_NPCS.chuck.x, L3_NPCS.chuck.y, L3_NPCS.chuck.facing);
