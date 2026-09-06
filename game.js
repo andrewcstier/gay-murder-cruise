@@ -45,6 +45,7 @@ let cutsceneTimer = 0;
 // Comic cutscene state
 let comicPanel = 0;
 let comicTimer = 0;
+let comicEnteredAt = 0;
 
 // Level 3 shop state
 let l3ShopTextAlpha = 0;
@@ -179,11 +180,14 @@ function handleAction(key) {
         promptEl.classList.remove('visible');
         comicPanel = 0;
         comicTimer = 0;
+        comicEnteredAt = Date.now();
         gameState = 'comic-cutscene';
         return;
     }
     if (gameState === 'comic-cutscene') {
+        if (Date.now() - comicEnteredAt < 400) return;
         comicPanel++;
+        comicEnteredAt = Date.now();
         if (comicPanel >= 8) {
             startLevel3();
         }
@@ -211,7 +215,11 @@ function selectLevel(level) {
         selectedChar = selectedChar || CHARACTERS[0];
         comicPanel = 0;
         comicTimer = 0;
+        comicEnteredAt = Date.now();
+        GameMusic.stopMusic();
+        if (musicEnabled) GameMusic.startMusic('charselect');
         gameState = 'comic-cutscene';
+        return;
     }
 }
 
