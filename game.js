@@ -394,7 +394,7 @@ musicToggle.addEventListener('click', () => {
         if (gameState === 'charselect') GameMusic.startMusic('hallway');
         else if (gameState === 'playing') GameMusic.startMusic('charselect');
         else if (gameState === 'level2') GameMusic.startMusic('charselect');
-        else if (gameState === 'level3') GameMusic.startMusic('charselect');
+        else if (gameState === 'level3') GameMusic.startMusic('hallway');
         else if (gameState === 'gameover' || gameState === 'cutscene' || gameState === 'chase' || gameState === 'room') GameMusic.startMusic('panic');
     } else {
         GameMusic.stopMusic();
@@ -5000,7 +5000,7 @@ function startLevel3() {
     dialogBox.classList.remove('visible');
     promptEl.classList.remove('visible');
     GameMusic.stopMusic();
-    if (musicEnabled) GameMusic.startMusic('charselect');
+    if (musicEnabled) GameMusic.startMusic('hallway');
 }
 
 function handleLevel3Action(key) {
