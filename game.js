@@ -4886,6 +4886,7 @@ const L3_DIALOG = {
         "Oh hi! We're just looking at rings.",
         "I was Cher! It was so much fun performing. The crowd loved it.",
         "My purse? Oh, I don't remember having anything in it. It was just a prop.",
+        "What about Flint? Did you know he's a side? I wonder if someone like that can be trusted.",
     ],
     rj: [
         "Hey! Nice to meet you. AJ won't stop talking about the drag show.",
