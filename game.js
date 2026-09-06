@@ -194,7 +194,7 @@ function handleAction(key) {
         if (Date.now() - comicEnteredAt < 400) return;
         comicPanel++;
         comicEnteredAt = Date.now();
-        if (comicPanel >= 11) {
+        if (comicPanel >= 12) {
             startLevel3();
         }
         return;
@@ -3974,12 +3974,13 @@ function drawComicPanel(n) {
         case 2: drawComicPanel2(); break;
         case 3: drawComicPanel3(); break;
         case 4: drawComicPanel4(); break;
-        case 5: drawComicPanel5(); break;
-        case 6: drawComicPanel5b(); break;
-        case 7: drawComicPanel6(); break;
-        case 8: drawComicPanel7(); break;
-        case 9: drawComicPanel7b(); break;
-        case 10: drawComicPanel8(); break;
+        case 5: drawComicPanel4b(); break;
+        case 6: drawComicPanel5(); break;
+        case 7: drawComicPanel5b(); break;
+        case 8: drawComicPanel6(); break;
+        case 9: drawComicPanel7(); break;
+        case 10: drawComicPanel7b(); break;
+        case 11: drawComicPanel8(); break;
     }
 
     // Thick comic border
@@ -4631,6 +4632,68 @@ function drawComicPanel4() {
 }
 
 // ──────────────────────────────
+// Panel 4b: Announcer introduces the queens
+// ──────────────────────────────
+function drawComicPanel4b() {
+    // Theater interior — spotlight on announcer/emcee at a mic stand
+    ctx.fillStyle = '#1a0a0a';
+    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, HEIGHT - COMIC_BORDER * 2);
+
+    // Stage floor
+    ctx.fillStyle = '#5c3a1a';
+    ctx.fillRect(60, 140, WIDTH - 120, 120);
+    ctx.fillStyle = '#6b4423';
+    ctx.fillRect(60, 135, WIDTH - 120, 8);
+
+    // Red curtains
+    ctx.fillStyle = '#8b0000';
+    ctx.fillRect(10, 10, 55, 250);
+    ctx.fillStyle = '#cc2222';
+    ctx.fillRect(15, 10, 20, 250);
+    ctx.fillRect(WIDTH - 65, 10, 55, 250);
+    ctx.fillStyle = '#cc2222';
+    ctx.fillRect(WIDTH - 55, 10, 20, 250);
+
+    // Curtain valance
+    ctx.fillStyle = '#8b0000';
+    ctx.fillRect(10, 10, WIDTH - 20, 25);
+
+    // Spotlight center
+    ctx.fillStyle = 'rgba(255, 255, 200, 0.2)';
+    ctx.beginPath();
+    ctx.moveTo(WIDTH / 2, 10);
+    ctx.lineTo(WIDTH / 2 - 60, 260);
+    ctx.lineTo(WIDTH / 2 + 60, 260);
+    ctx.closePath();
+    ctx.fill();
+
+    // Mic stand (center stage)
+    ctx.fillStyle = '#888';
+    ctx.fillRect(WIDTH / 2 - 1, 155, 3, 50);
+    ctx.fillStyle = '#aaa';
+    ctx.fillRect(WIDTH / 2 - 8, 200, 17, 4);
+    // Mic head
+    ctx.fillStyle = '#333';
+    ctx.fillRect(WIDTH / 2 - 4, 148, 9, 8);
+
+    // Audience silhouettes
+    ctx.fillStyle = '#111';
+    for (let x = 80; x < WIDTH - 80; x += 28) {
+        ctx.beginPath();
+        ctx.arc(x + 14, HEIGHT - 40, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillRect(x + 6, HEIGHT - 32, 16, 12);
+    }
+
+    // Announcer speech bubble (big, dramatic)
+    drawComicSpeechBubble(
+        'Ladies and gentlemen...\nPlease welcome to the stage:\nJIGGLYPUFF! MARIAH CAREY!\nand CHER!',
+        100, 20, 280, 80,
+        WIDTH / 2, 148
+    );
+}
+
+// ──────────────────────────────
 // Panel 5: "The Drag Show" (wide panel)
 // ──────────────────────────────
 function drawComicPanel5() {
@@ -5221,11 +5284,9 @@ const L3_DIALOG = {
         "Here, let me show you a picture of what was taken...",
     ],
     guard: [
-        "Those blue purses? Yeah I remember them. They stood out because they were identical",
+        "Those blue purses? Yeah I remember them. They stood out because they were identical.",
         "I had to check everyone's bag on the way in, even the performers.",
         "I remember the contents of the blue purses. One had a book, one had a bottle of PrEP, and one had a microphone.",
-        "Cher was already performing on stage when the robbery happened. So it couldn't have been her bag.",
-        "Jigglypuff pulled a microphone out of her purse during the show -- used it for her act.",
     ],
     flint: [
         "I can't talk now, I'm playing.",
@@ -5252,6 +5313,7 @@ const L3_DIALOG = {
     blake: [
         "Hey babe! I'm glad you're on the case. Let me know if you need anything.",
         "This ship is wild. Someone robbed the gift shop during the drag show!",
+        "You know, Cher was already on stage when the robbery happened. So it couldn't have been whoever was performing as Cher.",
     ],
     abraham: [
         "This is crazy! First the murder mystery, now a robbery?",
@@ -5260,6 +5322,7 @@ const L3_DIALOG = {
     vanessa: [
         "Darling, I could solve this faster than you. But I'll let you have your moment.",
         "The drag show was EVERYTHING though. Those queens were fierce.",
+        "Did you see Jigglypuff pull that microphone out of her purse? Iconic. She literally used it as a prop for the whole act.",
     ],
 };
 
@@ -5434,7 +5497,11 @@ function openLevel3Chat(npcKey) {
         document.getElementById('notebook-btn').style.display = 'flex';
         addL3Clue("Performers: Jigglypuff, Mariah Carey, Cher.");
         addL3Clue("Purse contents: Book, PrEP, Microphone.");
+    }
+    if (npcKey === 'blake' && l3DialogIndex.blake === 0) {
         addL3Clue("Cher was on stage during the robbery (Cher != Book).");
+    }
+    if (npcKey === 'vanessa' && l3DialogIndex.vanessa === 0) {
         addL3Clue("Jigglypuff pulled a microphone from her purse (Jigglypuff = Microphone).");
     }
     if (npcKey === 'flint' && l3DialogIndex.flint === 0) {
