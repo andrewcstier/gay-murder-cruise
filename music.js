@@ -6,7 +6,9 @@ let currentTrack = 'music.mp3';
 const TRACKS = {
     hallway: 'music.mp3',
     charselect: 'music-charselect.mp3',
-    panic: 'music-panic.mp3'
+    panic: 'music-panic.mp3',
+    level3: 'music-level3.mp3',
+    piano: 'music-piano.mp3'
 };
 
 function initAudio(track) {

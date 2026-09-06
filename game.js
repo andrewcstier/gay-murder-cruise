@@ -394,7 +394,7 @@ musicToggle.addEventListener('click', () => {
         if (gameState === 'charselect') GameMusic.startMusic('hallway');
         else if (gameState === 'playing') GameMusic.startMusic('charselect');
         else if (gameState === 'level2') GameMusic.startMusic('charselect');
-        else if (gameState === 'level3') GameMusic.startMusic('hallway');
+        else if (gameState === 'level3') GameMusic.startMusic(l3Room === 'hallway' || l3Room === 'chucks-room' ? 'piano' : 'level3');
         else if (gameState === 'gameover' || gameState === 'cutscene' || gameState === 'chase' || gameState === 'room') GameMusic.startMusic('panic');
     } else {
         GameMusic.stopMusic();
@@ -4885,7 +4885,7 @@ const L3_DIALOG = {
     aj: [
         "Oh hi! We're just looking at rings.",
         "I was Cher! It was so much fun performing. The crowd loved it.",
-        "My purse? Oh, I don't remember having anything in it. It was just a prop.",
+        "My purse? I... no. I don't... I don't want to talk about that. There was nothing in it. It was just a prop, okay?",
         "What about Flint? Did you know he's a side? I wonder if someone like that can be trusted.",
     ],
     rj: [
@@ -5001,7 +5001,7 @@ function startLevel3() {
     dialogBox.classList.remove('visible');
     promptEl.classList.remove('visible');
     GameMusic.stopMusic();
-    if (musicEnabled) GameMusic.startMusic('hallway');
+    if (musicEnabled) GameMusic.startMusic('level3');
 }
 
 function handleLevel3Action(key) {
@@ -5530,13 +5530,21 @@ function updateLevel3() {
     const pcy = l3PlayerY + 18;
     for (const door of doors) {
         if (pcx > door.x && pcx < door.x + door.w && pcy > door.y && pcy < door.y + door.h) {
-            // Transition!
+            const prevRoom = l3Room;
             l3Room = door.target;
             l3PlayerX = door.playerX;
             l3PlayerY = door.playerY;
             l3PlayerFacing = door.facing;
             l3NearNpc = null;
             promptEl.classList.remove('visible');
+            if (musicEnabled) {
+                const prevPiano = prevRoom === 'hallway' || prevRoom === 'chucks-room';
+                const nowPiano = l3Room === 'hallway' || l3Room === 'chucks-room';
+                if (prevPiano !== nowPiano) {
+                    GameMusic.stopMusic();
+                    GameMusic.startMusic(nowPiano ? 'piano' : 'level3');
+                }
+            }
             return;
         }
         // Near door indicator
