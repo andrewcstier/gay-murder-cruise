@@ -4359,7 +4359,7 @@ function drawComicPanel2() {
     ctx.fillStyle = '#333';
     ctx.font = 'bold 9px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('CRUISE GIFTS', 385, 66);
+    ctx.fillText('ANTIQUES', 385, 66);
     ctx.textAlign = 'left';
     // Shop window
     ctx.fillStyle = '#aaddff';
@@ -4793,7 +4793,7 @@ function drawComicPanel8() {
     ctx.fillStyle = '#333';
     ctx.font = 'bold 10px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('CRUISE GIFTS', 240, 66);
+    ctx.fillText('ANTIQUES', 240, 66);
     ctx.textAlign = 'left';
     // Windows (warm light from inside)
     ctx.fillStyle = '#ffeeaa';
@@ -4862,7 +4862,7 @@ const L3_NPCS = {
 
 const L3_DIALOG = {
     shopkeeper: [
-        "Someone stole one of my books! A rare, valuable one. The thief grabbed it right off the display and ran.",
+        "Someone stole one of my antique books! A rare, valuable one. The thief grabbed it right off the display and ran.",
         "Security is handling it, but I'm beside myself. It was in one of those blue bags -- you know, the ones from the drag show.",
         "Here, let me show you a picture of what was taken...",
     ],
@@ -4907,7 +4907,7 @@ const L3_DIALOG = {
 // Room door definitions: { x, y, w, h, target, playerX, playerY, facing, label }
 const L3_DOORS = {
     shop: [
-        { x: 0, y: 130, w: 16, h: 60, target: 'roundabout', playerX: 430, playerY: 160, facing: 'left', label: 'Roundabout' },
+        { x: 0, y: 100, w: 24, h: 100, target: 'roundabout', playerX: 430, playerY: 160, facing: 'left', label: 'Exit to Roundabout' },
     ],
     roundabout: [
         { x: 464, y: 130, w: 16, h: 60, target: 'shop', playerX: 30, playerY: 160, facing: 'right', label: 'Shop' },
@@ -4935,7 +4935,7 @@ const L3_COLLIDERS = {
     shop: [
         { x: 160, y: 175, w: 160, h: 30 }, // counter
         { x: 190, y: 50, w: 100, h: 80 },  // display case
-        { x: 20, y: 30, w: 120, h: 105 },  // left shelves
+        { x: 40, y: 30, w: 100, h: 90 },   // left shelves (narrower, leaves path to door)
         { x: 340, y: 30, w: 120, h: 105 }, // right shelves
     ],
     roundabout: [
@@ -5662,7 +5662,7 @@ function drawLevel3() {
     // Room name indicator (top left)
     if (l3State === 'free' || l3State === 'shop-intro') {
         const roomNames = {
-            'shop': 'Gift Shop', 'roundabout': 'Roundabout', 'theater': 'Theater',
+            'shop': 'Antique Shop', 'roundabout': 'Roundabout', 'theater': 'Theater',
             'hallway': 'Hallway', 'chucks-room': "Chuck's Room", 'jewelry': 'Jewelry Store'
         };
         ctx.fillStyle = 'rgba(0,0,0,0.6)';
@@ -5763,13 +5763,22 @@ function drawL3Shop() {
         ctx.fillRect(ix, iy, 12, 10);
     }
 
-    // Display case (center back)
+    // Display case (center back) — empty spot where the book was
     ctx.fillStyle = '#aaddff';
     ctx.fillRect(190, 50, 100, 80);
     ctx.strokeStyle = '#6b4423';
     ctx.lineWidth = 2;
     ctx.strokeRect(190, 50, 100, 80);
-    drawBlueBag(215, 70, 2);
+    // Empty book stand (the book was stolen)
+    ctx.fillStyle = '#5c3a1a';
+    ctx.fillRect(225, 95, 30, 6);
+    ctx.fillRect(232, 88, 16, 8);
+    // "STOLEN" label
+    ctx.fillStyle = '#ff4444';
+    ctx.font = 'bold 8px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('STOLEN', 240, 82);
+    ctx.textAlign = 'left';
 
     // Counter
     ctx.fillStyle = '#6b4423';
@@ -5790,9 +5799,9 @@ function drawL3Shop() {
 
     // Left wall door frame
     ctx.fillStyle = '#d4a574';
-    ctx.fillRect(0, 125, 10, 70);
+    ctx.fillRect(0, 95, 12, 110);
     ctx.fillStyle = '#030305';
-    ctx.fillRect(0, 130, 6, 60);
+    ctx.fillRect(0, 100, 8, 100);
 
     // Player
     drawL3Player();
