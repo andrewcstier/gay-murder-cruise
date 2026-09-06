@@ -4718,39 +4718,30 @@ function drawComicPanel5() {
     ctx.fillRect(jx + 9, jy + 10, 6, 2);
     drawBlueBag(jx - 5, jy + 30, 1);
 
-    // 2. Mariah Carey — ridiculously tiny waist, big bust/hips, sparkly corset
+    // 2. Mariah Carey — curvy body, long flowing brown hair, sparkly corset, high heels
     const mx = 220, my = 158;
-    // Legs
     ctx.fillStyle = '#d4a076';
     ctx.fillRect(mx + 7, my + 30, 4, 10);
     ctx.fillRect(mx + 13, my + 30, 4, 10);
-    // Heels
     ctx.fillStyle = '#cc3366';
     ctx.fillRect(mx + 5, my + 38, 6, 4);
     ctx.fillRect(mx + 13, my + 38, 6, 4);
-    // Wide hips/skirt
-    ctx.fillStyle = '#ff4488';
-    ctx.fillRect(mx + 1, my + 22, 22, 10);
-    // RIDICULOUSLY tiny waist (the meme)
+    // Sparkly corset — hourglass shape
     ctx.fillStyle = '#cc3366';
-    ctx.fillRect(mx + 8, my + 16, 8, 7);
-    // Big bust/chest
-    ctx.fillStyle = '#cc3366';
-    ctx.fillRect(mx + 1, my + 6, 22, 11);
+    ctx.fillRect(mx + 2, my + 8, 20, 10);
     ctx.fillStyle = '#ff4488';
-    ctx.fillRect(mx + 3, my + 7, 8, 8);
-    ctx.fillRect(mx + 13, my + 7, 8, 8);
+    ctx.fillRect(mx + 4, my + 18, 16, 14);
     // Sparkles
     ctx.fillStyle = '#fff';
-    ctx.fillRect(mx + 5, my + 8, 2, 2);
-    ctx.fillRect(mx + 17, my + 10, 2, 2);
-    ctx.fillRect(mx + 4, my + 24, 2, 2);
-    ctx.fillRect(mx + 18, my + 24, 2, 2);
-    ctx.fillRect(mx + 10, my + 18, 1, 1);
+    ctx.fillRect(mx + 6, my + 10, 2, 2);
+    ctx.fillRect(mx + 14, my + 12, 2, 2);
+    ctx.fillRect(mx + 10, my + 22, 2, 2);
+    ctx.fillRect(mx + 8, my + 16, 1, 1);
+    ctx.fillRect(mx + 16, my + 20, 1, 1);
     // Arms out (diva pose)
     ctx.fillStyle = '#d4a076';
-    ctx.fillRect(mx - 4, my + 8, 7, 4);
-    ctx.fillRect(mx + 21, my + 8, 7, 4);
+    ctx.fillRect(mx - 4, my + 10, 7, 4);
+    ctx.fillRect(mx + 21, my + 10, 7, 4);
     // Head
     ctx.fillStyle = '#d4a076';
     ctx.fillRect(mx + 6, my - 2, 12, 10);
@@ -5230,18 +5221,22 @@ const L3_DIALOG = {
         "Here, let me show you a picture of what was taken...",
     ],
     guard: [
-        "I remember those blue bags from the show. Each performer had one.",
-        "The performers were Jigglypuff, Mariah Carey, and Cher.",
-        "I checked the bags during intermission. One had a book, one had a bottle of PrEP, and one had a microphone.",
+        "Those blue purses? Yeah I remember them. They stood out because they were identical",
+        "I had to check everyone's bag on the way in, even the performers.",
+        "I remember the contents of the blue purses. One had a book, one had a bottle of PrEP, and one had a microphone.",
         "Cher was already performing on stage when the robbery happened. So it couldn't have been her bag.",
         "Jigglypuff pulled a microphone out of her purse during the show -- used it for her act.",
     ],
     flint: [
-        "Not now, I'm playing.",
+        "I can't talk now, I'm playing.",
+        "You want to talk to me about the robbery? I already discussed with security.",
         "You know, it's funny. Chuck is so 'masc' that he's ashamed he does drag, and tells everyone he doesn't. I wonder if someone like that can be trusted?",
     ],
     chuck: [
-        "Oh hey. Look, I don't do drag. I wouldn't even fit in half those costumes!",
+        "You want to talk to me about the robbery? Aint those drag queens the subjects?",
+        "I don't do drag. I'm not THAT gay.",
+        "I have a reputation to uphold as a senator.",
+        "I wouldn't even fit in half those costumes!",
         "Can you imagine me in that Mariah Carey corset? Ha!",
         "You know AJ cheats on his husband, right? I wonder if someone like that can be trusted.",
     ],
