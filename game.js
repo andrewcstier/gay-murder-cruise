@@ -54,7 +54,9 @@ let l3ShopTimer = 0;
 
 // Level 3 state
 let l3State = 'shop-intro'; // 'shop-intro', 'free', 'chat', 'notebook', 'accuse', 'complete'
-let l3Room = 'shop'; // 'shop', 'roundabout', 'theater', 'hallway', 'chucks-room', 'jewelry'
+let l3Room = 'shop'; // 'shop', 'roundabout', 'theater', 'chucks-room', 'jewelry'
+let l3Camera = { y: 0 };
+const L3_ROUNDABOUT_HEIGHT = 700; // total height of merged roundabout+hallway room
 let l3PlayerX = 228, l3PlayerY = 230, l3PlayerFacing = 'up';
 let l3NearNpc = null, l3NearDoor = null;
 let l3TalkedTo = { chuck: false, flint: false, aj: false };
@@ -75,6 +77,7 @@ let l3Typewriting = null; // { full, current, charIndex }
 let l3TypeTimer = 0;
 let l3Solved = false;
 let l3CompleteTimer = 0;
+function l3sy(worldY) { return worldY - l3Camera.y; }
 
 const L3_SUSPECTS = ['Chuck', 'Flint', 'AJ'];
 const L3_ITEMS = ['Book', 'PrEP', 'Mic'];
@@ -394,7 +397,7 @@ musicToggle.addEventListener('click', () => {
         if (gameState === 'charselect') GameMusic.startMusic('hallway');
         else if (gameState === 'playing') GameMusic.startMusic('charselect');
         else if (gameState === 'level2') GameMusic.startMusic('charselect');
-        else if (gameState === 'level3') GameMusic.startMusic(l3Room === 'hallway' || l3Room === 'chucks-room' ? 'piano' : 'level3');
+        else if (gameState === 'level3') GameMusic.startMusic(l3Room === 'chucks-room' || (l3Room === 'roundabout' && l3PlayerY > 350) ? 'piano' : 'level3');
         else if (gameState === 'gameover' || gameState === 'cutscene' || gameState === 'chase' || gameState === 'room') GameMusic.startMusic('panic');
     } else {
         GameMusic.stopMusic();
@@ -4276,87 +4279,115 @@ function drawDragQueen(x, y, wigColor, outfitColor, outfitShade) {
 // ──────────────────────────────
 // Panel 1: "Leaving the Room"
 // ──────────────────────────────
-function drawComicPanel1() {
-    // Group entering hallway, Blake urges them to hurry
+function drawComicRoundaboutBg() {
+    // Shared roundabout background for panels 1 and 1b
     ctx.fillStyle = '#2a1a3a';
     ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, HEIGHT - COMIC_BORDER * 2);
 
-    // Corridor walls
-    ctx.fillStyle = '#1a0e28';
-    ctx.fillRect(10, 30, 120, HEIGHT - 60);
-    ctx.fillRect(WIDTH - 130, 30, 120, HEIGHT - 60);
-
-    // Corridor floor
+    // Floor
     ctx.fillStyle = '#4a0e2e';
-    ctx.fillRect(130, 30, WIDTH - 260, HEIGHT - 60);
-    for (let x = 135; x < WIDTH - 135; x += 20) {
-        for (let y = 35; y < HEIGHT - 35; y += 20) {
+    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, HEIGHT - COMIC_BORDER * 2);
+    for (let x = 10; x < WIDTH - 10; x += 20) {
+        for (let y = 10; y < HEIGHT - 10; y += 20) {
             ctx.fillStyle = '#5c1438';
             ctx.fillRect(x, y, 8, 8);
         }
     }
 
-    // Wide opening ahead
+    // Walls
     ctx.fillStyle = '#3a2a5c';
-    ctx.fillRect(150, 30, WIDTH - 300, 100);
-    ctx.fillStyle = '#4a3a6a';
-    ctx.fillRect(160, 40, WIDTH - 320, 80);
+    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, 35);
+    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, 35, HEIGHT - COMIC_BORDER * 2);
+    ctx.fillRect(WIDTH - 35 - COMIC_BORDER, COMIC_BORDER, 35, HEIGHT - COMIC_BORDER * 2);
+    // Wall trim
+    ctx.fillStyle = '#4a2a1a';
+    ctx.fillRect(COMIC_BORDER, 38, WIDTH - COMIC_BORDER * 2, 4);
+    ctx.fillRect(38, COMIC_BORDER, 4, HEIGHT - COMIC_BORDER * 2);
+    ctx.fillRect(WIDTH - 39, COMIC_BORDER, 4, HEIGHT - COMIC_BORDER * 2);
 
-    // Group walking - backs shown
-    const groupY = 180;
-    drawComicPlayerChar(195, groupY, 'up');
-    drawBlakeSprite(220, groupY, 'up');
+    // Piano (small, in the background center-left)
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(100, 70, 50, 60);
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(104, 74, 42, 52);
+    // Keys
+    ctx.fillStyle = '#eee';
+    ctx.fillRect(148, 78, 8, 44);
+    for (let k = 0; k < 5; k++) {
+        ctx.fillStyle = '#ddd';
+        ctx.fillRect(148, 79 + k * 9, 8, 1);
+    }
+
+    // Door frames visible in walls
+    // North (theater) - top wall
+    ctx.fillStyle = '#d4a574';
+    ctx.fillRect(200, COMIC_BORDER, 60, 10);
+    ctx.fillStyle = '#030305';
+    ctx.fillRect(205, COMIC_BORDER, 50, 6);
+    ctx.fillStyle = '#e8d070';
+    ctx.font = '7px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('THEATER', 230, 22);
+    // East (shop) - right wall
+    ctx.fillStyle = '#d4a574';
+    ctx.fillRect(WIDTH - 39, 120, 10, 50);
+    ctx.fillStyle = '#030305';
+    ctx.fillRect(WIDTH - 35, 125, 6, 40);
+    // West (jewelry) - left wall
+    ctx.fillStyle = '#d4a574';
+    ctx.fillRect(COMIC_BORDER + 29, 120, 10, 50);
+    ctx.fillStyle = '#030305';
+    ctx.fillRect(COMIC_BORDER + 29, 125, 6, 40);
+
+    // Hallway entrance at bottom (where group came from)
+    ctx.fillStyle = '#030305';
+    ctx.fillRect(190, HEIGHT - 35 - COMIC_BORDER, 80, 40);
+    ctx.fillStyle = '#4a0e2e';
+    ctx.fillRect(195, HEIGHT - 30 - COMIC_BORDER, 70, 35);
+
+    // Sconces
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(44, 70, 4, 4);
+    ctx.fillRect(WIDTH - 48, 70, 4, 4);
+    ctx.fillStyle = 'rgba(255, 200, 0, 0.10)';
+    ctx.beginPath(); ctx.arc(46, 72, 12, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(WIDTH - 46, 72, 12, 0, Math.PI * 2); ctx.fill();
+    ctx.textAlign = 'left';
+}
+
+function drawComicPanel1() {
+    // Group just entered the roundabout from the hallway, Blake urges them
+    drawComicRoundaboutBg();
+
+    // Group near bottom, having just walked in from the hallway entrance
+    const groupY = 210;
+    drawComicPlayerChar(185, groupY, 'up');
+    drawBlakeSprite(215, groupY, 'up');
     drawAbrahamSprite(245, groupY, 'up');
-    drawVanessaSprite(270, groupY, 'up');
-
-    // Wall sconces
-    ctx.fillStyle = '#ffcc44';
-    ctx.fillRect(125, 80, 8, 12);
-    ctx.fillRect(WIDTH - 133, 80, 8, 12);
-    ctx.fillStyle = 'rgba(255, 200, 100, 0.2)';
-    ctx.fillRect(118, 70, 22, 32);
-    ctx.fillRect(WIDTH - 140, 70, 22, 32);
+    drawVanessaSprite(275, groupY, 'up');
 
     // Blake speech bubble
     drawComicSpeechBubble(
         'Let\'s hurry to the drag\nshow. The Cher impersonator\nis already on stage!',
-        110, 80, 260, 60,
-        232, groupY - 5
+        110, 100, 260, 60,
+        227, groupY - 5
     );
 }
 
 function drawComicPanel1b() {
-    // Group stops — exclamation points — off-screen "No!"
-    ctx.fillStyle = '#2a1a3a';
-    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, HEIGHT - COMIC_BORDER * 2);
+    // Same roundabout — group hears off-screen "No!"
+    drawComicRoundaboutBg();
 
-    // Same corridor
-    ctx.fillStyle = '#1a0e28';
-    ctx.fillRect(10, 30, 120, HEIGHT - 60);
-    ctx.fillRect(WIDTH - 130, 30, 120, HEIGHT - 60);
-    ctx.fillStyle = '#4a0e2e';
-    ctx.fillRect(130, 30, WIDTH - 260, HEIGHT - 60);
-    for (let x = 135; x < WIDTH - 135; x += 20) {
-        for (let y = 35; y < HEIGHT - 35; y += 20) {
-            ctx.fillStyle = '#5c1438';
-            ctx.fillRect(x, y, 8, 8);
-        }
-    }
-    ctx.fillStyle = '#3a2a5c';
-    ctx.fillRect(150, 30, WIDTH - 300, 100);
-    ctx.fillStyle = '#4a3a6a';
-    ctx.fillRect(160, 40, WIDTH - 320, 80);
-
-    // Group stopped, facing forward
-    const groupY = 180;
-    drawComicPlayerChar(195, groupY, 'up');
-    drawBlakeSprite(220, groupY, 'up');
-    drawAbrahamSprite(245, groupY, 'up');
-    drawVanessaSprite(270, groupY, 'up');
+    // Group stopped, looking right (toward the shop)
+    const groupY = 210;
+    drawComicPlayerChar(185, groupY, 'right');
+    drawBlakeSprite(215, groupY, 'right');
+    drawAbrahamSprite(245, groupY, 'right');
+    drawVanessaSprite(275, groupY, 'right');
 
     // Exclamation points above each character
     ctx.fillStyle = '#fff';
-    const exclPositions = [207, 232, 257, 282];
+    const exclPositions = [197, 227, 257, 287];
     for (const ex of exclPositions) {
         ctx.fillRect(ex - 6, groupY - 28, 12, 18);
     }
@@ -4368,34 +4399,29 @@ function drawComicPanel1b() {
     }
     ctx.textAlign = 'left';
 
-    // Off-screen "No!" coming from the right
+    // Off-screen "No!" coming from the right (shop direction)
     ctx.save();
     ctx.fillStyle = '#ff4444';
     ctx.strokeStyle = '#000';
     ctx.lineWidth = 3;
     ctx.font = 'bold 28px monospace';
     ctx.textAlign = 'right';
-    ctx.strokeText('No!!', WIDTH - 20, 80);
-    ctx.fillText('No!!', WIDTH - 20, 80);
+    ctx.strokeText('No!!', WIDTH - 20, 100);
+    ctx.fillText('No!!', WIDTH - 20, 100);
     ctx.restore();
 
-    // Jagged speech tail pointing off-screen right
+    // Jagged speech tail pointing off-screen right toward shop door
     ctx.fillStyle = '#fff';
     ctx.strokeStyle = '#000';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(WIDTH - 10, 55);
-    ctx.lineTo(WIDTH - 60, 50);
-    ctx.lineTo(WIDTH - 50, 65);
-    ctx.lineTo(WIDTH - 80, 62);
-    ctx.lineTo(WIDTH - 55, 75);
+    ctx.moveTo(WIDTH - 10, 78);
+    ctx.lineTo(WIDTH - 50, 72);
+    ctx.lineTo(WIDTH - 44, 86);
+    ctx.lineTo(WIDTH - 70, 82);
+    ctx.lineTo(WIDTH - 48, 94);
     ctx.closePath();
     ctx.stroke();
-
-    // Wall sconces
-    ctx.fillStyle = '#ffcc44';
-    ctx.fillRect(125, 80, 8, 12);
-    ctx.fillRect(WIDTH - 133, 80, 8, 12);
 }
 
 // ──────────────────────────────
@@ -5120,9 +5146,9 @@ const L3_NPCS = {
     chuck: { room: 'chucks-room', x: 240, y: 140, facing: 'down', name: 'CHUCK', color: '#cc4444' },
     aj: { room: 'jewelry', x: 180, y: 160, facing: 'right', name: 'AJ', color: '#33ccff' },
     rj: { room: 'jewelry', x: 280, y: 160, facing: 'left', name: 'RJ', color: '#33cc99' },
-    blake: { room: 'roundabout', x: 320, y: 200, facing: 'left', name: 'BLAKE', color: '#ff69b4' },
-    abraham: { room: 'roundabout', x: 360, y: 140, facing: 'down', name: 'ABRAHAM', color: '#44cc88' },
-    vanessa: { room: 'roundabout', x: 120, y: 200, facing: 'right', name: 'VANESSA', color: '#cc44ff' },
+    blake: { room: 'theater', x: 200, y: 200, facing: 'up', name: 'BLAKE', color: '#ff69b4' },
+    abraham: { room: 'jewelry', x: 300, y: 200, facing: 'left', name: 'ABRAHAM', color: '#44cc88' },
+    vanessa: { room: 'roundabout', x: 200, y: 460, facing: 'right', name: 'VANESSA', color: '#cc44ff' },
 };
 
 const L3_DIALOG = {
@@ -5173,26 +5199,22 @@ const L3_DIALOG = {
 // Room door definitions: { x, y, w, h, target, playerX, playerY, facing, label }
 const L3_DOORS = {
     shop: [
-        { x: 0, y: 100, w: 24, h: 100, target: 'roundabout', playerX: 430, playerY: 160, facing: 'left', label: 'Exit to Roundabout' },
+        { x: 0, y: 100, w: 28, h: 100, target: 'roundabout', playerX: 410, playerY: 160, facing: 'left', label: 'Exit to Roundabout' },
     ],
     roundabout: [
-        { x: 464, y: 130, w: 16, h: 60, target: 'shop', playerX: 30, playerY: 160, facing: 'right', label: 'Shop' },
-        { x: 210, y: 0, w: 60, h: 16, target: 'theater', playerX: 228, playerY: 270, facing: 'up', label: 'Theater' },
-        { x: 0, y: 130, w: 16, h: 60, target: 'jewelry', playerX: 430, playerY: 160, facing: 'left', label: 'Jewelry' },
-        { x: 210, y: 304, w: 60, h: 16, target: 'hallway', playerX: 228, playerY: 40, facing: 'down', label: 'Hallway' },
+        { x: 440, y: 120, w: 30, h: 80, target: 'shop', playerX: 30, playerY: 160, facing: 'right', label: 'Shop' },
+        { x: 200, y: 0, w: 80, h: 30, target: 'theater', playerX: 228, playerY: 270, facing: 'up', label: 'Theater' },
+        { x: 0, y: 120, w: 30, h: 80, target: 'jewelry', playerX: 410, playerY: 160, facing: 'left', label: 'Jewelry' },
+        { x: 130, y: 430, w: 44, h: 60, target: 'chucks-room', playerX: 228, playerY: 270, facing: 'up', label: "Chuck's Room" },
     ],
     theater: [
-        { x: 210, y: 304, w: 60, h: 16, target: 'roundabout', playerX: 228, playerY: 30, facing: 'down', label: 'Roundabout' },
+        { x: 200, y: 296, w: 80, h: 30, target: 'roundabout', playerX: 228, playerY: 50, facing: 'down', label: 'Roundabout' },
     ],
     jewelry: [
-        { x: 464, y: 130, w: 16, h: 60, target: 'roundabout', playerX: 30, playerY: 160, facing: 'right', label: 'Roundabout' },
-    ],
-    hallway: [
-        { x: 210, y: 0, w: 60, h: 16, target: 'roundabout', playerX: 228, playerY: 280, facing: 'up', label: 'Roundabout' },
-        { x: 80, y: 130, w: 44, h: 60, target: 'chucks-room', playerX: 228, playerY: 270, facing: 'up', label: "Chuck's Room" },
+        { x: 440, y: 120, w: 30, h: 80, target: 'roundabout', playerX: 50, playerY: 160, facing: 'right', label: 'Roundabout' },
     ],
     'chucks-room': [
-        { x: 210, y: 304, w: 60, h: 16, target: 'hallway', playerX: 152, playerY: 170, facing: 'up', label: 'Hallway' },
+        { x: 200, y: 296, w: 80, h: 30, target: 'roundabout', playerX: 180, playerY: 480, facing: 'up', label: 'Hallway' },
     ],
 };
 
@@ -5206,18 +5228,17 @@ const L3_COLLIDERS = {
     ],
     roundabout: [
         { x: 155, y: 105, w: 115, h: 105 }, // piano + bench
+        // Hallway section walls (narrow corridor from y:340 downward)
+        // Left wall — gap for Chuck's door at y:430-490
+        { x: 0, y: 340, w: 130, h: 90 },    // left wall above Chuck's door
+        { x: 0, y: 490, w: 130, h: 220 },   // left wall below Chuck's door
+        // Right wall — decorative doors but solid
+        { x: 340, y: 340, w: 140, h: 370 },  // right wall solid
     ],
     theater: [
         { x: 60, y: 40, w: 360, h: 80 },  // stage
         { x: 10, y: 10, w: 55, h: 250 },   // left curtain
         { x: 415, y: 10, w: 55, h: 250 },  // right curtain
-    ],
-    hallway: [
-        // walls narrowing the hallway, with opening for Chuck's door
-        { x: 0, y: 0, w: 80, h: 120 },
-        { x: 0, y: 200, w: 80, h: 120 },
-        { x: 400, y: 0, w: 80, h: 130 },
-        { x: 400, y: 190, w: 80, h: 130 },
     ],
     'chucks-room': [
         { x: 50, y: 60, w: 110, h: 140 },  // bed
@@ -5237,6 +5258,7 @@ function startLevel3() {
     l3PlayerX = 228;
     l3PlayerY = 230;
     l3PlayerFacing = 'up';
+    l3Camera = { y: 0 };
     l3ShopTextAlpha = 0;
     l3ShopTextPhase = 'done';
     l3ShopTimer = 0;
@@ -5752,16 +5774,37 @@ function updateLevel3() {
     if (keys['arrowup'] || keys['w']) { newY -= spd; l3PlayerFacing = 'up'; moved = true; }
     if (keys['arrowdown'] || keys['s']) { newY += spd; l3PlayerFacing = 'down'; moved = true; }
 
-    // Bounds
-    const minX = 10;
-    const maxX = 450;
-    const minY = 16;
-    const maxY = 275;
-
-    if (newX < minX) newX = minX;
-    if (newX > maxX) newX = maxX;
-    if (newY < minY) newY = minY;
-    if (newY > maxY) newY = maxY;
+    // Bounds — roundabout room has variable width (wide top, narrow hallway bottom)
+    if (l3Room === 'roundabout') {
+        // Outer bounds for full room
+        let minX = 44, maxX = 430, minY = 44, maxY = L3_ROUNDABOUT_HEIGHT - 40;
+        if (newX < minX) newX = minX;
+        if (newX > maxX) newX = maxX;
+        if (newY < minY) newY = minY;
+        if (newY > maxY) newY = maxY;
+        // Transition zone (y: 280-350): walls narrow linearly
+        if (newY > 280 && newY <= 350) {
+            const t = (newY - 280) / 70; // 0 at y=280, 1 at y=350
+            const leftWall = 44 + t * (134 - 44);
+            const rightWall = 430 - t * (430 - 310);
+            if (newX < leftWall) newX = leftWall;
+            if (newX > rightWall) newX = rightWall;
+        }
+        // In hallway section, constrain X to narrow corridor
+        if (newY > 350) {
+            if (newX < 134) newX = 134;
+            if (newX > 310) newX = 310;
+        }
+    } else {
+        const minX = 10;
+        const maxX = 450;
+        const minY = 16;
+        const maxY = 275;
+        if (newX < minX) newX = minX;
+        if (newX > maxX) newX = maxX;
+        if (newY < minY) newY = minY;
+        if (newY > maxY) newY = maxY;
+    }
 
     // Collision
     const pw = 24, ph = 36;
@@ -5788,6 +5831,22 @@ function updateLevel3() {
     }
     if (moved) player.animTimer++;
 
+    // Camera tracking for roundabout (scrolls vertically)
+    if (l3Room === 'roundabout') {
+        l3Camera.y = l3PlayerY - HEIGHT / 2 + 18;
+        if (l3Camera.y < 0) l3Camera.y = 0;
+        if (l3Camera.y > L3_ROUNDABOUT_HEIGHT - HEIGHT) l3Camera.y = L3_ROUNDABOUT_HEIGHT - HEIGHT;
+    } else {
+        l3Camera.y = 0;
+    }
+
+    // Music: switch between piano (hallway section) and level3 music
+    if (musicEnabled && l3Room === 'roundabout') {
+        const inHallway = l3PlayerY > 350;
+        // startMusic is a no-op if the same track is already playing
+        GameMusic.startMusic(inHallway ? 'piano' : 'level3');
+    }
+
     // Door proximity / transition
     l3NearDoor = null;
     const doors = L3_DOORS[l3Room] || [];
@@ -5796,6 +5855,7 @@ function updateLevel3() {
     for (const door of doors) {
         if (pcx > door.x && pcx < door.x + door.w && pcy > door.y && pcy < door.y + door.h) {
             const prevRoom = l3Room;
+            const prevY = l3PlayerY;
             l3Room = door.target;
             l3PlayerX = door.playerX;
             l3PlayerY = door.playerY;
@@ -5803,8 +5863,8 @@ function updateLevel3() {
             l3NearNpc = null;
             promptEl.classList.remove('visible');
             if (musicEnabled) {
-                const prevPiano = prevRoom === 'hallway' || prevRoom === 'chucks-room';
-                const nowPiano = l3Room === 'hallway' || l3Room === 'chucks-room';
+                const prevPiano = prevRoom === 'chucks-room' || (prevRoom === 'roundabout' && prevY > 350);
+                const nowPiano = l3Room === 'chucks-room' || (l3Room === 'roundabout' && l3PlayerY > 350);
                 if (prevPiano !== nowPiano) {
                     GameMusic.stopMusic();
                     GameMusic.startMusic(nowPiano ? 'piano' : 'level3');
@@ -5852,7 +5912,6 @@ function drawLevel3() {
         case 'shop': drawL3Shop(); break;
         case 'roundabout': drawL3Roundabout(); break;
         case 'theater': drawL3Theater(); break;
-        case 'hallway': drawL3Hallway(); break;
         case 'chucks-room': drawL3ChucksRoom(); break;
         case 'jewelry': drawL3Jewelry(); break;
     }
@@ -5862,11 +5921,12 @@ function drawLevel3() {
         const npc = L3_NPCS[l3NearNpc];
         if (npc.room === l3Room) {
             const bob = Math.sin(Date.now() * 0.005) * 3;
+            const camY = (l3Room === 'roundabout') ? l3Camera.y : 0;
             ctx.fillStyle = '#ffcc00';
             ctx.beginPath();
-            ctx.moveTo(npc.x + 12, npc.y - 10 + bob);
-            ctx.lineTo(npc.x + 7, npc.y - 18 + bob);
-            ctx.lineTo(npc.x + 17, npc.y - 18 + bob);
+            ctx.moveTo(npc.x + 12, npc.y - 10 + bob - camY);
+            ctx.lineTo(npc.x + 7, npc.y - 18 + bob - camY);
+            ctx.lineTo(npc.x + 17, npc.y - 18 + bob - camY);
             ctx.fill();
         }
     }
@@ -5936,8 +5996,8 @@ function drawLevel3() {
     // Room name indicator (top left)
     if (l3State === 'free' || l3State === 'shop-intro') {
         const roomNames = {
-            'shop': 'Antique Shop', 'roundabout': 'Roundabout', 'theater': 'Theater',
-            'hallway': 'Hallway', 'chucks-room': "Chuck's Room", 'jewelry': 'Jewelry Store'
+            'shop': 'Antique Shop', 'roundabout': (l3PlayerY > 350 ? 'Hallway' : 'Roundabout'), 'theater': 'Theater',
+            'chucks-room': "Chuck's Room", 'jewelry': 'Jewelry Store'
         };
         ctx.fillStyle = 'rgba(0,0,0,0.6)';
         ctx.fillRect(4, 4, 100, 18);
@@ -5950,7 +6010,7 @@ function drawLevel3() {
 
 function drawL3Player() {
     const px = Math.floor(l3PlayerX);
-    const py = Math.floor(l3PlayerY);
+    const py = Math.floor(l3Room === 'roundabout' ? l3sy(l3PlayerY) : l3PlayerY);
     const char = selectedChar || CHARACTERS[0];
     const moving = isMoving() && l3State === 'free';
     const bounce = Math.sin(player.animTimer * 0.15) * (moving ? 1.5 : 0);
@@ -6082,109 +6142,207 @@ function drawL3Shop() {
 }
 
 function drawL3Roundabout() {
-    drawL3RoomFloor();
+    // Full-height floor for scrollable room
+    ctx.fillStyle = '#2a1a3a';
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    // Floor tiles (only draw visible area for performance)
+    const startTileY = Math.floor(l3Camera.y / 24) * 24;
+    const endTileY = l3Camera.y + HEIGHT + 24;
+    for (let x = 0; x < WIDTH; x += 24) {
+        for (let wy = startTileY; wy < endTileY; wy += 24) {
+            ctx.fillStyle = '#321e44';
+            ctx.fillRect(x + 2, l3sy(wy) + 2, 10, 10);
+        }
+    }
 
+    // === TOP AREA: Roundabout (y: 0 - 320) ===
     // Walls
     ctx.fillStyle = '#3a2a5c';
-    ctx.fillRect(0, 0, WIDTH, 40);
-    ctx.fillRect(0, 280, WIDTH, 40);
-    ctx.fillRect(0, 0, 40, HEIGHT);
-    ctx.fillRect(440, 0, 40, HEIGHT);
+    ctx.fillRect(0, l3sy(0), WIDTH, 40);     // north wall
+    ctx.fillRect(0, l3sy(0), 40, 320);       // west wall
+    ctx.fillRect(440, l3sy(0), 40, 320);     // east wall
     // Wall trim
     ctx.fillStyle = '#4a2a1a';
-    ctx.fillRect(0, 36, WIDTH, 4);
-    ctx.fillRect(0, 280, WIDTH, 4);
-    ctx.fillRect(36, 0, 4, HEIGHT);
-    ctx.fillRect(440, 0, 4, HEIGHT);
+    ctx.fillRect(0, l3sy(36), WIDTH, 4);
+    ctx.fillRect(36, l3sy(0), 4, 320);
+    ctx.fillRect(440, l3sy(0), 4, 320);
 
-    // Grand piano in center (rotated — keys face right, lid opens left)
-    // Piano body (glossy black)
+    // Grand piano in center
     ctx.fillStyle = '#0a0a0a';
-    ctx.fillRect(170, 105, 70, 100);
+    ctx.fillRect(170, l3sy(105), 70, 100);
     ctx.fillStyle = '#1a1a1a';
-    ctx.fillRect(175, 110, 60, 90);
-    // Curved side (grand piano shape)
+    ctx.fillRect(175, l3sy(110), 60, 90);
     ctx.fillStyle = '#0a0a0a';
     ctx.beginPath();
-    ctx.ellipse(170, 155, 15, 50, 0, Math.PI * 0.5, Math.PI * 1.5);
+    ctx.ellipse(170, l3sy(155), 15, 50, 0, Math.PI * 0.5, Math.PI * 1.5);
     ctx.fill();
-    // Open lid (angled, reflecting light)
     ctx.fillStyle = '#222';
-    ctx.fillRect(158, 105, 14, 100);
+    ctx.fillRect(158, l3sy(105), 14, 100);
     ctx.fillStyle = '#333';
-    ctx.fillRect(160, 108, 10, 94);
-    // Lid prop stick
+    ctx.fillRect(160, l3sy(108), 10, 94);
     ctx.fillStyle = '#444';
-    ctx.fillRect(168, 115, 2, 30);
-    // Piano keys (vertical strip on right side)
+    ctx.fillRect(168, l3sy(115), 2, 30);
     ctx.fillStyle = '#eee';
-    ctx.fillRect(235, 115, 12, 80);
+    ctx.fillRect(235, l3sy(115), 12, 80);
     for (let k = 0; k < 10; k++) {
         ctx.fillStyle = '#ddd';
-        ctx.fillRect(235, 116 + k * 8, 12, 1);
+        ctx.fillRect(235, l3sy(116 + k * 8), 12, 1);
     }
-    // Black keys
     for (let k = 0; k < 7; k++) {
         if (k % 3 !== 2) {
             ctx.fillStyle = '#111';
-            ctx.fillRect(235, 118 + k * 11, 7, 6);
+            ctx.fillRect(235, l3sy(118 + k * 11), 7, 6);
         }
     }
-    // Piano legs
     ctx.fillStyle = '#0a0a0a';
-    ctx.fillRect(172, 200, 4, 10);
-    ctx.fillRect(230, 200, 4, 10);
-    ctx.fillRect(172, 105, 4, 8);
-    // Piano bench (to the right of keys)
+    ctx.fillRect(172, l3sy(200), 4, 10);
+    ctx.fillRect(230, l3sy(200), 4, 10);
+    ctx.fillRect(172, l3sy(105), 4, 8);
     ctx.fillStyle = '#4a2a1a';
-    ctx.fillRect(248, 135, 16, 40);
+    ctx.fillRect(248, l3sy(135), 16, 40);
     ctx.fillStyle = '#3a1a0a';
-    ctx.fillRect(250, 137, 12, 36);
+    ctx.fillRect(250, l3sy(137), 12, 36);
 
-    // Doors
-    for (const door of L3_DOORS.roundabout) drawL3DoorIndicator(door);
-
-    // Door frames
+    // Door frames — roundabout top area
     // North (theater)
     ctx.fillStyle = '#d4a574';
-    ctx.fillRect(205, 0, 70, 10);
+    ctx.fillRect(195, l3sy(0), 90, 10);
     ctx.fillStyle = '#030305';
-    ctx.fillRect(210, 0, 60, 6);
-    // South (hallway)
-    ctx.fillStyle = '#d4a574';
-    ctx.fillRect(205, 310, 70, 10);
-    ctx.fillStyle = '#030305';
-    ctx.fillRect(210, 310, 60, 6);
+    ctx.fillRect(200, l3sy(0), 80, 6);
     // East (shop)
     ctx.fillStyle = '#d4a574';
-    ctx.fillRect(460, 125, 20, 70);
+    ctx.fillRect(450, l3sy(115), 30, 90);
     ctx.fillStyle = '#030305';
-    ctx.fillRect(466, 130, 14, 60);
+    ctx.fillRect(456, l3sy(120), 24, 80);
     // West (jewelry)
     ctx.fillStyle = '#d4a574';
-    ctx.fillRect(0, 125, 10, 70);
+    ctx.fillRect(0, l3sy(115), 10, 90);
     ctx.fillStyle = '#030305';
-    ctx.fillRect(0, 130, 6, 60);
+    ctx.fillRect(0, l3sy(120), 6, 80);
 
-    // Sconces
+    // Sconces (top area)
     ctx.fillStyle = '#ffd700';
-    ctx.fillRect(42, 80, 4, 4);
-    ctx.fillRect(434, 80, 4, 4);
-    ctx.fillRect(42, 220, 4, 4);
-    ctx.fillRect(434, 220, 4, 4);
+    ctx.fillRect(42, l3sy(80), 4, 4);
+    ctx.fillRect(434, l3sy(80), 4, 4);
+    ctx.fillRect(42, l3sy(220), 4, 4);
+    ctx.fillRect(434, l3sy(220), 4, 4);
     ctx.fillStyle = 'rgba(255, 200, 0, 0.10)';
-    ctx.beginPath(); ctx.arc(44, 82, 16, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(436, 82, 16, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(44, l3sy(82), 16, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(436, l3sy(82), 16, 0, Math.PI * 2); ctx.fill();
 
-    // Flint seated at piano (custom pose — sitting on bench, hands on keys, facing left)
-    const fx = L3_NPCS.flint.x, fy = L3_NPCS.flint.y;
-    // Legs (bent, seated on bench)
+    // === TRANSITION ZONE (y: 280-350) ===
+    // Walls narrow from 40px insets to hallway width (130px insets)
+    ctx.fillStyle = '#3a2a5c';
+    // Left wall narrows
+    ctx.beginPath();
+    ctx.moveTo(0, l3sy(280));
+    ctx.lineTo(40, l3sy(280));
+    ctx.lineTo(130, l3sy(350));
+    ctx.lineTo(0, l3sy(350));
+    ctx.fill();
+    // Right wall narrows
+    ctx.beginPath();
+    ctx.moveTo(440, l3sy(280));
+    ctx.lineTo(480, l3sy(280));
+    ctx.lineTo(480, l3sy(350));
+    ctx.lineTo(340, l3sy(350));
+    ctx.fill();
+    // Trim on transition walls
+    ctx.fillStyle = '#4a2a1a';
+    ctx.beginPath();
+    ctx.moveTo(36, l3sy(280));
+    ctx.lineTo(130, l3sy(350));
+    ctx.lineTo(134, l3sy(350));
+    ctx.lineTo(40, l3sy(280));
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(440, l3sy(280));
+    ctx.lineTo(340, l3sy(350));
+    ctx.lineTo(336, l3sy(350));
+    ctx.lineTo(444, l3sy(280));
+    ctx.fill();
+
+    // === HALLWAY AREA (y: 350 - 700) ===
+    // Left wall (with gap for Chuck's door at y:430-490)
+    ctx.fillStyle = '#3a2a5c';
+    ctx.fillRect(0, l3sy(350), 130, 80);     // above Chuck's door
+    ctx.fillRect(0, l3sy(490), 130, 210);    // below Chuck's door
+    // Right wall (solid, with decorative doors drawn on it)
+    ctx.fillRect(340, l3sy(350), 140, 350);
+    // Wall trim hallway
+    ctx.fillStyle = '#4a2a1a';
+    ctx.fillRect(126, l3sy(350), 4, 80);     // left trim above door
+    ctx.fillRect(126, l3sy(490), 4, 210);    // left trim below door
+    ctx.fillRect(340, l3sy(350), 4, 350);    // right trim
+    // End wall
+    ctx.fillStyle = '#3a2a5c';
+    ctx.fillRect(130, l3sy(680), 210, 20);
+    ctx.fillStyle = '#4a2a1a';
+    ctx.fillRect(130, l3sy(676), 210, 4);
+
+    // Chuck's door (left wall, y:430-490) — actual working door
+    ctx.fillStyle = '#d4a574';
+    ctx.fillRect(130, l3sy(425), 4, 70);
+    ctx.fillRect(130 + 40, l3sy(425), 4, 70);
+    ctx.fillStyle = '#8B4513';
+    ctx.fillRect(134, l3sy(430), 36, 60);
+    ctx.fillStyle = '#6d3a0a';
+    ctx.fillRect(138, l3sy(434), 28, 24);
+    ctx.fillRect(138, l3sy(462), 28, 24);
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(160, l3sy(458), 4, 4);
+    // Room number
+    ctx.fillStyle = '#ffd700';
+    ctx.font = 'bold 8px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('501', 152, l3sy(422));
+
+    // Decorative locked doors (right wall)
+    for (let i = 0; i < 3; i++) {
+        const dy = 380 + i * 80;
+        ctx.fillStyle = '#d4a574';
+        ctx.fillRect(336, l3sy(dy), 4, 60);
+        ctx.fillRect(336 + 36, l3sy(dy), 4, 60);
+        ctx.fillStyle = '#8B4513';
+        ctx.fillRect(340, l3sy(dy + 4), 28, 52);
+        ctx.fillStyle = '#6d3a0a';
+        ctx.fillRect(344, l3sy(dy + 8), 20, 20);
+        ctx.fillRect(344, l3sy(dy + 32), 20, 18);
+        ctx.fillStyle = '#ffd700';
+        ctx.fillRect(346, l3sy(dy + 28), 4, 4);
+        ctx.fillStyle = '#ffd700';
+        ctx.font = 'bold 8px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${502 + i}`, 354, l3sy(dy - 2));
+    }
+
+    // Hallway sconces
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(132, l3sy(520), 4, 4);
+    ctx.fillRect(334, l3sy(520), 4, 4);
+    ctx.fillStyle = 'rgba(255, 200, 0, 0.10)';
+    ctx.beginPath(); ctx.arc(134, l3sy(522), 16, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(336, l3sy(522), 16, 0, Math.PI * 2); ctx.fill();
+
+    // Door indicators (glow zones)
+    for (const door of L3_DOORS.roundabout) {
+        const isNear = l3NearDoor === door;
+        ctx.fillStyle = isNear ? 'rgba(255, 204, 0, 0.4)' : 'rgba(100, 80, 60, 0.3)';
+        ctx.fillRect(door.x, l3sy(door.y), door.w, door.h);
+        if (isNear) {
+            ctx.strokeStyle = '#ffcc00';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(door.x, l3sy(door.y), door.w, door.h);
+        }
+    }
+
+    // Flint seated at piano (custom pose)
+    const fx = L3_NPCS.flint.x, fy = l3sy(L3_NPCS.flint.y);
     ctx.fillStyle = '#333';
     ctx.fillRect(fx + 4, fy + 22, 6, 8);
     ctx.fillRect(fx + 12, fy + 22, 6, 8);
     ctx.fillStyle = '#222';
     ctx.fillRect(fx + 3, fy + 18, 18, 6);
-    // Torso (orange shirt, leaning slightly left toward keys)
     ctx.fillStyle = '#ff8800';
     ctx.fillRect(fx + 2, fy + 4, 16, 15);
     ctx.fillStyle = '#cc6600';
@@ -6192,31 +6350,26 @@ function drawL3Roundabout() {
     ctx.fillStyle = '#ffaa33';
     ctx.fillRect(fx + 4, fy + 7, 4, 4);
     ctx.fillRect(fx + 10, fy + 11, 4, 4);
-    // Arms reaching left toward keys
     ctx.fillStyle = '#d4a076';
     ctx.fillRect(fx - 6, fy + 8, 10, 4);
     ctx.fillRect(fx - 6, fy + 14, 10, 4);
-    // Hands on keys
     ctx.fillStyle = '#d4a076';
     ctx.fillRect(fx - 10, fy + 7, 5, 5);
     ctx.fillRect(fx - 10, fy + 13, 5, 5);
-    // Head (facing left / slightly down at keys)
     ctx.fillStyle = '#d4a076';
     ctx.fillRect(fx + 4, fy - 6, 12, 10);
-    // Styled hair
     ctx.fillStyle = '#1a1a1a';
     ctx.fillRect(fx + 3, fy - 11, 14, 6);
     ctx.fillRect(fx + 2, fy - 8, 4, 4);
     ctx.fillRect(fx + 14, fy - 8, 4, 4);
-    // Eyes (looking left at keys)
     ctx.fillStyle = '#333';
     ctx.fillRect(fx + 5, fy - 3, 2, 2);
     ctx.fillRect(fx + 10, fy - 3, 2, 2);
     ctx.fillStyle = '#cc6644';
     ctx.fillRect(fx + 7, fy + 1, 5, 2);
-    drawBlakeSprite(L3_NPCS.blake.x, L3_NPCS.blake.y, L3_NPCS.blake.facing);
-    drawAbrahamSprite(L3_NPCS.abraham.x, L3_NPCS.abraham.y, L3_NPCS.abraham.facing);
-    drawVanessaSprite(L3_NPCS.vanessa.x, L3_NPCS.vanessa.y, L3_NPCS.vanessa.facing);
+
+    // Vanessa in hallway section
+    drawVanessaSprite(L3_NPCS.vanessa.x, l3sy(L3_NPCS.vanessa.y), L3_NPCS.vanessa.facing);
 
     // Player
     drawL3Player();
@@ -6225,10 +6378,9 @@ function drawL3Roundabout() {
     ctx.fillStyle = '#e8d070';
     ctx.font = '8px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('THEATER', 240, 26);
-    ctx.fillText('HALLWAY', 240, 298);
-    ctx.fillText('SHOP', 468, 118);
-    ctx.fillText('JEWELRY', 16, 118);
+    ctx.fillText('THEATER', 240, l3sy(26));
+    ctx.fillText('SHOP', 460, l3sy(112));
+    ctx.fillText('JEWELRY', 16, l3sy(112));
     ctx.textAlign = 'left';
 }
 
@@ -6282,12 +6434,15 @@ function drawL3Theater() {
     // Security guard
     drawSecurityGuard(L3_NPCS.guard.x, L3_NPCS.guard.y, L3_NPCS.guard.facing);
 
+    // Blake watching the empty stage
+    drawBlakeSprite(L3_NPCS.blake.x, L3_NPCS.blake.y, L3_NPCS.blake.facing);
+
     // Door to roundabout (south)
     for (const door of L3_DOORS.theater) drawL3DoorIndicator(door);
     ctx.fillStyle = '#d4a574';
-    ctx.fillRect(205, 310, 70, 10);
+    ctx.fillRect(195, 306, 90, 14);
     ctx.fillStyle = '#030305';
-    ctx.fillRect(210, 310, 60, 6);
+    ctx.fillRect(200, 308, 80, 10);
 
     // Spotlights
     ctx.fillStyle = 'rgba(255, 255, 200, 0.08)';
@@ -6311,88 +6466,6 @@ function drawL3Theater() {
     ctx.font = '8px monospace';
     ctx.textAlign = 'center';
     ctx.fillText('EXIT', 240, 298);
-    ctx.textAlign = 'left';
-}
-
-function drawL3Hallway() {
-    drawL3RoomFloor();
-
-    // Walls (narrower hallway)
-    ctx.fillStyle = '#3a2a5c';
-    ctx.fillRect(0, 0, 80, HEIGHT);
-    ctx.fillRect(400, 0, 80, HEIGHT);
-    ctx.fillRect(0, 0, WIDTH, 30);
-    ctx.fillRect(0, 290, WIDTH, 30);
-    // Wall trim
-    ctx.fillStyle = '#4a2a1a';
-    ctx.fillRect(76, 0, 4, HEIGHT);
-    ctx.fillRect(400, 0, 4, HEIGHT);
-    ctx.fillRect(0, 26, WIDTH, 4);
-    ctx.fillRect(0, 290, WIDTH, 4);
-
-    // North door (to roundabout)
-    for (const door of L3_DOORS.hallway) drawL3DoorIndicator(door);
-
-    // Door frame north
-    ctx.fillStyle = '#d4a574';
-    ctx.fillRect(205, 0, 70, 10);
-    ctx.fillStyle = '#030305';
-    ctx.fillRect(210, 0, 60, 6);
-
-    // Chuck's door (left wall) — actual working door
-    ctx.fillStyle = '#d4a574';
-    ctx.fillRect(80, 125, 4, 70);
-    ctx.fillRect(80 + 44 - 4, 125, 4, 70);
-    ctx.fillStyle = '#8B4513';
-    ctx.fillRect(84, 130, 36, 60);
-    ctx.fillStyle = '#6d3a0a';
-    ctx.fillRect(88, 134, 28, 24);
-    ctx.fillRect(88, 162, 28, 24);
-    ctx.fillStyle = '#ffd700';
-    ctx.fillRect(110, 158, 4, 4);
-    // Room number
-    ctx.fillStyle = '#ffd700';
-    ctx.font = 'bold 8px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('501', 102, 126);
-
-    // Decorative locked doors (right wall)
-    for (let i = 0; i < 3; i++) {
-        const dy = 80 + i * 70;
-        ctx.fillStyle = '#d4a574';
-        ctx.fillRect(396, dy, 4, 60);
-        ctx.fillRect(396 + 36, dy, 4, 60);
-        ctx.fillStyle = '#8B4513';
-        ctx.fillRect(400, dy + 4, 28, 52);
-        ctx.fillStyle = '#6d3a0a';
-        ctx.fillRect(404, dy + 8, 20, 20);
-        ctx.fillRect(404, dy + 32, 20, 18);
-        ctx.fillStyle = '#ffd700';
-        ctx.fillRect(406, dy + 28, 4, 4);
-        // Room numbers
-        ctx.fillStyle = '#ffd700';
-        ctx.font = 'bold 8px monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText(`${502 + i}`, 414, dy - 2);
-    }
-
-    // Sconces
-    ctx.fillStyle = '#ffd700';
-    ctx.fillRect(82, 200, 4, 4);
-    ctx.fillRect(394, 200, 4, 4);
-    ctx.fillStyle = 'rgba(255, 200, 0, 0.10)';
-    ctx.beginPath(); ctx.arc(84, 202, 16, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(396, 202, 16, 0, Math.PI * 2); ctx.fill();
-
-    ctx.textAlign = 'left';
-
-    // Player
-    drawL3Player();
-
-    ctx.fillStyle = '#e8d070';
-    ctx.font = '8px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('ROUNDABOUT', 240, 22);
     ctx.textAlign = 'left';
 }
 
@@ -6433,9 +6506,9 @@ function drawL3ChucksRoom() {
     // Door (south wall)
     for (const door of L3_DOORS['chucks-room']) drawL3DoorIndicator(door);
     ctx.fillStyle = '#d4a574';
-    ctx.fillRect(205, 300, 70, 20);
+    ctx.fillRect(195, 300, 90, 20);
     ctx.fillStyle = '#030305';
-    ctx.fillRect(210, 304, 60, 16);
+    ctx.fillRect(200, 304, 80, 14);
 
     // Chuck NPC
     drawChuckSprite(L3_NPCS.chuck.x, L3_NPCS.chuck.y, L3_NPCS.chuck.facing);
@@ -6510,13 +6583,14 @@ function drawL3Jewelry() {
     // Door to roundabout (right wall)
     for (const door of L3_DOORS.jewelry) drawL3DoorIndicator(door);
     ctx.fillStyle = '#d4a574';
-    ctx.fillRect(460, 125, 20, 70);
+    ctx.fillRect(450, 115, 30, 90);
     ctx.fillStyle = '#030305';
-    ctx.fillRect(466, 130, 14, 60);
+    ctx.fillRect(456, 120, 24, 80);
 
-    // NPCs: AJ and RJ
+    // NPCs: AJ, RJ, and Abraham
     drawAJSprite(L3_NPCS.aj.x, L3_NPCS.aj.y, L3_NPCS.aj.facing);
     drawRJSprite(L3_NPCS.rj.x, L3_NPCS.rj.y, L3_NPCS.rj.facing);
+    drawAbrahamSprite(L3_NPCS.abraham.x, L3_NPCS.abraham.y, L3_NPCS.abraham.facing);
 
     // Player
     drawL3Player();
@@ -6524,7 +6598,7 @@ function drawL3Jewelry() {
     ctx.fillStyle = '#e8d070';
     ctx.font = '8px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('EXIT', 468, 118);
+    ctx.fillText('EXIT', 460, 112);
     ctx.textAlign = 'left';
 }
 
