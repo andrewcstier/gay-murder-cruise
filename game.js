@@ -50,6 +50,34 @@ let comicTimer = 0;
 let l3ShopTextAlpha = 0;
 let l3ShopTextPhase = 'fadein'; // 'fadein', 'hold', 'fadeout'
 let l3ShopTimer = 0;
+
+// Level 3 state
+let l3State = 'shop-intro'; // 'shop-intro', 'free', 'chat', 'notebook', 'accuse', 'complete'
+let l3Room = 'shop'; // 'shop', 'roundabout', 'theater', 'hallway', 'chucks-room', 'jewelry'
+let l3PlayerX = 228, l3PlayerY = 230, l3PlayerFacing = 'up';
+let l3NearNpc = null, l3NearDoor = null;
+let l3TalkedTo = { chuck: false, flint: false, aj: false };
+let l3DialogIndex = { shopkeeper: 0, guard: 0, flint: 0, chuck: 0, aj: 0, blake: 0, abraham: 0, vanessa: 0 };
+let l3GridUnlocked = false;
+let l3DiscoveredClues = [];
+let l3Notebook = {
+    open: false,
+    suspectItem: [['','',''],['','',''],['','','']],
+    suspectPersona: [['','',''],['','',''],['','','']],
+    personaItem: [['','',''],['','',''],['','','']],
+    autoMarks: {},
+};
+let l3TalkingTo = null;
+let l3AccusationOpen = false;
+let l3Typewriting = null; // { full, current, charIndex }
+let l3TypeTimer = 0;
+let l3Solved = false;
+let l3CompleteTimer = 0;
+
+const L3_SUSPECTS = ['Chuck', 'Flint', 'AJ'];
+const L3_ITEMS = ['Book', 'PrEP', 'Mic'];
+const L3_PERSONAS = ['Jiggly', 'Mariah', 'Cher'];
+
 let murdererY = 0;
 let murdererSpeed = 0.4;
 let playerDead = false;
@@ -157,14 +185,11 @@ function handleAction(key) {
     if (gameState === 'comic-cutscene') {
         comicPanel++;
         if (comicPanel >= 8) {
-            gameState = 'level3-shop';
-            l3ShopTextAlpha = 0;
-            l3ShopTextPhase = 'fadein';
-            l3ShopTimer = 0;
+            startLevel3();
         }
         return;
     }
-    if (gameState === 'level3-shop') { return; }
+    if (gameState === 'level3') { handleLevel3Action(key); return; }
 }
 
 function showLevelSelect() {
@@ -182,6 +207,11 @@ function selectLevel(level) {
     } else if (level === 2) {
         selectedChar = selectedChar || CHARACTERS[0];
         startLevel2();
+    } else if (level === 3) {
+        selectedChar = selectedChar || CHARACTERS[0];
+        comicPanel = 0;
+        comicTimer = 0;
+        gameState = 'comic-cutscene';
     }
 }
 
@@ -355,6 +385,7 @@ musicToggle.addEventListener('click', () => {
         if (gameState === 'charselect') GameMusic.startMusic('hallway');
         else if (gameState === 'playing') GameMusic.startMusic('charselect');
         else if (gameState === 'level2') GameMusic.startMusic('charselect');
+        else if (gameState === 'level3') GameMusic.startMusic('charselect');
         else if (gameState === 'gameover' || gameState === 'cutscene' || gameState === 'chase' || gameState === 'room') GameMusic.startMusic('panic');
     } else {
         GameMusic.stopMusic();
@@ -2554,17 +2585,8 @@ function update() {
         return;
     }
 
-    if (gameState === 'level3-shop') {
-        l3ShopTimer++;
-        if (l3ShopTextPhase === 'fadein') {
-            l3ShopTextAlpha += 0.015;
-            if (l3ShopTextAlpha >= 1) { l3ShopTextAlpha = 1; l3ShopTextPhase = 'hold'; l3ShopTimer = 0; }
-        } else if (l3ShopTextPhase === 'hold') {
-            if (l3ShopTimer > 120) { l3ShopTextPhase = 'fadeout'; }
-        } else if (l3ShopTextPhase === 'fadeout') {
-            l3ShopTextAlpha -= 0.015;
-            if (l3ShopTextAlpha <= 0) { l3ShopTextAlpha = 0; l3ShopTextPhase = 'done'; }
-        }
+    if (gameState === 'level3') {
+        updateLevel3();
         return;
     }
 
@@ -2721,8 +2743,8 @@ function draw() {
         return;
     }
 
-    if (gameState === 'level3-shop') {
-        drawLevel3Shop();
+    if (gameState === 'level3') {
+        drawLevel3();
         return;
     }
 
@@ -3894,15 +3916,27 @@ function drawLevel2Portrait(npcKey) {
 // NEXT button — advance dialog
 document.getElementById('chat-next').addEventListener('click', (e) => {
     e.stopPropagation();
+    if (gameState === 'level3') {
+        if (l3AccusationOpen) return;
+        if (l3State === 'chat') advanceLevel3Dialog();
+        return;
+    }
     if (l2AccusationOpen) return;
     if (l2State === 'chat') advanceLevel2Dialog();
 });
 
 // Notebook button
 document.getElementById('notebook-btn').addEventListener('click', () => {
+    if (gameState === 'level3' && l3State === 'free') { openL3Notebook(); return; }
     if (l2State === 'free' && l2HasNotebook) openNotebook();
 });
 document.getElementById('notebook-overlay').addEventListener('click', () => {
+    if (gameState === 'level3') {
+        l3Notebook.open = false;
+        l3State = 'free';
+        document.getElementById('notebook-overlay').style.display = 'none';
+        return;
+    }
     l2Notebook.open = false;
     l2State = 'free';
     document.getElementById('notebook-overlay').style.display = 'none';
@@ -4802,30 +4836,852 @@ function drawComicPanel8() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// LEVEL 3 — Shop (Stub)
+// LEVEL 3 — The Blue Purse Mystery
 // ═══════════════════════════════════════════════════════════════
 
-function drawLevel3Shop() {
-    // Shop interior
+const L3_NPCS = {
+    shopkeeper: { room: 'shop', x: 230, y: 140, facing: 'down', name: 'SHOPKEEPER', color: '#cc8844' },
+    guard: { room: 'theater', x: 230, y: 160, facing: 'down', name: 'SECURITY', color: '#cccccc' },
+    flint: { room: 'roundabout', x: 200, y: 140, facing: 'down', name: 'FLINT', color: '#ff8800' },
+    chuck: { room: 'chucks-room', x: 240, y: 140, facing: 'down', name: 'CHUCK', color: '#cc4444' },
+    aj: { room: 'jewelry', x: 180, y: 160, facing: 'right', name: 'AJ', color: '#33ccff' },
+    rj: { room: 'jewelry', x: 280, y: 160, facing: 'left', name: 'RJ', color: '#33cc99' },
+    blake: { room: 'roundabout', x: 320, y: 200, facing: 'left', name: 'BLAKE', color: '#ff69b4' },
+    abraham: { room: 'roundabout', x: 360, y: 140, facing: 'down', name: 'ABRAHAM', color: '#44cc88' },
+    vanessa: { room: 'roundabout', x: 120, y: 200, facing: 'right', name: 'VANESSA', color: '#cc44ff' },
+};
+
+const L3_DIALOG = {
+    shopkeeper: [
+        "Someone stole one of my books! A rare, valuable one. The thief grabbed it right off the display and ran.",
+        "Security is handling it, but I'm beside myself. It was in one of those blue bags -- you know, the ones from the drag show.",
+    ],
+    guard: [
+        "I remember those blue bags from the show. Each performer had one.",
+        "The performers were Jigglypuff, Mariah Carey, and Cher.",
+        "I checked the bags during intermission. One had a book, one had a bottle of PrEP, and one had a microphone.",
+        "Cher was already performing on stage when the robbery happened. So it couldn't have been her bag.",
+        "Jigglypuff pulled a microphone out of her purse during the show -- used it for her act.",
+    ],
+    flint: [
+        "Not now, I'm playing.",
+        "You know, it's funny. Chuck is so 'masc' that he's ashamed he does drag, and tells everyone he doesn't. I wonder if someone like that can be trusted?",
+    ],
+    chuck: [
+        "Oh hey. Look, I don't do drag. I wouldn't even fit in half those costumes!",
+        "Can you imagine me in that Mariah Carey corset? Ha!",
+        "I'm just here to have a good time on the cruise, that's all.",
+    ],
+    aj: [
+        "Oh hi! We're just looking at rings.",
+        "I was Cher! It was so much fun performing. The crowd loved it.",
+        "My purse? Oh, I don't remember having anything in it. It was just a prop.",
+    ],
+    rj: [
+        "Hey! Nice to meet you. AJ won't stop talking about the drag show.",
+    ],
+    blake: [
+        "Hey babe! I'm glad you're on the case. Let me know if you need anything.",
+        "This ship is wild. Someone robbed the gift shop during the drag show!",
+    ],
+    abraham: [
+        "This is crazy! First the murder mystery, now a robbery?",
+        "At least this time nobody's dead... that we know of.",
+    ],
+    vanessa: [
+        "Darling, I could solve this faster than you. But I'll let you have your moment.",
+        "The drag show was EVERYTHING though. Those queens were fierce.",
+    ],
+};
+
+// Room door definitions: { x, y, w, h, target, playerX, playerY, facing, label }
+const L3_DOORS = {
+    shop: [
+        { x: 0, y: 130, w: 16, h: 60, target: 'roundabout', playerX: 430, playerY: 160, facing: 'left', label: 'Roundabout' },
+    ],
+    roundabout: [
+        { x: 464, y: 130, w: 16, h: 60, target: 'shop', playerX: 30, playerY: 160, facing: 'right', label: 'Shop' },
+        { x: 210, y: 0, w: 60, h: 16, target: 'theater', playerX: 228, playerY: 270, facing: 'up', label: 'Theater' },
+        { x: 0, y: 130, w: 16, h: 60, target: 'jewelry', playerX: 430, playerY: 160, facing: 'left', label: 'Jewelry' },
+        { x: 210, y: 304, w: 60, h: 16, target: 'hallway', playerX: 228, playerY: 40, facing: 'down', label: 'Hallway' },
+    ],
+    theater: [
+        { x: 210, y: 304, w: 60, h: 16, target: 'roundabout', playerX: 228, playerY: 30, facing: 'down', label: 'Roundabout' },
+    ],
+    jewelry: [
+        { x: 464, y: 130, w: 16, h: 60, target: 'roundabout', playerX: 30, playerY: 160, facing: 'right', label: 'Roundabout' },
+    ],
+    hallway: [
+        { x: 210, y: 0, w: 60, h: 16, target: 'roundabout', playerX: 228, playerY: 280, facing: 'up', label: 'Roundabout' },
+        { x: 80, y: 130, w: 44, h: 60, target: 'chucks-room', playerX: 228, playerY: 270, facing: 'up', label: "Chuck's Room" },
+    ],
+    'chucks-room': [
+        { x: 210, y: 304, w: 60, h: 16, target: 'hallway', playerX: 152, playerY: 170, facing: 'up', label: 'Hallway' },
+    ],
+};
+
+// Colliders per room (furniture, walls, counters)
+const L3_COLLIDERS = {
+    shop: [
+        { x: 160, y: 175, w: 160, h: 30 }, // counter
+        { x: 190, y: 50, w: 100, h: 80 },  // display case
+        { x: 20, y: 30, w: 120, h: 105 },  // left shelves
+        { x: 340, y: 30, w: 120, h: 105 }, // right shelves
+    ],
+    roundabout: [
+        { x: 190, y: 110, w: 100, h: 70 }, // piano
+    ],
+    theater: [
+        { x: 60, y: 40, w: 360, h: 80 },  // stage
+        { x: 10, y: 10, w: 55, h: 250 },   // left curtain
+        { x: 415, y: 10, w: 55, h: 250 },  // right curtain
+    ],
+    hallway: [
+        // walls narrowing the hallway, with opening for Chuck's door
+        { x: 0, y: 0, w: 80, h: 120 },
+        { x: 0, y: 200, w: 80, h: 120 },
+        { x: 400, y: 0, w: 80, h: 130 },
+        { x: 400, y: 190, w: 80, h: 130 },
+    ],
+    'chucks-room': [
+        { x: 50, y: 60, w: 110, h: 140 },  // bed
+        { x: 50, y: 40, w: 44, h: 20 },     // bedside table
+    ],
+    jewelry: [
+        { x: 140, y: 50, w: 200, h: 30 },  // display counter
+        { x: 60, y: 120, w: 80, h: 40 },    // left display
+        { x: 340, y: 120, w: 80, h: 40 },   // right display
+    ],
+};
+
+function startLevel3() {
+    gameState = 'level3';
+    l3State = 'shop-intro';
+    l3Room = 'shop';
+    l3PlayerX = 228;
+    l3PlayerY = 230;
+    l3PlayerFacing = 'up';
+    l3ShopTextAlpha = 0;
+    l3ShopTextPhase = 'fadein';
+    l3ShopTimer = 0;
+    l3NearNpc = null;
+    l3NearDoor = null;
+    l3TalkedTo = { chuck: false, flint: false, aj: false };
+    l3DialogIndex = { shopkeeper: 0, guard: 0, flint: 0, chuck: 0, aj: 0, rj: 0, blake: 0, abraham: 0, vanessa: 0 };
+    l3GridUnlocked = false;
+    l3DiscoveredClues = [];
+    l3Notebook = {
+        open: false,
+        suspectItem: [['','',''],['','',''],['','','']],
+        suspectPersona: [['','',''],['','',''],['','','']],
+        personaItem: [['','',''],['','',''],['','','']],
+        autoMarks: {},
+    };
+    l3TalkingTo = null;
+    l3AccusationOpen = false;
+    l3Typewriting = null;
+    l3TypeTimer = 0;
+    l3Solved = false;
+    l3CompleteTimer = 0;
+    document.getElementById('chat-panel').style.display = 'none';
+    document.getElementById('notebook-overlay').style.display = 'none';
+    document.getElementById('notebook-btn').style.display = 'none';
+    dialogBox.classList.remove('visible');
+    promptEl.classList.remove('visible');
+    GameMusic.stopMusic();
+    if (musicEnabled) GameMusic.startMusic('charselect');
+}
+
+function handleLevel3Action(key) {
+    const k = key.toLowerCase();
+    if (l3State === 'shop-intro') return; // auto-advances
+    if (l3State === 'complete') return;
+    if (l3State === 'chat') {
+        if (k === 'escape') {
+            closeLevel3Chat();
+            return;
+        }
+        if (k === 'e' || k === ' ' || k === 'examine') {
+            advanceLevel3Dialog();
+            return;
+        }
+        return;
+    }
+    if (l3State === 'notebook') {
+        if (k === 'escape' || k === 'c') {
+            l3Notebook.open = false;
+            l3State = 'free';
+            document.getElementById('notebook-overlay').style.display = 'none';
+            return;
+        }
+        return;
+    }
+    if (l3State === 'free') {
+        if (k === 'c' && l3GridUnlocked) {
+            openL3Notebook();
+            return;
+        }
+        if ((k === 'e' || k === ' ' || k === 'examine') && l3NearNpc) {
+            openLevel3Chat(l3NearNpc);
+            return;
+        }
+    }
+}
+
+// ── Level 3 Chat System ──
+
+function openLevel3Chat(npcKey) {
+    l3State = 'chat';
+    l3TalkingTo = npcKey;
+
+    const npc = L3_NPCS[npcKey];
+    const panel = document.getElementById('chat-panel');
+    panel.style.display = 'block';
+    panel.style.borderColor = npc.color;
+    document.getElementById('chat-portrait').style.borderColor = npc.color;
+    document.getElementById('chat-portrait').style.boxShadow = `0 0 10px ${npc.color}66`;
+    document.getElementById('chat-npc-name').style.color = npc.color;
+    document.getElementById('chat-npc-name').textContent = `--- ${npc.name} ---`;
+    document.getElementById('chat-next').textContent = 'NEXT';
+    document.getElementById('chat-next').style.display = 'block';
+    document.getElementById('chat-next').onclick = null;
+
+    drawLevel3Portrait(npcKey);
+
+    const lines = L3_DIALOG[npcKey];
+    const idx = l3DialogIndex[npcKey];
+    const line = lines[Math.min(idx, lines.length - 1)];
+    startLevel3Typing(line);
+    renderL3ChatLine(npcKey, line);
+
+    // Trigger clues on first talk
+    if (npcKey === 'guard' && l3DialogIndex.guard === 0) {
+        l3GridUnlocked = true;
+        document.getElementById('notebook-btn').style.display = 'flex';
+        addL3Clue("Performers: Jigglypuff, Mariah Carey, Cher.");
+        addL3Clue("Purse contents: Book, PrEP, Microphone.");
+        addL3Clue("Cher was on stage during the robbery (Cher != Book).");
+        addL3Clue("Jigglypuff pulled a microphone from her purse (Jigglypuff = Microphone).");
+    }
+    if (npcKey === 'flint' && l3DialogIndex.flint === 0) {
+        l3TalkedTo.flint = true;
+        addL3Clue("Flint says Chuck is ashamed of doing drag and hides it from people.");
+    }
+    if (npcKey === 'chuck' && l3DialogIndex.chuck === 0) {
+        l3TalkedTo.chuck = true;
+        addL3Clue("Chuck says he couldn't fit in the Mariah Carey corset (Chuck != Mariah Carey).");
+    }
+    if (npcKey === 'aj' && l3DialogIndex.aj === 0) {
+        l3TalkedTo.aj = true;
+        addL3Clue("AJ says he performed as Cher (AJ = Cher).");
+    }
+
+    updateL3AccusationButton();
+}
+
+function closeLevel3Chat() {
+    l3TalkingTo = null;
+    l3State = 'free';
+    l3Typewriting = null;
+    l3AccusationOpen = false;
+    document.getElementById('chat-panel').style.display = 'none';
+    // Remove accuse button if it exists
+    const accuseBtn = document.getElementById('l3-chat-accuse');
+    if (accuseBtn) accuseBtn.remove();
+}
+
+function advanceLevel3Dialog() {
+    if (!l3TalkingTo || l3AccusationOpen) return;
+
+    // If typewriter still going, skip to end
+    if (l3Typewriting && l3Typewriting.current !== l3Typewriting.full) {
+        l3Typewriting.current = l3Typewriting.full;
+        l3Typewriting.charIndex = l3Typewriting.full.length;
+        renderL3ChatLine(l3TalkingTo, l3Typewriting.full);
+        return;
+    }
+
+    const npcKey = l3TalkingTo;
+    const lines = L3_DIALOG[npcKey];
+
+    l3DialogIndex[npcKey]++;
+    const idx = l3DialogIndex[npcKey];
+
+    if (idx >= lines.length) {
+        closeLevel3Chat();
+        return;
+    }
+
+    const line = lines[idx];
+    startLevel3Typing(line);
+    renderL3ChatLine(npcKey, line);
+}
+
+function startLevel3Typing(text) {
+    l3Typewriting = { full: text, current: '', charIndex: 0 };
+    l3TypeTimer = 0;
+}
+
+function renderL3ChatLine(npcKey, text) {
+    const container = document.getElementById('chat-messages');
+    const npc = L3_NPCS[npcKey];
+    const displayText = (l3Typewriting && l3Typewriting.current !== l3Typewriting.full)
+        ? l3Typewriting.current : text;
+    container.innerHTML = `<div class="msg-npc"><span style="color:${npc.color}">${npc.name}:</span> ${displayText}</div>`;
+    document.getElementById('chat-next').style.display = 'block';
+}
+
+function updateL3ChatDisplay() {
+    if (!l3TalkingTo || !l3Typewriting) return;
+    const container = document.getElementById('chat-messages');
+    const npc = L3_NPCS[l3TalkingTo];
+    const firstDiv = container.querySelector('.msg-npc');
+    if (firstDiv) {
+        firstDiv.innerHTML = `<span style="color:${npc.color}">${npc.name}:</span> ${l3Typewriting.current}`;
+    }
+}
+
+function addL3Clue(text) {
+    if (!l3DiscoveredClues.includes(text)) l3DiscoveredClues.push(text);
+}
+
+function updateL3AccusationButton() {
+    // Show accuse button when talking to a suspect and all 3 suspects talked to
+    const allTalked = l3TalkedTo.chuck && l3TalkedTo.flint && l3TalkedTo.aj;
+    const isSuspect = l3TalkingTo === 'chuck' || l3TalkingTo === 'flint' || l3TalkingTo === 'aj';
+
+    let btn = document.getElementById('l3-chat-accuse');
+    if (!btn) {
+        btn = document.createElement('button');
+        btn.id = 'l3-chat-accuse';
+        btn.style.cssText = 'margin-top:6px; width:calc(100% - 16px); margin-left:8px; background:#cc3030; border:2px solid #ff4444; border-radius:4px; color:#fff; font-family:monospace; font-size:11px; padding:6px 8px; cursor:pointer; box-shadow:0 0 10px rgba(204,48,48,0.3);';
+        btn.textContent = 'READY TO ACCUSE';
+        btn.addEventListener('click', openL3Accusation);
+        document.getElementById('chat-panel').appendChild(btn);
+    }
+    btn.style.display = (allTalked && isSuspect && !l3Solved && !l3AccusationOpen) ? 'block' : 'none';
+}
+
+function openL3Accusation() {
+    l3AccusationOpen = true;
+    const container = document.getElementById('chat-messages');
+    let html = '<div class="msg-npc"><span style="color:#ffcc00">DETECTIVE:</span> Whose purse had the book?</div>';
+    html += '<div style="margin-top:8px;">';
+    for (const s of L3_SUSPECTS) {
+        html += `<button class="l3-accuse-btn" data-target="${s.toLowerCase()}" style="display:block; width:100%; margin-bottom:4px; padding:6px 8px; font-family:monospace; font-size:11px; cursor:pointer; background:#2a1020; border:1px solid #cc3030; border-radius:3px; color:#e8d070; text-align:left;">${s}</button>`;
+    }
+    html += '</div>';
+    container.innerHTML = html;
+
+    document.getElementById('chat-next').style.display = 'none';
+    const accuseBtn = document.getElementById('l3-chat-accuse');
+    if (accuseBtn) accuseBtn.style.display = 'none';
+
+    container.querySelectorAll('.l3-accuse-btn').forEach(btn => {
+        btn.addEventListener('click', () => handleL3Accusation(btn.dataset.target));
+    });
+}
+
+function handleL3Accusation(target) {
+    const container = document.getElementById('chat-messages');
+
+    if (target === 'chuck') {
+        container.innerHTML = '<div class="msg-npc"><span style="color:#cc4444">CHUCK:</span> Me? Nah. I just had my stuff. Try again.</div>';
+        document.getElementById('chat-next').textContent = 'NEXT';
+        document.getElementById('chat-next').style.display = 'block';
+        document.getElementById('chat-next').onclick = () => {
+            l3AccusationOpen = false;
+            document.getElementById('chat-next').onclick = null;
+            updateL3AccusationButton();
+            renderL3ChatLine('chuck', "It wasn't me. Try again when you're ready.");
+        };
+    } else if (target === 'aj') {
+        container.innerHTML = '<div class="msg-npc"><span style="color:#33ccff">AJ:</span> It wasn\'t me! I told you, my purse was empty. Think harder.</div>';
+        document.getElementById('chat-next').textContent = 'NEXT';
+        document.getElementById('chat-next').style.display = 'block';
+        document.getElementById('chat-next').onclick = () => {
+            l3AccusationOpen = false;
+            document.getElementById('chat-next').onclick = null;
+            updateL3AccusationButton();
+            renderL3ChatLine('aj', "Not me. My purse was just a prop. Try again!");
+        };
+    } else if (target === 'flint') {
+        // Correct!
+        document.getElementById('chat-next').style.display = 'none';
+        container.innerHTML = '<div class="msg-npc"><span style="color:#ff8800">FLINT:</span> ...</div>';
+        setTimeout(() => {
+            container.innerHTML = '<div class="msg-npc"><span style="color:#ff8800">FLINT:</span> You\'re right. It was me.</div>';
+            setTimeout(() => {
+                container.innerHTML = '<div class="msg-npc"><span style="color:#ff8800">FLINT:</span> I was testing you, and you passed. Come, come now. I must show you something.</div>';
+                setTimeout(() => {
+                    container.innerHTML += '<div class="msg-npc" style="color:#ffcc00; text-align:center; margin-top:8px;">Level 3 Complete!</div>';
+                    l3Solved = true;
+                    l3AccusationOpen = false;
+                    const accuseBtn = document.getElementById('l3-chat-accuse');
+                    if (accuseBtn) accuseBtn.style.display = 'none';
+                    document.getElementById('chat-next').textContent = 'CONTINUE';
+                    document.getElementById('chat-next').style.display = 'block';
+                    document.getElementById('chat-next').onclick = () => {
+                        document.getElementById('chat-next').onclick = null;
+                        closeLevel3Chat();
+                        l3State = 'complete';
+                        l3CompleteTimer = 0;
+                    };
+                }, 1500);
+            }, 1500);
+        }, 1000);
+    }
+}
+
+// ── Level 3 Notebook ──
+
+function openL3Notebook() {
+    l3State = 'notebook';
+    l3Notebook.open = true;
+    renderL3Notebook();
+    document.getElementById('notebook-overlay').style.display = 'flex';
+}
+
+function renderL3Notebook() {
+    const content = document.getElementById('notebook-content');
+    let html = '<div style="color:#e8d070; font-size:12px; margin-bottom:12px; text-align:center; letter-spacing:2px;">--- DETECTIVE\'S NOTEBOOK ---</div>';
+
+    if (!l3GridUnlocked) {
+        html += '<div style="color:#8a8a7a; font-size:11px; line-height:20px; font-style:italic; text-align:center; padding:20px;">I need more info before I can start organizing...</div>';
+    } else {
+        // Suspect x Item grid (top-left)
+        html += '<div style="color:#e8d070; font-size:10px; margin-bottom:4px; text-align:center;">SUSPECT x ITEM</div>';
+        html += '<table style="border-collapse:collapse; margin:0 auto 10px; font-family:monospace;">';
+        html += '<thead><tr><td style="width:50px;"></td>';
+        for (let c = 0; c < 3; c++) {
+            html += `<td style="width:32px; text-align:center; color:#e8d070; font-size:9px; padding:2px;">${L3_ITEMS[c]}</td>`;
+        }
+        html += '</tr></thead><tbody>';
+        for (let r = 0; r < 3; r++) {
+            html += `<tr><td style="color:#e8d070; font-size:9px; text-align:right; padding-right:4px;">${L3_SUSPECTS[r]}</td>`;
+            for (let c = 0; c < 3; c++) {
+                const val = l3Notebook.suspectItem[r][c];
+                const display = val === 'check' ? '✓' : val === 'x' ? '✗' : val === '?' ? '?' : '';
+                const color = val === 'check' ? '#44ff44' : val === 'x' ? '#ff4444' : val === '?' ? '#e8d070' : '#888';
+                html += `<td data-grid="si" data-r="${r}" data-c="${c}" class="l3-nb-cell" style="width:32px; height:32px; border:1px solid #3a3060; background:#1a1420; text-align:center; cursor:pointer; font-size:14px; color:${color}; user-select:none;">${display}</td>`;
+            }
+            html += '</tr>';
+        }
+        html += '</tbody></table>';
+
+        // Suspect x Persona grid (top-right)
+        html += '<div style="color:#e8d070; font-size:10px; margin-bottom:4px; text-align:center;">SUSPECT x PERSONA</div>';
+        html += '<table style="border-collapse:collapse; margin:0 auto 10px; font-family:monospace;">';
+        html += '<thead><tr><td style="width:50px;"></td>';
+        for (let c = 0; c < 3; c++) {
+            html += `<td style="width:32px; text-align:center; color:#e8d070; font-size:9px; padding:2px;">${L3_PERSONAS[c]}</td>`;
+        }
+        html += '</tr></thead><tbody>';
+        for (let r = 0; r < 3; r++) {
+            html += `<tr><td style="color:#e8d070; font-size:9px; text-align:right; padding-right:4px;">${L3_SUSPECTS[r]}</td>`;
+            for (let c = 0; c < 3; c++) {
+                const val = l3Notebook.suspectPersona[r][c];
+                const display = val === 'check' ? '✓' : val === 'x' ? '✗' : val === '?' ? '?' : '';
+                const color = val === 'check' ? '#44ff44' : val === 'x' ? '#ff4444' : val === '?' ? '#e8d070' : '#888';
+                html += `<td data-grid="sp" data-r="${r}" data-c="${c}" class="l3-nb-cell" style="width:32px; height:32px; border:1px solid #3a3060; background:#1a1420; text-align:center; cursor:pointer; font-size:14px; color:${color}; user-select:none;">${display}</td>`;
+            }
+            html += '</tr>';
+        }
+        html += '</tbody></table>';
+
+        // Persona x Item grid (bottom-left)
+        html += '<div style="color:#e8d070; font-size:10px; margin-bottom:4px; text-align:center;">PERSONA x ITEM</div>';
+        html += '<table style="border-collapse:collapse; margin:0 auto 10px; font-family:monospace;">';
+        html += '<thead><tr><td style="width:50px;"></td>';
+        for (let c = 0; c < 3; c++) {
+            html += `<td style="width:32px; text-align:center; color:#e8d070; font-size:9px; padding:2px;">${L3_ITEMS[c]}</td>`;
+        }
+        html += '</tr></thead><tbody>';
+        for (let r = 0; r < 3; r++) {
+            html += `<tr><td style="color:#e8d070; font-size:9px; text-align:right; padding-right:4px;">${L3_PERSONAS[r]}</td>`;
+            for (let c = 0; c < 3; c++) {
+                const val = l3Notebook.personaItem[r][c];
+                const display = val === 'check' ? '✓' : val === 'x' ? '✗' : val === '?' ? '?' : '';
+                const color = val === 'check' ? '#44ff44' : val === 'x' ? '#ff4444' : val === '?' ? '#e8d070' : '#888';
+                html += `<td data-grid="pi" data-r="${r}" data-c="${c}" class="l3-nb-cell" style="width:32px; height:32px; border:1px solid #3a3060; background:#1a1420; text-align:center; cursor:pointer; font-size:14px; color:${color}; user-select:none;">${display}</td>`;
+            }
+            html += '</tr>';
+        }
+        html += '</tbody></table>';
+    }
+
+    // Clues
+    html += '<div style="border-top:1px solid #3a3060; padding-top:10px; margin-bottom:10px;">';
+    html += '<div style="color:#e8d070; font-size:10px; margin-bottom:6px; text-align:center;">--- CLUES & EVIDENCE ---</div>';
+    if (l3DiscoveredClues.length === 0) {
+        html += '<div style="color:#8a8a7a; font-size:10px; line-height:18px; font-style:italic;">No clues discovered yet. Talk to people.</div>';
+    } else {
+        for (const clue of l3DiscoveredClues) {
+            html += `<div style="color:#c8b880; font-size:10px; line-height:18px; margin-bottom:4px;">* ${clue}</div>`;
+        }
+    }
+    html += '</div>';
+
+    // Buttons
+    html += '<div style="display:flex; gap:8px; justify-content:center;">';
+    html += '<button id="l3-nb-reset" style="font-family:monospace; font-size:10px; padding:6px 12px; background:transparent; color:#ff6644; border:1px solid #ff6644; border-radius:4px; cursor:pointer;">RESET GRID</button>';
+    html += '<button id="l3-nb-close" style="font-family:monospace; font-size:10px; padding:6px 12px; background:transparent; color:#e8d070; border:2px solid #e8d070; border-radius:4px; cursor:pointer;">CLOSE (ESC)</button>';
+    html += '</div>';
+
+    content.innerHTML = html;
+
+    // Cell click handlers
+    content.querySelectorAll('.l3-nb-cell').forEach(cell => {
+        cell.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const gridType = cell.dataset.grid;
+            const r = parseInt(cell.dataset.r);
+            const c = parseInt(cell.dataset.c);
+            toggleL3NotebookCell(gridType, r, c);
+            renderL3Notebook();
+        });
+    });
+
+    const resetBtn = document.getElementById('l3-nb-reset');
+    if (resetBtn) resetBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        l3Notebook.suspectItem = [['','',''],['','',''],['','','']];
+        l3Notebook.suspectPersona = [['','',''],['','',''],['','','']];
+        l3Notebook.personaItem = [['','',''],['','',''],['','','']];
+        l3Notebook.autoMarks = {};
+        renderL3Notebook();
+    });
+    const closeBtn = document.getElementById('l3-nb-close');
+    if (closeBtn) closeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        l3Notebook.open = false;
+        l3State = 'free';
+        document.getElementById('notebook-overlay').style.display = 'none';
+    });
+}
+
+function getL3Grid(gridType) {
+    if (gridType === 'si') return l3Notebook.suspectItem;
+    if (gridType === 'sp') return l3Notebook.suspectPersona;
+    if (gridType === 'pi') return l3Notebook.personaItem;
+    return null;
+}
+
+function toggleL3NotebookCell(gridType, row, col) {
+    const grid = getL3Grid(gridType);
+    if (!grid) return;
+    const current = grid[row][col];
+    const cycle = { '': 'check', 'check': 'x', 'x': '?', '?': '' };
+    const next = cycle[current] || '';
+
+    // Remove old auto-marks
+    const cellKey = `${gridType}-${row}-${col}`;
+    if (l3Notebook.autoMarks[cellKey]) {
+        for (const mark of l3Notebook.autoMarks[cellKey]) {
+            const g = getL3Grid(mark.grid);
+            if (g && g[mark.r][mark.c] === 'x') {
+                g[mark.r][mark.c] = '';
+            }
+        }
+        delete l3Notebook.autoMarks[cellKey];
+    }
+
+    grid[row][col] = next;
+
+    // If placing a check, auto-x the rest of row and column within this sub-grid
+    if (next === 'check') {
+        const marked = [];
+        for (let c = 0; c < 3; c++) {
+            if (c !== col && grid[row][c] === '') {
+                grid[row][c] = 'x';
+                marked.push({ grid: gridType, r: row, c });
+            }
+        }
+        for (let r = 0; r < 3; r++) {
+            if (r !== row && grid[r][col] === '') {
+                grid[r][col] = 'x';
+                marked.push({ grid: gridType, r, c: col });
+            }
+        }
+        l3Notebook.autoMarks[cellKey] = marked;
+    }
+}
+
+// ── Level 3 Update ──
+
+function updateLevel3() {
+    // Typewriter advancement
+    if (l3Typewriting && l3Typewriting.charIndex < l3Typewriting.full.length) {
+        l3TypeTimer++;
+        if (l3TypeTimer >= 1) {
+            l3TypeTimer = 0;
+            l3Typewriting.charIndex += 2;
+            if (l3Typewriting.charIndex > l3Typewriting.full.length) l3Typewriting.charIndex = l3Typewriting.full.length;
+            l3Typewriting.current = l3Typewriting.full.substring(0, l3Typewriting.charIndex);
+            if (l3TalkingTo) updateL3ChatDisplay();
+        }
+    }
+
+    if (l3State === 'shop-intro') {
+        l3ShopTimer++;
+        if (l3ShopTextPhase === 'fadein') {
+            l3ShopTextAlpha += 0.015;
+            if (l3ShopTextAlpha >= 1) { l3ShopTextAlpha = 1; l3ShopTextPhase = 'hold'; l3ShopTimer = 0; }
+        } else if (l3ShopTextPhase === 'hold') {
+            if (l3ShopTimer > 120) { l3ShopTextPhase = 'fadeout'; }
+        } else if (l3ShopTextPhase === 'fadeout') {
+            l3ShopTextAlpha -= 0.015;
+            if (l3ShopTextAlpha <= 0) {
+                l3ShopTextAlpha = 0;
+                l3ShopTextPhase = 'done';
+                l3State = 'free';
+            }
+        }
+        return;
+    }
+
+    if (l3State === 'chat') return;
+    if (l3State === 'notebook') return;
+
+    if (l3State === 'complete') {
+        l3CompleteTimer++;
+        return;
+    }
+
+    if (l3State !== 'free') return;
+
+    // Player movement
+    let moved = false;
+    let newX = l3PlayerX;
+    let newY = l3PlayerY;
+    const spd = 2.5;
+
+    if (keys['arrowleft'] || keys['a']) { newX -= spd; l3PlayerFacing = 'left'; moved = true; }
+    if (keys['arrowright'] || keys['d']) { newX += spd; l3PlayerFacing = 'right'; moved = true; }
+    if (keys['arrowup'] || keys['w']) { newY -= spd; l3PlayerFacing = 'up'; moved = true; }
+    if (keys['arrowdown'] || keys['s']) { newY += spd; l3PlayerFacing = 'down'; moved = true; }
+
+    // Bounds
+    const minX = 10;
+    const maxX = 450;
+    const minY = 16;
+    const maxY = 275;
+
+    if (newX < minX) newX = minX;
+    if (newX > maxX) newX = maxX;
+    if (newY < minY) newY = minY;
+    if (newY > maxY) newY = maxY;
+
+    // Collision
+    const pw = 24, ph = 36;
+    const roomColliders = L3_COLLIDERS[l3Room] || [];
+    // Add NPC colliders for current room
+    const npcColliders = [];
+    for (const key of Object.keys(L3_NPCS)) {
+        const npc = L3_NPCS[key];
+        if (npc.room === l3Room) {
+            npcColliders.push({ x: npc.x + 4, y: npc.y + 8, w: 16, h: 28 });
+        }
+    }
+    const allColliders = roomColliders.concat(npcColliders);
+
+    if (!collidesWithAny(newX, newY, pw, ph, allColliders)) {
+        l3PlayerX = newX;
+        l3PlayerY = newY;
+    } else {
+        if (!collidesWithAny(newX, l3PlayerY, pw, ph, allColliders)) {
+            l3PlayerX = newX;
+        } else if (!collidesWithAny(l3PlayerX, newY, pw, ph, allColliders)) {
+            l3PlayerY = newY;
+        }
+    }
+    if (moved) player.animTimer++;
+
+    // Door proximity / transition
+    l3NearDoor = null;
+    const doors = L3_DOORS[l3Room] || [];
+    const pcx = l3PlayerX + 12;
+    const pcy = l3PlayerY + 18;
+    for (const door of doors) {
+        if (pcx > door.x && pcx < door.x + door.w && pcy > door.y && pcy < door.y + door.h) {
+            // Transition!
+            l3Room = door.target;
+            l3PlayerX = door.playerX;
+            l3PlayerY = door.playerY;
+            l3PlayerFacing = door.facing;
+            l3NearNpc = null;
+            promptEl.classList.remove('visible');
+            return;
+        }
+        // Near door indicator
+        const dcx = door.x + door.w / 2;
+        const dcy = door.y + door.h / 2;
+        if (Math.abs(pcx - dcx) < 40 && Math.abs(pcy - dcy) < 40) {
+            l3NearDoor = door;
+        }
+    }
+
+    // NPC proximity check
+    l3NearNpc = null;
+    for (const key of Object.keys(L3_NPCS)) {
+        const npc = L3_NPCS[key];
+        if (npc.room !== l3Room) continue;
+        // For RJ, redirect to AJ (they share conversation)
+        const ncx = npc.x + 12;
+        const ncy = npc.y + 18;
+        if (Math.abs(pcx - ncx) < 50 && Math.abs(pcy - ncy) < 50) {
+            l3NearNpc = key;
+            break;
+        }
+    }
+
+    if (l3NearNpc && gameState === 'level3') {
+        promptEl.classList.add('visible');
+        promptEl.textContent = isMobile() ? 'Tap LOOK to talk' : 'Press E or SPACE to talk';
+    } else if (l3NearDoor) {
+        promptEl.classList.add('visible');
+        promptEl.textContent = l3NearDoor.label || 'Door';
+    } else {
+        promptEl.classList.remove('visible');
+    }
+}
+
+// ── Level 3 Drawing ──
+
+function drawLevel3() {
+    switch (l3Room) {
+        case 'shop': drawL3Shop(); break;
+        case 'roundabout': drawL3Roundabout(); break;
+        case 'theater': drawL3Theater(); break;
+        case 'hallway': drawL3Hallway(); break;
+        case 'chucks-room': drawL3ChucksRoom(); break;
+        case 'jewelry': drawL3Jewelry(); break;
+    }
+
+    // NPC highlight when near
+    if (l3NearNpc && l3State === 'free') {
+        const npc = L3_NPCS[l3NearNpc];
+        if (npc.room === l3Room) {
+            const bob = Math.sin(Date.now() * 0.005) * 3;
+            ctx.fillStyle = '#ffcc00';
+            ctx.beginPath();
+            ctx.moveTo(npc.x + 12, npc.y - 10 + bob);
+            ctx.lineTo(npc.x + 7, npc.y - 18 + bob);
+            ctx.lineTo(npc.x + 17, npc.y - 18 + bob);
+            ctx.fill();
+        }
+    }
+
+    // Thought text overlay for shop intro
+    if (l3State === 'shop-intro' && l3ShopTextAlpha > 0) {
+        ctx.fillStyle = `rgba(0, 0, 20, ${l3ShopTextAlpha * 0.7})`;
+        ctx.fillRect(0, HEIGHT / 2 - 30, WIDTH, 60);
+        ctx.fillStyle = `rgba(255, 255, 255, ${l3ShopTextAlpha})`;
+        ctx.font = '14px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('It\'s that book!', WIDTH / 2, HEIGHT / 2 + 5);
+        ctx.textAlign = 'left';
+    }
+
+    // Complete overlay
+    if (l3State === 'complete') {
+        const alpha = Math.min(l3CompleteTimer / 120, 1);
+        ctx.fillStyle = `rgba(0, 0, 0, ${alpha * 0.8})`;
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+        if (alpha > 0.3) {
+            ctx.fillStyle = `rgba(255, 204, 0, ${Math.min((alpha - 0.3) / 0.3, 1)})`;
+            ctx.font = 'bold 18px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('LEVEL 3 COMPLETE', WIDTH / 2, HEIGHT / 2 - 10);
+            ctx.font = '12px monospace';
+            ctx.fillStyle = `rgba(255, 255, 255, ${Math.min((alpha - 0.3) / 0.3, 1)})`;
+            ctx.fillText('Flint had the book all along...', WIDTH / 2, HEIGHT / 2 + 20);
+            ctx.textAlign = 'left';
+        }
+    }
+
+    // Room name indicator (top left)
+    if (l3State === 'free' || l3State === 'shop-intro') {
+        const roomNames = {
+            'shop': 'Gift Shop', 'roundabout': 'Roundabout', 'theater': 'Theater',
+            'hallway': 'Hallway', 'chucks-room': "Chuck's Room", 'jewelry': 'Jewelry Store'
+        };
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(4, 4, 100, 18);
+        ctx.fillStyle = '#e8d070';
+        ctx.font = '10px monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText(roomNames[l3Room] || l3Room, 8, 16);
+    }
+}
+
+function drawL3Player() {
+    const px = Math.floor(l3PlayerX);
+    const py = Math.floor(l3PlayerY);
+    const char = selectedChar || CHARACTERS[0];
+    const moving = isMoving() && l3State === 'free';
+    const bounce = Math.sin(player.animTimer * 0.15) * (moving ? 1.5 : 0);
+    const legSwing = moving ? Math.sin(player.animTimer * 0.22) * 3 : 0;
+    const armSwing = moving ? Math.sin(player.animTimer * 0.18) * 2 : 0;
+
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(px + 12, py + 36, 13, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (l3PlayerFacing === 'up') drawCharBack(px, py, bounce, legSwing, armSwing, char);
+    else if (l3PlayerFacing === 'down') drawCharFront(px, py, bounce, legSwing, armSwing, char);
+    else if (l3PlayerFacing === 'left') drawCharSide(px, py, bounce, legSwing, armSwing, -1, char);
+    else drawCharSide(px, py, bounce, legSwing, armSwing, 1, char);
+}
+
+// ── Room Drawing Functions ──
+
+function drawL3RoomFloor() {
+    // Standard floor for most rooms
+    ctx.fillStyle = '#2a1a3a';
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    for (let x = 0; x < WIDTH; x += 24) {
+        for (let y = 0; y < HEIGHT; y += 24) {
+            ctx.fillStyle = '#321e44';
+            ctx.fillRect(x + 2, y + 2, 10, 10);
+        }
+    }
+}
+
+function drawL3ShopFloor() {
     ctx.fillStyle = '#3a2a1a';
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
-
-    // Floor tiles
     ctx.fillStyle = '#4a3a2a';
     for (let x = 0; x < WIDTH; x += 32) {
         for (let y = 160; y < HEIGHT; y += 32) {
             ctx.fillRect(x + 1, y + 1, 30, 30);
         }
     }
+}
+
+function drawL3DoorIndicator(door) {
+    // Draw a glowing door opening
+    const isNear = l3NearDoor === door;
+    ctx.fillStyle = isNear ? 'rgba(255, 204, 0, 0.4)' : 'rgba(100, 80, 60, 0.3)';
+    ctx.fillRect(door.x, door.y, door.w, door.h);
+    if (isNear) {
+        ctx.strokeStyle = '#ffcc00';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(door.x, door.y, door.w, door.h);
+    }
+}
+
+function drawL3Shop() {
+    drawL3ShopFloor();
 
     // Back wall
     ctx.fillStyle = '#5c4a3a';
     ctx.fillRect(0, 0, WIDTH, 160);
-    // Wall trim
     ctx.fillStyle = '#6b4423';
     ctx.fillRect(0, 155, WIDTH, 8);
 
-    // Shelves on back wall
+    // Shelves
     ctx.fillStyle = '#8b6040';
     ctx.fillRect(20, 40, 120, 10);
     ctx.fillRect(20, 80, 120, 10);
@@ -4834,7 +5690,7 @@ function drawLevel3Shop() {
     ctx.fillRect(340, 80, 120, 10);
     ctx.fillRect(340, 120, 120, 10);
 
-    // Items on shelves (small colored rectangles = souvenirs)
+    // Items on shelves
     const shelfItems = [
         [30, 28, '#ff6666'], [55, 30, '#66ff66'], [85, 26, '#6666ff'], [110, 28, '#ffcc00'],
         [30, 68, '#ff99cc'], [60, 70, '#99ffcc'], [90, 66, '#cc99ff'],
@@ -4854,7 +5710,6 @@ function drawLevel3Shop() {
     ctx.strokeStyle = '#6b4423';
     ctx.lineWidth = 2;
     ctx.strokeRect(190, 50, 100, 80);
-    // Items in display case
     drawBlueBag(215, 70, 2);
 
     // Counter
@@ -4868,21 +5723,698 @@ function drawLevel3Shop() {
     ctx.fillStyle = '#66ff66';
     ctx.fillRect(225, 168, 20, 8);
 
-    // Shopkeeper behind counter
-    drawShopkeeper(230, 140);
+    // Shopkeeper
+    drawShopkeeper(L3_NPCS.shopkeeper.x, L3_NPCS.shopkeeper.y);
 
-    // Player character in front of counter
-    drawComicPlayerChar(228, 230, 'up');
+    // Door to roundabout (left wall)
+    for (const door of L3_DOORS.shop) drawL3DoorIndicator(door);
 
-    // Thought text overlay (same style as "Wow, that was a wild dream...")
-    if (l3ShopTextAlpha > 0) {
-        ctx.fillStyle = `rgba(0, 0, 20, ${l3ShopTextAlpha * 0.7})`;
-        ctx.fillRect(0, HEIGHT / 2 - 30, WIDTH, 60);
-        ctx.fillStyle = `rgba(255, 255, 255, ${l3ShopTextAlpha})`;
-        ctx.font = '14px monospace';
+    // Left wall door frame
+    ctx.fillStyle = '#d4a574';
+    ctx.fillRect(0, 125, 10, 70);
+    ctx.fillStyle = '#030305';
+    ctx.fillRect(0, 130, 6, 60);
+
+    // Player
+    drawL3Player();
+}
+
+function drawL3Roundabout() {
+    drawL3RoomFloor();
+
+    // Walls
+    ctx.fillStyle = '#3a2a5c';
+    ctx.fillRect(0, 0, WIDTH, 40);
+    ctx.fillRect(0, 280, WIDTH, 40);
+    ctx.fillRect(0, 0, 40, HEIGHT);
+    ctx.fillRect(440, 0, 40, HEIGHT);
+    // Wall trim
+    ctx.fillStyle = '#4a2a1a';
+    ctx.fillRect(0, 36, WIDTH, 4);
+    ctx.fillRect(0, 280, WIDTH, 4);
+    ctx.fillRect(36, 0, 4, HEIGHT);
+    ctx.fillRect(440, 0, 4, HEIGHT);
+
+    // Piano in center
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(195, 115, 90, 60);
+    ctx.fillStyle = '#111';
+    ctx.fillRect(200, 120, 80, 50);
+    // Piano keys
+    for (let k = 0; k < 10; k++) {
+        ctx.fillStyle = k % 2 === 0 ? '#eee' : '#111';
+        ctx.fillRect(202 + k * 7.6, 155, 6, 12);
+    }
+    // Piano bench
+    ctx.fillStyle = '#4a2a1a';
+    ctx.fillRect(210, 178, 60, 14);
+
+    // Doors
+    for (const door of L3_DOORS.roundabout) drawL3DoorIndicator(door);
+
+    // Door frames
+    // North (theater)
+    ctx.fillStyle = '#d4a574';
+    ctx.fillRect(205, 0, 70, 10);
+    ctx.fillStyle = '#030305';
+    ctx.fillRect(210, 0, 60, 6);
+    // South (hallway)
+    ctx.fillStyle = '#d4a574';
+    ctx.fillRect(205, 310, 70, 10);
+    ctx.fillStyle = '#030305';
+    ctx.fillRect(210, 310, 60, 6);
+    // East (shop)
+    ctx.fillStyle = '#d4a574';
+    ctx.fillRect(460, 125, 20, 70);
+    ctx.fillStyle = '#030305';
+    ctx.fillRect(466, 130, 14, 60);
+    // West (jewelry)
+    ctx.fillStyle = '#d4a574';
+    ctx.fillRect(0, 125, 10, 70);
+    ctx.fillStyle = '#030305';
+    ctx.fillRect(0, 130, 6, 60);
+
+    // Sconces
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(42, 80, 4, 4);
+    ctx.fillRect(434, 80, 4, 4);
+    ctx.fillRect(42, 220, 4, 4);
+    ctx.fillRect(434, 220, 4, 4);
+    ctx.fillStyle = 'rgba(255, 200, 0, 0.10)';
+    ctx.beginPath(); ctx.arc(44, 82, 16, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(436, 82, 16, 0, Math.PI * 2); ctx.fill();
+
+    // NPCs in roundabout
+    drawFlintSprite(L3_NPCS.flint.x, L3_NPCS.flint.y, L3_NPCS.flint.facing);
+    drawBlakeSprite(L3_NPCS.blake.x, L3_NPCS.blake.y, L3_NPCS.blake.facing);
+    drawAbrahamSprite(L3_NPCS.abraham.x, L3_NPCS.abraham.y, L3_NPCS.abraham.facing);
+    drawVanessaSprite(L3_NPCS.vanessa.x, L3_NPCS.vanessa.y, L3_NPCS.vanessa.facing);
+
+    // Player
+    drawL3Player();
+
+    // Door labels
+    ctx.fillStyle = '#e8d070';
+    ctx.font = '8px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('THEATER', 240, 26);
+    ctx.fillText('HALLWAY', 240, 298);
+    ctx.fillText('SHOP', 468, 118);
+    ctx.fillText('JEWELRY', 16, 118);
+    ctx.textAlign = 'left';
+}
+
+function drawL3Theater() {
+    // Dark theater background
+    ctx.fillStyle = '#1a0a0a';
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+    // Stage
+    ctx.fillStyle = '#5c3a1a';
+    ctx.fillRect(60, 40, 360, 80);
+    ctx.fillStyle = '#6b4423';
+    ctx.fillRect(60, 115, 360, 8);
+
+    // Red curtains
+    ctx.fillStyle = '#8b0000';
+    ctx.fillRect(10, 10, 55, 120);
+    ctx.fillStyle = '#cc2222';
+    ctx.fillRect(15, 10, 20, 120);
+    ctx.fillRect(40, 10, 15, 120);
+    ctx.fillStyle = '#8b0000';
+    ctx.fillRect(415, 10, 55, 120);
+    ctx.fillStyle = '#cc2222';
+    ctx.fillRect(420, 10, 20, 120);
+    ctx.fillRect(445, 10, 15, 120);
+
+    // Curtain valance
+    ctx.fillStyle = '#8b0000';
+    ctx.fillRect(10, 10, WIDTH - 20, 20);
+
+    // Floor (audience area)
+    ctx.fillStyle = '#2a1a3a';
+    ctx.fillRect(0, 130, WIDTH, HEIGHT - 130);
+    for (let x = 0; x < WIDTH; x += 24) {
+        for (let y = 130; y < HEIGHT; y += 24) {
+            ctx.fillStyle = '#321e44';
+            ctx.fillRect(x + 2, y + 2, 10, 10);
+        }
+    }
+
+    // Chairs/seats (rows)
+    for (let row = 0; row < 2; row++) {
+        for (let seat = 0; seat < 8; seat++) {
+            ctx.fillStyle = '#8b0000';
+            ctx.fillRect(60 + seat * 46, 135 + row * 30, 36, 20);
+            ctx.fillStyle = '#cc2222';
+            ctx.fillRect(62 + seat * 46, 137 + row * 30, 32, 10);
+        }
+    }
+
+    // Security guard
+    drawSecurityGuard(L3_NPCS.guard.x, L3_NPCS.guard.y, L3_NPCS.guard.facing);
+
+    // Door to roundabout (south)
+    for (const door of L3_DOORS.theater) drawL3DoorIndicator(door);
+    ctx.fillStyle = '#d4a574';
+    ctx.fillRect(205, 310, 70, 10);
+    ctx.fillStyle = '#030305';
+    ctx.fillRect(210, 310, 60, 6);
+
+    // Spotlights
+    ctx.fillStyle = 'rgba(255, 255, 200, 0.08)';
+    ctx.beginPath();
+    ctx.moveTo(200, 10);
+    ctx.lineTo(170, 120);
+    ctx.lineTo(230, 120);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(300, 10);
+    ctx.lineTo(270, 120);
+    ctx.lineTo(330, 120);
+    ctx.closePath();
+    ctx.fill();
+
+    // Player
+    drawL3Player();
+
+    ctx.fillStyle = '#e8d070';
+    ctx.font = '8px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('EXIT', 240, 298);
+    ctx.textAlign = 'left';
+}
+
+function drawL3Hallway() {
+    drawL3RoomFloor();
+
+    // Walls (narrower hallway)
+    ctx.fillStyle = '#3a2a5c';
+    ctx.fillRect(0, 0, 80, HEIGHT);
+    ctx.fillRect(400, 0, 80, HEIGHT);
+    ctx.fillRect(0, 0, WIDTH, 30);
+    ctx.fillRect(0, 290, WIDTH, 30);
+    // Wall trim
+    ctx.fillStyle = '#4a2a1a';
+    ctx.fillRect(76, 0, 4, HEIGHT);
+    ctx.fillRect(400, 0, 4, HEIGHT);
+    ctx.fillRect(0, 26, WIDTH, 4);
+    ctx.fillRect(0, 290, WIDTH, 4);
+
+    // North door (to roundabout)
+    for (const door of L3_DOORS.hallway) drawL3DoorIndicator(door);
+
+    // Door frame north
+    ctx.fillStyle = '#d4a574';
+    ctx.fillRect(205, 0, 70, 10);
+    ctx.fillStyle = '#030305';
+    ctx.fillRect(210, 0, 60, 6);
+
+    // Chuck's door (left wall) — actual working door
+    ctx.fillStyle = '#d4a574';
+    ctx.fillRect(80, 125, 4, 70);
+    ctx.fillRect(80 + 44 - 4, 125, 4, 70);
+    ctx.fillStyle = '#8B4513';
+    ctx.fillRect(84, 130, 36, 60);
+    ctx.fillStyle = '#6d3a0a';
+    ctx.fillRect(88, 134, 28, 24);
+    ctx.fillRect(88, 162, 28, 24);
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(110, 158, 4, 4);
+    // Room number
+    ctx.fillStyle = '#ffd700';
+    ctx.font = 'bold 8px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('501', 102, 126);
+
+    // Decorative locked doors (right wall)
+    for (let i = 0; i < 3; i++) {
+        const dy = 80 + i * 70;
+        ctx.fillStyle = '#d4a574';
+        ctx.fillRect(396, dy, 4, 60);
+        ctx.fillRect(396 + 36, dy, 4, 60);
+        ctx.fillStyle = '#8B4513';
+        ctx.fillRect(400, dy + 4, 28, 52);
+        ctx.fillStyle = '#6d3a0a';
+        ctx.fillRect(404, dy + 8, 20, 20);
+        ctx.fillRect(404, dy + 32, 20, 18);
+        ctx.fillStyle = '#ffd700';
+        ctx.fillRect(406, dy + 28, 4, 4);
+        // Room numbers
+        ctx.fillStyle = '#ffd700';
+        ctx.font = 'bold 8px monospace';
         ctx.textAlign = 'center';
-        ctx.fillText('It\'s that book!', WIDTH / 2, HEIGHT / 2 + 5);
-        ctx.textAlign = 'left';
+        ctx.fillText(`${502 + i}`, 414, dy - 2);
+    }
+
+    // Sconces
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(82, 200, 4, 4);
+    ctx.fillRect(394, 200, 4, 4);
+    ctx.fillStyle = 'rgba(255, 200, 0, 0.10)';
+    ctx.beginPath(); ctx.arc(84, 202, 16, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(396, 202, 16, 0, Math.PI * 2); ctx.fill();
+
+    ctx.textAlign = 'left';
+
+    // Player
+    drawL3Player();
+
+    ctx.fillStyle = '#e8d070';
+    ctx.font = '8px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('ROUNDABOUT', 240, 22);
+    ctx.textAlign = 'left';
+}
+
+function drawL3ChucksRoom() {
+    drawL3RoomFloor();
+
+    // Walls
+    ctx.fillStyle = '#3a2a5c';
+    ctx.fillRect(0, 0, WIDTH, 50);
+    ctx.fillRect(0, 270, WIDTH, 50);
+    ctx.fillRect(0, 0, 50, HEIGHT);
+    ctx.fillRect(440, 0, 40, HEIGHT);
+    ctx.fillStyle = '#4a2a1a';
+    ctx.fillRect(0, 46, WIDTH, 4);
+    ctx.fillRect(0, 270, WIDTH, 4);
+    ctx.fillRect(46, 0, 4, HEIGHT);
+    ctx.fillRect(440, 0, 4, HEIGHT);
+
+    // Bed (left side)
+    ctx.fillStyle = '#4a3a6a';
+    ctx.fillRect(50, 60, 110, 140);
+    ctx.fillStyle = '#5a4a7a';
+    ctx.fillRect(54, 64, 102, 40);
+    // Pillows
+    ctx.fillStyle = '#ddd';
+    ctx.fillRect(60, 68, 40, 25);
+    ctx.fillRect(104, 68, 40, 25);
+    // Blanket
+    ctx.fillStyle = '#3a2a5a';
+    ctx.fillRect(54, 110, 102, 4);
+
+    // Bedside table
+    ctx.fillStyle = '#7a5020';
+    ctx.fillRect(50, 40, 44, 12);
+    ctx.fillStyle = '#5c3a1a';
+    ctx.fillRect(50, 52, 44, 8);
+
+    // Door (south wall)
+    for (const door of L3_DOORS['chucks-room']) drawL3DoorIndicator(door);
+    ctx.fillStyle = '#d4a574';
+    ctx.fillRect(205, 300, 70, 20);
+    ctx.fillStyle = '#030305';
+    ctx.fillRect(210, 304, 60, 16);
+
+    // Chuck NPC
+    drawChuckSprite(L3_NPCS.chuck.x, L3_NPCS.chuck.y, L3_NPCS.chuck.facing);
+
+    // Player
+    drawL3Player();
+
+    ctx.fillStyle = '#e8d070';
+    ctx.font = '8px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('EXIT', 240, 298);
+    ctx.textAlign = 'left';
+}
+
+function drawL3Jewelry() {
+    // Warm jewelry store floor
+    ctx.fillStyle = '#2a2a1a';
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    ctx.fillStyle = '#3a3a2a';
+    for (let x = 0; x < WIDTH; x += 24) {
+        for (let y = 0; y < HEIGHT; y += 24) {
+            ctx.fillRect(x + 2, y + 2, 10, 10);
+        }
+    }
+
+    // Walls
+    ctx.fillStyle = '#4a3a2a';
+    ctx.fillRect(0, 0, WIDTH, 40);
+    ctx.fillRect(0, 280, WIDTH, 40);
+    ctx.fillRect(0, 0, 40, HEIGHT);
+    ctx.fillRect(440, 0, 40, HEIGHT);
+    ctx.fillStyle = '#6b5a3a';
+    ctx.fillRect(0, 36, WIDTH, 4);
+    ctx.fillRect(0, 280, WIDTH, 4);
+    ctx.fillRect(36, 0, 4, HEIGHT);
+    ctx.fillRect(440, 0, 4, HEIGHT);
+
+    // Display counter (center top)
+    ctx.fillStyle = '#6b5a3a';
+    ctx.fillRect(140, 50, 200, 30);
+    ctx.fillStyle = '#aaddff';
+    ctx.fillRect(145, 52, 190, 24);
+    ctx.strokeStyle = '#6b5a3a';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(145, 52, 190, 24);
+    // Jewelry items in display
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(170, 58, 8, 8);
+    ctx.fillRect(210, 60, 10, 6);
+    ctx.fillRect(260, 58, 8, 8);
+    ctx.fillRect(300, 60, 10, 6);
+
+    // Side displays
+    ctx.fillStyle = '#6b5a3a';
+    ctx.fillRect(60, 120, 80, 40);
+    ctx.fillStyle = '#aaddff';
+    ctx.fillRect(64, 124, 72, 32);
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(80, 132, 6, 6);
+    ctx.fillRect(100, 134, 8, 4);
+    ctx.fillRect(120, 132, 6, 6);
+
+    ctx.fillStyle = '#6b5a3a';
+    ctx.fillRect(340, 120, 80, 40);
+    ctx.fillStyle = '#aaddff';
+    ctx.fillRect(344, 124, 72, 32);
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(360, 132, 6, 6);
+    ctx.fillRect(380, 134, 8, 4);
+    ctx.fillRect(400, 132, 6, 6);
+
+    // Door to roundabout (right wall)
+    for (const door of L3_DOORS.jewelry) drawL3DoorIndicator(door);
+    ctx.fillStyle = '#d4a574';
+    ctx.fillRect(460, 125, 20, 70);
+    ctx.fillStyle = '#030305';
+    ctx.fillRect(466, 130, 14, 60);
+
+    // NPCs: AJ and RJ
+    drawAJSprite(L3_NPCS.aj.x, L3_NPCS.aj.y, L3_NPCS.aj.facing);
+    drawRJSprite(L3_NPCS.rj.x, L3_NPCS.rj.y, L3_NPCS.rj.facing);
+
+    // Player
+    drawL3Player();
+
+    ctx.fillStyle = '#e8d070';
+    ctx.font = '8px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('EXIT', 468, 118);
+    ctx.textAlign = 'left';
+}
+
+// ── NPC Sprite Functions ──
+
+function drawChuckSprite(x, y, facing) {
+    // Chuck: big/masc guy, red tank top, short buzzed hair
+    const b = 0;
+    // Legs
+    ctx.fillStyle = '#2b4570';
+    ctx.fillRect(x + 5, y + 26 + b, 6, 10);
+    ctx.fillRect(x + 13, y + 26 + b, 6, 10);
+    // Shorts
+    ctx.fillStyle = '#1e3350';
+    ctx.fillRect(x + 4, y + 22 + b, 16, 6);
+    // Torso (red tank top, wider build)
+    ctx.fillStyle = '#cc4444';
+    ctx.fillRect(x + 2, y + 6 + b, 20, 18);
+    ctx.fillStyle = '#aa3333';
+    ctx.fillRect(x + 2, y + 22 + b, 20, 2);
+    // Arms (thick)
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(x + 0, y + 7 + b, 4, 14);
+    ctx.fillRect(x + 20, y + 7 + b, 4, 14);
+    // Head
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(x + 5, y - 2 + b, 14, 10);
+    // Hair (short buzz)
+    ctx.fillStyle = '#3a2a1a';
+    ctx.fillRect(x + 4, y - 5 + b, 16, 4);
+    // Eyes
+    if (facing === 'down') {
+        ctx.fillStyle = '#333';
+        ctx.fillRect(x + 7, y + 1, 3, 2);
+        ctx.fillRect(x + 14, y + 1, 3, 2);
+        // Stubble
+        ctx.fillStyle = 'rgba(60,40,20,0.3)';
+        ctx.fillRect(x + 7, y + 5, 10, 3);
+    }
+}
+
+function drawFlintSprite(x, y, facing) {
+    // Flint: slender, colorful orange shirt, styled hair
+    const b = 0;
+    // Legs
+    ctx.fillStyle = '#333';
+    ctx.fillRect(x + 7, y + 26 + b, 4, 10);
+    ctx.fillRect(x + 13, y + 26 + b, 4, 10);
+    // Tight pants
+    ctx.fillStyle = '#222';
+    ctx.fillRect(x + 6, y + 22 + b, 12, 6);
+    // Torso (orange patterned shirt)
+    ctx.fillStyle = '#ff8800';
+    ctx.fillRect(x + 4, y + 7 + b, 16, 16);
+    ctx.fillStyle = '#cc6600';
+    ctx.fillRect(x + 4, y + 21 + b, 16, 2);
+    // Shirt pattern
+    ctx.fillStyle = '#ffaa33';
+    ctx.fillRect(x + 6, y + 10, 4, 4);
+    ctx.fillRect(x + 12, y + 14, 4, 4);
+    // Arms (slender)
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(x + 2, y + 8 + b, 3, 10);
+    ctx.fillRect(x + 19, y + 8 + b, 3, 10);
+    // Head
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(x + 6, y - 2 + b, 12, 10);
+    // Hair (styled, swept)
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(x + 5, y - 7 + b, 14, 6);
+    ctx.fillRect(x + 4, y - 4 + b, 4, 4);
+    ctx.fillRect(x + 16, y - 4 + b, 4, 4);
+    // Eyes
+    if (facing === 'down') {
+        ctx.fillStyle = '#333';
+        ctx.fillRect(x + 8, y + 1, 2, 2);
+        ctx.fillRect(x + 14, y + 1, 2, 2);
+        // Sly smirk
+        ctx.fillStyle = '#cc6644';
+        ctx.fillRect(x + 10, y + 5, 5, 2);
+    }
+}
+
+function drawAJSprite(x, y, facing) {
+    // AJ: party vibe, bright blue tank top, short blond-ish hair
+    const b = 0;
+    // Legs
+    ctx.fillStyle = '#4a4a4a';
+    ctx.fillRect(x + 6, y + 26 + b, 5, 10);
+    ctx.fillRect(x + 13, y + 26 + b, 5, 10);
+    // Shorts
+    ctx.fillStyle = '#333';
+    ctx.fillRect(x + 5, y + 22 + b, 14, 6);
+    // Torso (bright blue)
+    ctx.fillStyle = '#33ccff';
+    ctx.fillRect(x + 3, y + 7 + b, 18, 16);
+    ctx.fillStyle = '#2299cc';
+    ctx.fillRect(x + 3, y + 21 + b, 18, 2);
+    // Arms
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(x + 1, y + 8 + b, 3, 12);
+    ctx.fillRect(x + 20, y + 8 + b, 3, 12);
+    // Head
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(x + 6, y - 2 + b, 12, 10);
+    // Hair (blond-ish, short)
+    ctx.fillStyle = '#ccaa44';
+    ctx.fillRect(x + 5, y - 6 + b, 14, 5);
+    // Eyes
+    if (facing === 'down' || facing === 'right') {
+        ctx.fillStyle = '#333';
+        ctx.fillRect(x + 8, y + 1, 2, 2);
+        ctx.fillRect(x + 14, y + 1, 2, 2);
+        ctx.fillStyle = '#cc4444';
+        ctx.fillRect(x + 9, y + 5, 6, 2);
+    }
+}
+
+function drawRJSprite(x, y, facing) {
+    // RJ: AJ's husband, similar build, green shirt, dark hair
+    const b = 0;
+    // Legs
+    ctx.fillStyle = '#4a4a4a';
+    ctx.fillRect(x + 6, y + 26 + b, 5, 10);
+    ctx.fillRect(x + 13, y + 26 + b, 5, 10);
+    // Shorts
+    ctx.fillStyle = '#333';
+    ctx.fillRect(x + 5, y + 22 + b, 14, 6);
+    // Torso (green)
+    ctx.fillStyle = '#33cc99';
+    ctx.fillRect(x + 3, y + 7 + b, 18, 16);
+    ctx.fillStyle = '#229966';
+    ctx.fillRect(x + 3, y + 21 + b, 18, 2);
+    // Arms
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(x + 1, y + 8 + b, 3, 12);
+    ctx.fillRect(x + 20, y + 8 + b, 3, 12);
+    // Head
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(x + 6, y - 2 + b, 12, 10);
+    // Hair (dark, short)
+    ctx.fillStyle = '#2a2a2a';
+    ctx.fillRect(x + 5, y - 6 + b, 14, 5);
+    // Eyes
+    if (facing === 'down' || facing === 'left') {
+        ctx.fillStyle = '#333';
+        ctx.fillRect(x + 8, y + 1, 2, 2);
+        ctx.fillRect(x + 14, y + 1, 2, 2);
+        ctx.fillStyle = '#cc4444';
+        ctx.fillRect(x + 9, y + 5, 6, 2);
+    }
+}
+
+// ── Level 3 Portraits ──
+
+function drawLevel3Portrait(npcKey) {
+    const pCanvas = document.getElementById('chat-portrait');
+    const pCtx = pCanvas.getContext('2d');
+    pCtx.fillStyle = '#1a1420';
+    pCtx.fillRect(0, 0, 96, 96);
+
+    if (npcKey === 'shopkeeper') {
+        // Shopkeeper portrait
+        pCtx.fillStyle = '#cc8844';
+        pCtx.fillRect(16, 60, 64, 36);
+        pCtx.fillStyle = '#eee';
+        pCtx.fillRect(24, 65, 48, 28);
+        pCtx.fillStyle = '#d4a076';
+        pCtx.fillRect(38, 50, 20, 14);
+        pCtx.fillStyle = '#d4a076';
+        pCtx.fillRect(28, 20, 40, 34);
+        pCtx.fillStyle = '#888';
+        pCtx.fillRect(26, 12, 44, 12);
+        pCtx.fillRect(28, 10, 40, 6);
+        pCtx.fillStyle = '#333';
+        pCtx.fillRect(34, 32, 6, 6);
+        pCtx.fillRect(54, 32, 6, 6);
+        pCtx.fillStyle = '#fff';
+        pCtx.fillRect(35, 33, 2, 2);
+        pCtx.fillRect(55, 33, 2, 2);
+        pCtx.fillStyle = '#cc4444';
+        pCtx.fillRect(38, 44, 20, 4);
+    } else if (npcKey === 'guard') {
+        // Security guard portrait
+        pCtx.fillStyle = '#eee';
+        pCtx.fillRect(16, 60, 64, 36);
+        pCtx.fillStyle = '#ccc';
+        pCtx.fillRect(16, 90, 64, 6);
+        pCtx.fillStyle = '#ffd700';
+        pCtx.fillRect(22, 66, 8, 8);
+        pCtx.fillStyle = '#d4a076';
+        pCtx.fillRect(38, 50, 20, 14);
+        pCtx.fillStyle = '#d4a076';
+        pCtx.fillRect(28, 20, 40, 34);
+        pCtx.fillStyle = '#1a1a44';
+        pCtx.fillRect(26, 10, 44, 14);
+        pCtx.fillRect(24, 18, 48, 4);
+        pCtx.fillStyle = '#333';
+        pCtx.fillRect(34, 32, 6, 6);
+        pCtx.fillRect(54, 32, 6, 6);
+        pCtx.fillStyle = '#fff';
+        pCtx.fillRect(35, 33, 2, 2);
+        pCtx.fillRect(55, 33, 2, 2);
+    } else if (npcKey === 'flint') {
+        // Flint portrait: orange shirt, styled dark hair, sly look
+        pCtx.fillStyle = '#ff8800';
+        pCtx.fillRect(16, 60, 64, 36);
+        pCtx.fillStyle = '#cc6600';
+        pCtx.fillRect(16, 90, 64, 6);
+        pCtx.fillStyle = '#ffaa33';
+        pCtx.fillRect(24, 66, 10, 10);
+        pCtx.fillRect(50, 74, 10, 10);
+        pCtx.fillStyle = '#d4a076';
+        pCtx.fillRect(38, 50, 20, 14);
+        pCtx.fillStyle = '#d4a076';
+        pCtx.fillRect(28, 20, 40, 34);
+        pCtx.fillStyle = '#1a1a1a';
+        pCtx.fillRect(24, 6, 48, 18);
+        pCtx.fillRect(22, 14, 8, 12);
+        pCtx.fillRect(66, 14, 8, 12);
+        pCtx.fillStyle = '#333';
+        pCtx.fillRect(34, 32, 6, 6);
+        pCtx.fillRect(54, 32, 6, 6);
+        pCtx.fillStyle = '#fff';
+        pCtx.fillRect(35, 33, 2, 2);
+        pCtx.fillRect(55, 33, 2, 2);
+        // Sly smirk
+        pCtx.fillStyle = '#cc6644';
+        pCtx.fillRect(40, 44, 18, 3);
+    } else if (npcKey === 'chuck') {
+        // Chuck portrait: big masc guy, red tank, buzzed hair
+        pCtx.fillStyle = '#cc4444';
+        pCtx.fillRect(12, 58, 72, 38);
+        pCtx.fillStyle = '#aa3333';
+        pCtx.fillRect(12, 90, 72, 6);
+        pCtx.fillStyle = '#d4a076';
+        pCtx.fillRect(36, 48, 24, 14);
+        pCtx.fillStyle = '#d4a076';
+        pCtx.fillRect(26, 18, 44, 34);
+        pCtx.fillStyle = '#3a2a1a';
+        pCtx.fillRect(24, 10, 48, 12);
+        pCtx.fillStyle = '#333';
+        pCtx.fillRect(34, 30, 6, 6);
+        pCtx.fillRect(54, 30, 6, 6);
+        pCtx.fillStyle = '#fff';
+        pCtx.fillRect(35, 31, 2, 2);
+        pCtx.fillRect(55, 31, 2, 2);
+        // Stubble
+        pCtx.fillStyle = 'rgba(60,40,20,0.3)';
+        pCtx.fillRect(32, 42, 32, 8);
+    } else if (npcKey === 'aj') {
+        // AJ portrait: bright blue tank, blond hair
+        pCtx.fillStyle = '#33ccff';
+        pCtx.fillRect(16, 60, 64, 36);
+        pCtx.fillStyle = '#2299cc';
+        pCtx.fillRect(16, 90, 64, 6);
+        pCtx.fillStyle = '#d4a076';
+        pCtx.fillRect(38, 50, 20, 14);
+        pCtx.fillStyle = '#d4a076';
+        pCtx.fillRect(28, 20, 40, 34);
+        pCtx.fillStyle = '#ccaa44';
+        pCtx.fillRect(26, 10, 44, 14);
+        pCtx.fillRect(28, 8, 40, 6);
+        pCtx.fillStyle = '#333';
+        pCtx.fillRect(34, 32, 6, 6);
+        pCtx.fillRect(54, 32, 6, 6);
+        pCtx.fillStyle = '#fff';
+        pCtx.fillRect(35, 33, 2, 2);
+        pCtx.fillRect(55, 33, 2, 2);
+        pCtx.fillStyle = '#cc4444';
+        pCtx.fillRect(38, 44, 20, 4);
+    } else if (npcKey === 'rj') {
+        // RJ portrait: green shirt, dark hair
+        pCtx.fillStyle = '#33cc99';
+        pCtx.fillRect(16, 60, 64, 36);
+        pCtx.fillStyle = '#229966';
+        pCtx.fillRect(16, 90, 64, 6);
+        pCtx.fillStyle = '#d4a076';
+        pCtx.fillRect(38, 50, 20, 14);
+        pCtx.fillStyle = '#d4a076';
+        pCtx.fillRect(28, 20, 40, 34);
+        pCtx.fillStyle = '#2a2a2a';
+        pCtx.fillRect(26, 10, 44, 14);
+        pCtx.fillRect(28, 8, 40, 6);
+        pCtx.fillStyle = '#333';
+        pCtx.fillRect(34, 32, 6, 6);
+        pCtx.fillRect(54, 32, 6, 6);
+        pCtx.fillStyle = '#fff';
+        pCtx.fillRect(35, 33, 2, 2);
+        pCtx.fillRect(55, 33, 2, 2);
+        pCtx.fillStyle = '#cc4444';
+        pCtx.fillRect(38, 44, 20, 4);
+    } else if (npcKey === 'blake') {
+        drawLevel2Portrait('blake');
+    } else if (npcKey === 'abraham') {
+        drawLevel2Portrait('abraham');
+    } else if (npcKey === 'vanessa') {
+        drawLevel2Portrait('vanessa');
     }
 }
 
