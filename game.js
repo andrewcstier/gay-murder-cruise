@@ -4687,7 +4687,7 @@ function drawComicPanel4b() {
 
     // Announcer speech bubble (big, dramatic)
     drawComicSpeechBubble(
-        'Ladies and gentlemen...\nPlease welcome to the stage:\nJIGGLYPUFF! MARIAH CAREY!\nand CHER!',
+        'Ladies and gentlemen...\nPlease welcome to the stage:\nJIGGLYPUFF! SKINNY MARIAH\nCAREY! and CHER!',
         100, 20, 280, 80,
         WIDTH / 2, 148
     );
