@@ -4718,30 +4718,39 @@ function drawComicPanel5() {
     ctx.fillRect(jx + 9, jy + 10, 6, 2);
     drawBlueBag(jx - 5, jy + 30, 1);
 
-    // 2. Mariah Carey — curvy body, long flowing brown hair, sparkly corset, high heels
+    // 2. Mariah Carey — ridiculously tiny waist, big bust/hips, sparkly corset
     const mx = 220, my = 158;
+    // Legs
     ctx.fillStyle = '#d4a076';
     ctx.fillRect(mx + 7, my + 30, 4, 10);
     ctx.fillRect(mx + 13, my + 30, 4, 10);
+    // Heels
     ctx.fillStyle = '#cc3366';
     ctx.fillRect(mx + 5, my + 38, 6, 4);
     ctx.fillRect(mx + 13, my + 38, 6, 4);
-    // Sparkly corset — hourglass shape
-    ctx.fillStyle = '#cc3366';
-    ctx.fillRect(mx + 2, my + 8, 20, 10);
+    // Wide hips/skirt
     ctx.fillStyle = '#ff4488';
-    ctx.fillRect(mx + 4, my + 18, 16, 14);
+    ctx.fillRect(mx + 1, my + 22, 22, 10);
+    // RIDICULOUSLY tiny waist (the meme)
+    ctx.fillStyle = '#cc3366';
+    ctx.fillRect(mx + 8, my + 16, 8, 7);
+    // Big bust/chest
+    ctx.fillStyle = '#cc3366';
+    ctx.fillRect(mx + 1, my + 6, 22, 11);
+    ctx.fillStyle = '#ff4488';
+    ctx.fillRect(mx + 3, my + 7, 8, 8);
+    ctx.fillRect(mx + 13, my + 7, 8, 8);
     // Sparkles
     ctx.fillStyle = '#fff';
-    ctx.fillRect(mx + 6, my + 10, 2, 2);
-    ctx.fillRect(mx + 14, my + 12, 2, 2);
-    ctx.fillRect(mx + 10, my + 22, 2, 2);
-    ctx.fillRect(mx + 8, my + 16, 1, 1);
-    ctx.fillRect(mx + 16, my + 20, 1, 1);
+    ctx.fillRect(mx + 5, my + 8, 2, 2);
+    ctx.fillRect(mx + 17, my + 10, 2, 2);
+    ctx.fillRect(mx + 4, my + 24, 2, 2);
+    ctx.fillRect(mx + 18, my + 24, 2, 2);
+    ctx.fillRect(mx + 10, my + 18, 1, 1);
     // Arms out (diva pose)
     ctx.fillStyle = '#d4a076';
-    ctx.fillRect(mx - 4, my + 10, 7, 4);
-    ctx.fillRect(mx + 21, my + 10, 7, 4);
+    ctx.fillRect(mx - 4, my + 8, 7, 4);
+    ctx.fillRect(mx + 21, my + 8, 7, 4);
     // Head
     ctx.fillStyle = '#d4a076';
     ctx.fillRect(mx + 6, my - 2, 12, 10);
