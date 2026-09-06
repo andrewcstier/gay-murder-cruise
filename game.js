@@ -49,7 +49,9 @@ let comicEnteredAt = 0;
 
 // Level 3 shop state
 let l3ShopTextAlpha = 0;
-let l3ShopTextPhase = 'fadein'; // 'fadein', 'hold', 'fadeout'
+let l3ShopTextPhase = 'fadein';
+let l3ShopTextIndex = 0;
+const L3_SHOP_THOUGHTS = ["It's that book!", "The theater should be empty by now.\nI should talk to the security guy."];
 let l3ShopTimer = 0;
 
 // Level 3 state
@@ -192,7 +194,7 @@ function handleAction(key) {
         if (Date.now() - comicEnteredAt < 400) return;
         comicPanel++;
         comicEnteredAt = Date.now();
-        if (comicPanel >= 10) {
+        if (comicPanel >= 11) {
             startLevel3();
         }
         return;
@@ -397,7 +399,7 @@ musicToggle.addEventListener('click', () => {
         if (gameState === 'charselect') GameMusic.startMusic('hallway');
         else if (gameState === 'playing') GameMusic.startMusic('charselect');
         else if (gameState === 'level2') GameMusic.startMusic('charselect');
-        else if (gameState === 'level3') GameMusic.startMusic(l3Room === 'chucks-room' || (l3Room === 'roundabout' && l3PlayerY > 350) ? 'piano' : 'level3');
+        else if (gameState === 'level3') GameMusic.startMusic(l3Room === 'chucks-room' || l3Room === 'roundabout' ? 'piano' : 'level3');
         else if (gameState === 'gameover' || gameState === 'cutscene' || gameState === 'chase' || gameState === 'room') GameMusic.startMusic('panic');
     } else {
         GameMusic.stopMusic();
@@ -3976,7 +3978,8 @@ function drawComicPanel(n) {
         case 6: drawComicPanel5b(); break;
         case 7: drawComicPanel6(); break;
         case 8: drawComicPanel7(); break;
-        case 9: drawComicPanel8(); break;
+        case 9: drawComicPanel7b(); break;
+        case 10: drawComicPanel8(); break;
     }
 
     // Thick comic border
@@ -5050,6 +5053,66 @@ function drawComicPanel7() {
 }
 
 // ──────────────────────────────
+// Panel 7b: Security guard is busy
+// ──────────────────────────────
+function drawComicPanel7b() {
+    // Theater interior — player approaches security guard who waves them off
+    ctx.fillStyle = '#1a0a0a';
+    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, HEIGHT - COMIC_BORDER * 2);
+
+    // Stage area (background)
+    ctx.fillStyle = '#5c3a1a';
+    ctx.fillRect(60, 40, WIDTH - 120, 80);
+    ctx.fillStyle = '#6b4423';
+    ctx.fillRect(60, 115, WIDTH - 120, 8);
+
+    // Red curtains
+    ctx.fillStyle = '#8b0000';
+    ctx.fillRect(10, 10, 55, 200);
+    ctx.fillStyle = '#cc2222';
+    ctx.fillRect(15, 10, 20, 200);
+    ctx.fillRect(WIDTH - 65, 10, 55, 200);
+    ctx.fillStyle = '#cc2222';
+    ctx.fillRect(WIDTH - 55, 10, 20, 200);
+
+    // Theater floor
+    ctx.fillStyle = '#2a1a3a';
+    ctx.fillRect(60, 120, WIDTH - 120, HEIGHT - 120 - COMIC_BORDER);
+    for (let x = 65; x < WIDTH - 65; x += 24) {
+        ctx.fillStyle = '#321e44';
+        ctx.fillRect(x, 130, 10, 10);
+        ctx.fillRect(x + 12, 150, 10, 10);
+    }
+
+    // Empty chairs
+    for (let r = 0; r < 3; r++) {
+        for (let cx = 100; cx < 380; cx += 40) {
+            ctx.fillStyle = '#4a2a1a';
+            ctx.fillRect(cx, 170 + r * 30, 20, 16);
+            ctx.fillStyle = '#3a1a0a';
+            ctx.fillRect(cx + 2, 170 + r * 30, 16, 4);
+        }
+    }
+
+    // Security guard (center, facing player, hand up in "stop" gesture)
+    ctx.save();
+    ctx.translate(WIDTH / 2 - 30, 160);
+    ctx.scale(2.5, 2.5);
+    drawSecurityGuard(0, 0, 'down');
+    ctx.restore();
+
+    // Player approaching from below
+    drawComicPlayerChar(WIDTH / 2 - 12, 260, 'up');
+
+    // Guard speech bubble
+    drawComicSpeechBubble(
+        'I\'m busy. Come back\nafter the theater empties.',
+        140, 100, 230, 46,
+        WIDTH / 2 - 10, 160
+    );
+}
+
+// ──────────────────────────────
 // Panel 8: "The Shop"
 // ──────────────────────────────
 function drawComicPanel8() {
@@ -5296,6 +5359,7 @@ function handleLevel3Action(key) {
     if (l3State === 'shop-intro') return;
     if (l3State === 'book-reveal') {
         l3State = 'shop-intro';
+        l3ShopTextIndex = 0;
         l3ShopTextAlpha = 0;
         l3ShopTextPhase = 'fadein';
         l3ShopTimer = 0;
@@ -5746,8 +5810,14 @@ function updateLevel3() {
             l3ShopTextAlpha -= 0.015;
             if (l3ShopTextAlpha <= 0) {
                 l3ShopTextAlpha = 0;
-                l3ShopTextPhase = 'done';
-                l3State = 'free';
+                l3ShopTextIndex++;
+                if (l3ShopTextIndex < L3_SHOP_THOUGHTS.length) {
+                    l3ShopTextPhase = 'fadein';
+                    l3ShopTimer = 0;
+                } else {
+                    l3ShopTextPhase = 'done';
+                    l3State = 'free';
+                }
             }
         }
         return;
@@ -5777,7 +5847,7 @@ function updateLevel3() {
     // Bounds — roundabout room has variable width (wide top, narrow hallway bottom)
     if (l3Room === 'roundabout') {
         // Outer bounds for full room
-        let minX = 44, maxX = 430, minY = 44, maxY = L3_ROUNDABOUT_HEIGHT - 40;
+        let minX = 44, maxX = 430, minY = 4, maxY = L3_ROUNDABOUT_HEIGHT - 40;
         if (newX < minX) newX = minX;
         if (newX > maxX) newX = maxX;
         if (newY < minY) newY = minY;
@@ -5796,10 +5866,10 @@ function updateLevel3() {
             if (newX > 310) newX = 310;
         }
     } else {
-        const minX = 10;
-        const maxX = 450;
-        const minY = 16;
-        const maxY = 275;
+        const minX = 4;
+        const maxX = 452;
+        const minY = 4;
+        const maxY = 290;
         if (newX < minX) newX = minX;
         if (newX > maxX) newX = maxX;
         if (newY < minY) newY = minY;
@@ -5840,11 +5910,10 @@ function updateLevel3() {
         l3Camera.y = 0;
     }
 
-    // Music: switch between piano (hallway section) and level3 music
-    if (musicEnabled && l3Room === 'roundabout') {
-        const inHallway = l3PlayerY > 350;
-        // startMusic is a no-op if the same track is already playing
-        GameMusic.startMusic(inHallway ? 'piano' : 'level3');
+    // Music: piano in roundabout+chucks-room, level3 everywhere else
+    if (musicEnabled) {
+        const wantPiano = l3Room === 'roundabout' || l3Room === 'chucks-room';
+        GameMusic.startMusic(wantPiano ? 'piano' : 'level3');
     }
 
     // Door proximity / transition
@@ -5863,8 +5932,8 @@ function updateLevel3() {
             l3NearNpc = null;
             promptEl.classList.remove('visible');
             if (musicEnabled) {
-                const prevPiano = prevRoom === 'chucks-room' || (prevRoom === 'roundabout' && prevY > 350);
-                const nowPiano = l3Room === 'chucks-room' || (l3Room === 'roundabout' && l3PlayerY > 350);
+                const prevPiano = prevRoom === 'chucks-room' || prevRoom === 'roundabout';
+                const nowPiano = l3Room === 'chucks-room' || l3Room === 'roundabout';
                 if (prevPiano !== nowPiano) {
                     GameMusic.stopMusic();
                     GameMusic.startMusic(nowPiano ? 'piano' : 'level3');
@@ -5966,13 +6035,18 @@ function drawLevel3() {
     }
 
     // Thought text overlay for shop intro
-    if (l3State === 'shop-intro' && l3ShopTextAlpha > 0) {
+    if (l3State === 'shop-intro' && l3ShopTextAlpha > 0 && l3ShopTextIndex < L3_SHOP_THOUGHTS.length) {
+        const text = L3_SHOP_THOUGHTS[l3ShopTextIndex];
+        const lines = text.split('\n');
+        const bandH = 20 + lines.length * 18;
         ctx.fillStyle = `rgba(0, 0, 20, ${l3ShopTextAlpha * 0.7})`;
-        ctx.fillRect(0, HEIGHT / 2 - 30, WIDTH, 60);
+        ctx.fillRect(0, HEIGHT / 2 - bandH / 2, WIDTH, bandH);
         ctx.fillStyle = `rgba(255, 255, 255, ${l3ShopTextAlpha})`;
         ctx.font = '14px monospace';
         ctx.textAlign = 'center';
-        ctx.fillText('It\'s that book!', WIDTH / 2, HEIGHT / 2 + 5);
+        for (let i = 0; i < lines.length; i++) {
+            ctx.fillText(lines[i], WIDTH / 2, HEIGHT / 2 - (lines.length - 1) * 9 + i * 18 + 5);
+        }
         ctx.textAlign = 'left';
     }
 
