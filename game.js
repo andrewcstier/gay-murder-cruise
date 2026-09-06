@@ -189,7 +189,7 @@ function handleAction(key) {
         if (Date.now() - comicEnteredAt < 400) return;
         comicPanel++;
         comicEnteredAt = Date.now();
-        if (comicPanel >= 8) {
+        if (comicPanel >= 10) {
             startLevel3();
         }
         return;
@@ -3965,13 +3965,15 @@ function drawComicPanel(n) {
 
     switch (n) {
         case 0: drawComicPanel1(); break;
-        case 1: drawComicPanel2(); break;
-        case 2: drawComicPanel3(); break;
-        case 3: drawComicPanel4(); break;
-        case 4: drawComicPanel5(); break;
-        case 5: drawComicPanel6(); break;
-        case 6: drawComicPanel7(); break;
-        case 7: drawComicPanel8(); break;
+        case 1: drawComicPanel1b(); break;
+        case 2: drawComicPanel2(); break;
+        case 3: drawComicPanel3(); break;
+        case 4: drawComicPanel4(); break;
+        case 5: drawComicPanel5(); break;
+        case 6: drawComicPanel5b(); break;
+        case 7: drawComicPanel6(); break;
+        case 8: drawComicPanel7(); break;
+        case 9: drawComicPanel8(); break;
     }
 
     // Thick comic border
@@ -4275,11 +4277,11 @@ function drawDragQueen(x, y, wigColor, outfitColor, outfitShade) {
 // Panel 1: "Leaving the Room"
 // ──────────────────────────────
 function drawComicPanel1() {
-    // Background: ship interior corridor opening to roundabout area
+    // Group entering hallway, Blake urges them to hurry
     ctx.fillStyle = '#2a1a3a';
     ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, HEIGHT - COMIC_BORDER * 2);
 
-    // Corridor perspective - dark walls narrowing
+    // Corridor walls
     ctx.fillStyle = '#1a0e28';
     ctx.fillRect(10, 30, 120, HEIGHT - 60);
     ctx.fillRect(WIDTH - 130, 30, 120, HEIGHT - 60);
@@ -4294,21 +4296,13 @@ function drawComicPanel1() {
         }
     }
 
-    // Wide opening at end of corridor (interior roundabout area, lit)
+    // Wide opening ahead
     ctx.fillStyle = '#3a2a5c';
     ctx.fillRect(150, 30, WIDTH - 300, 100);
-    // Warm interior lighting
     ctx.fillStyle = '#4a3a6a';
     ctx.fillRect(160, 40, WIDTH - 320, 80);
-    // Ceiling lights
-    ctx.fillStyle = '#ffd700';
-    ctx.fillRect(190, 35, 6, 4);
-    ctx.fillRect(250, 35, 6, 4);
-    ctx.fillStyle = 'rgba(255, 200, 100, 0.15)';
-    ctx.fillRect(180, 38, 26, 60);
-    ctx.fillRect(240, 38, 26, 60);
 
-    // Group walking toward the opening - backs shown (walking up)
+    // Group walking - backs shown
     const groupY = 180;
     drawComicPlayerChar(195, groupY, 'up');
     drawBlakeSprite(220, groupY, 'up');
@@ -4323,8 +4317,85 @@ function drawComicPanel1() {
     ctx.fillRect(118, 70, 22, 32);
     ctx.fillRect(WIDTH - 140, 70, 22, 32);
 
-    // Narration
-    drawComicNarration('Later that day...', 14, 10, 160);
+    // Blake speech bubble
+    drawComicSpeechBubble(
+        'Let\'s hurry to the drag\nshow. The Cher impersonator\nis already on stage!',
+        110, 80, 260, 60,
+        232, groupY - 5
+    );
+}
+
+function drawComicPanel1b() {
+    // Group stops — exclamation points — off-screen "No!"
+    ctx.fillStyle = '#2a1a3a';
+    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, HEIGHT - COMIC_BORDER * 2);
+
+    // Same corridor
+    ctx.fillStyle = '#1a0e28';
+    ctx.fillRect(10, 30, 120, HEIGHT - 60);
+    ctx.fillRect(WIDTH - 130, 30, 120, HEIGHT - 60);
+    ctx.fillStyle = '#4a0e2e';
+    ctx.fillRect(130, 30, WIDTH - 260, HEIGHT - 60);
+    for (let x = 135; x < WIDTH - 135; x += 20) {
+        for (let y = 35; y < HEIGHT - 35; y += 20) {
+            ctx.fillStyle = '#5c1438';
+            ctx.fillRect(x, y, 8, 8);
+        }
+    }
+    ctx.fillStyle = '#3a2a5c';
+    ctx.fillRect(150, 30, WIDTH - 300, 100);
+    ctx.fillStyle = '#4a3a6a';
+    ctx.fillRect(160, 40, WIDTH - 320, 80);
+
+    // Group stopped, facing forward
+    const groupY = 180;
+    drawComicPlayerChar(195, groupY, 'up');
+    drawBlakeSprite(220, groupY, 'up');
+    drawAbrahamSprite(245, groupY, 'up');
+    drawVanessaSprite(270, groupY, 'up');
+
+    // Exclamation points above each character
+    ctx.fillStyle = '#fff';
+    const exclPositions = [207, 232, 257, 282];
+    for (const ex of exclPositions) {
+        ctx.fillRect(ex - 6, groupY - 28, 12, 18);
+    }
+    ctx.fillStyle = '#ff0000';
+    ctx.font = 'bold 14px monospace';
+    ctx.textAlign = 'center';
+    for (const ex of exclPositions) {
+        ctx.fillText('!', ex, groupY - 14);
+    }
+    ctx.textAlign = 'left';
+
+    // Off-screen "No!" coming from the right
+    ctx.save();
+    ctx.fillStyle = '#ff4444';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 3;
+    ctx.font = 'bold 28px monospace';
+    ctx.textAlign = 'right';
+    ctx.strokeText('No!!', WIDTH - 20, 80);
+    ctx.fillText('No!!', WIDTH - 20, 80);
+    ctx.restore();
+
+    // Jagged speech tail pointing off-screen right
+    ctx.fillStyle = '#fff';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(WIDTH - 10, 55);
+    ctx.lineTo(WIDTH - 60, 50);
+    ctx.lineTo(WIDTH - 50, 65);
+    ctx.lineTo(WIDTH - 80, 62);
+    ctx.lineTo(WIDTH - 55, 75);
+    ctx.closePath();
+    ctx.stroke();
+
+    // Wall sconces
+    ctx.fillStyle = '#ffcc44';
+    ctx.fillRect(125, 80, 8, 12);
+    ctx.fillRect(WIDTH - 133, 80, 8, 12);
 }
 
 // ──────────────────────────────
@@ -4524,8 +4595,8 @@ function drawComicPanel4() {
 
     // Blake speech bubble at top
     drawComicSpeechBubble(
-        'Me too. We\'re running late,\nCher\'s already on stage!',
-        120, 20, 240, 46,
+        'Come on, let\'s go!\nThe show must go on!',
+        140, 20, 220, 46,
         WIDTH / 2, HEIGHT / 2 - 50
     );
 }
@@ -4591,23 +4662,115 @@ function drawComicPanel5() {
     ctx.closePath();
     ctx.fill();
 
-    // Three drag queens on stage
-    // 1. Jigglypuff persona (pink wig, cute) — pulling microphone from purse
-    drawDragQueen(130, 165, '#ff99cc', '#ffaacc', '#ff88aa');
-    drawBlueBag(125, 200, 1);
-    // Microphone in Jigglypuff's hand
-    ctx.fillStyle = '#888';
-    ctx.fillRect(152, 174, 3, 8);
+    // Three drag queens on stage — exaggerated bodies & outfits
+
+    // 1. Jigglypuff — round/puffy pink body, huge pink wig, cute face
+    const jx = 130, jy = 155;
+    ctx.fillStyle = '#ff99cc';
+    ctx.beginPath(); ctx.ellipse(jx + 12, jy + 18, 14, 16, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffaacc';
+    ctx.beginPath(); ctx.ellipse(jx + 12, jy + 10, 12, 10, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ff88bb';
+    ctx.fillRect(jx + 6, jy + 32, 5, 8);
+    ctx.fillRect(jx + 13, jy + 32, 5, 8);
+    // Huge pink wig (round like Jigglypuff)
+    ctx.fillStyle = '#ff77aa';
+    ctx.beginPath(); ctx.ellipse(jx + 12, jy - 2, 16, 14, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ff99cc';
+    ctx.beginPath(); ctx.arc(jx + 12, jy - 12, 8, 0, Math.PI * 2); ctx.fill();
+    // Cute eyes
     ctx.fillStyle = '#333';
-    ctx.fillRect(150, 170, 7, 5);
+    ctx.fillRect(jx + 7, jy + 4, 4, 4);
+    ctx.fillRect(jx + 14, jy + 4, 4, 4);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(jx + 8, jy + 4, 2, 2);
+    ctx.fillRect(jx + 15, jy + 4, 2, 2);
+    ctx.fillStyle = '#ff3366';
+    ctx.fillRect(jx + 9, jy + 10, 6, 2);
+    drawBlueBag(jx - 5, jy + 30, 1);
 
-    // 2. Mariah Carey persona (long wavy brown hair, sparkly corset)
-    drawDragQueen(220, 165, '#8B4513', '#cc3366', '#992244');
-    drawBlueBag(240, 200, 1);
+    // 2. Mariah Carey — curvy body, long flowing brown hair, sparkly corset, high heels
+    const mx = 220, my = 158;
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(mx + 7, my + 30, 4, 10);
+    ctx.fillRect(mx + 13, my + 30, 4, 10);
+    ctx.fillStyle = '#cc3366';
+    ctx.fillRect(mx + 5, my + 38, 6, 4);
+    ctx.fillRect(mx + 13, my + 38, 6, 4);
+    // Sparkly corset — hourglass shape
+    ctx.fillStyle = '#cc3366';
+    ctx.fillRect(mx + 2, my + 8, 20, 10);
+    ctx.fillStyle = '#ff4488';
+    ctx.fillRect(mx + 4, my + 18, 16, 14);
+    // Sparkles
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(mx + 6, my + 10, 2, 2);
+    ctx.fillRect(mx + 14, my + 12, 2, 2);
+    ctx.fillRect(mx + 10, my + 22, 2, 2);
+    ctx.fillRect(mx + 8, my + 16, 1, 1);
+    ctx.fillRect(mx + 16, my + 20, 1, 1);
+    // Arms out (diva pose)
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(mx - 4, my + 10, 7, 4);
+    ctx.fillRect(mx + 21, my + 10, 7, 4);
+    // Head
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(mx + 6, my - 2, 12, 10);
+    // Long flowing brown hair
+    ctx.fillStyle = '#8B4513';
+    ctx.fillRect(mx + 3, my - 10, 18, 12);
+    ctx.fillRect(mx + 1, my - 4, 4, 20);
+    ctx.fillRect(mx + 19, my - 4, 4, 20);
+    ctx.fillRect(mx + 0, my + 10, 3, 14);
+    ctx.fillRect(mx + 21, my + 10, 3, 14);
+    // Eyes + lips
+    ctx.fillStyle = '#333';
+    ctx.fillRect(mx + 8, my + 1, 3, 3);
+    ctx.fillRect(mx + 14, my + 1, 3, 3);
+    ctx.fillStyle = '#ff3366';
+    ctx.fillRect(mx + 9, my + 5, 6, 2);
+    drawBlueBag(mx + 20, my + 30, 1);
 
-    // 3. Cher persona (long black hair, sparkly)
-    drawDragQueen(310, 165, '#111', '#cc44ff', '#9933cc');
-    drawBlueBag(330, 200, 1);
+    // 3. Cher — tall, long straight black hair to the floor, sparkly bodysuit
+    const cx2 = 310, cy2 = 150;
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(cx2 + 8, cy2 + 36, 4, 12);
+    ctx.fillRect(cx2 + 13, cy2 + 36, 4, 12);
+    ctx.fillStyle = '#cc44ff';
+    ctx.fillRect(cx2 + 7, cy2 + 46, 5, 4);
+    ctx.fillRect(cx2 + 12, cy2 + 46, 5, 4);
+    // Sparkly bodysuit — form-fitting
+    ctx.fillStyle = '#cc44ff';
+    ctx.fillRect(cx2 + 5, cy2 + 8, 14, 30);
+    ctx.fillStyle = '#9933cc';
+    ctx.fillRect(cx2 + 5, cy2 + 8, 14, 3);
+    ctx.fillRect(cx2 + 5, cy2 + 35, 14, 3);
+    // Sparkles all over
+    ctx.fillStyle = '#fff';
+    for (let i = 0; i < 8; i++) {
+        ctx.fillRect(cx2 + 6 + (i % 4) * 3, cy2 + 12 + Math.floor(i / 4) * 12, 1, 1);
+    }
+    // Arms
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(cx2 + 2, cy2 + 10, 4, 10);
+    ctx.fillRect(cx2 + 18, cy2 + 10, 4, 10);
+    // Head
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(cx2 + 6, cy2 - 2, 12, 10);
+    // Super long straight black hair
+    ctx.fillStyle = '#111';
+    ctx.fillRect(cx2 + 4, cy2 - 12, 16, 14);
+    ctx.fillRect(cx2 + 2, cy2 - 4, 4, 46);
+    ctx.fillRect(cx2 + 18, cy2 - 4, 4, 46);
+    ctx.fillRect(cx2 + 1, cy2 + 30, 3, 16);
+    ctx.fillRect(cx2 + 20, cy2 + 30, 3, 16);
+    // Eyes + lips
+    ctx.fillStyle = '#333';
+    ctx.fillRect(cx2 + 8, cy2 + 1, 3, 3);
+    ctx.fillRect(cx2 + 14, cy2 + 1, 3, 3);
+    ctx.fillStyle = '#ff3366';
+    ctx.fillRect(cx2 + 9, cy2 + 5, 6, 2);
+    drawBlueBag(cx2 + 18, cy2 + 38, 1);
 
     // Audience silhouettes in foreground
     ctx.fillStyle = '#111';
@@ -4622,6 +4785,108 @@ function drawComicPanel5() {
 
     // Narration
     drawComicNarration('The Queens dazzle\nthe crowd.', WIDTH - 190, 55, 170);
+}
+
+// ──────────────────────────────
+// Panel 5b: Jigglypuff pulls mic from purse, sings
+// ──────────────────────────────
+function drawComicPanel5b() {
+    // Close-up of Jigglypuff on stage pulling mic from blue purse
+    ctx.fillStyle = '#1a0a0a';
+    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, HEIGHT - COMIC_BORDER * 2);
+
+    // Stage floor
+    ctx.fillStyle = '#5c3a1a';
+    ctx.fillRect(60, 180, WIDTH - 120, 130);
+    ctx.fillStyle = '#6b4423';
+    ctx.fillRect(60, 175, WIDTH - 120, 8);
+
+    // Spotlight on Jigglypuff
+    ctx.fillStyle = 'rgba(255, 255, 200, 0.2)';
+    ctx.beginPath();
+    ctx.moveTo(WIDTH / 2, 10);
+    ctx.lineTo(WIDTH / 2 - 80, 280);
+    ctx.lineTo(WIDTH / 2 + 80, 280);
+    ctx.closePath();
+    ctx.fill();
+
+    // Big Jigglypuff (2.5x scale, center stage)
+    const jx = WIDTH / 2 - 30, jy = 100;
+    ctx.save();
+    ctx.translate(jx, jy);
+    ctx.scale(2.5, 2.5);
+    // Round puffy pink body
+    ctx.fillStyle = '#ff99cc';
+    ctx.beginPath(); ctx.ellipse(12, 18, 14, 16, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffaacc';
+    ctx.beginPath(); ctx.ellipse(12, 10, 12, 10, 0, 0, Math.PI * 2); ctx.fill();
+    // Feet
+    ctx.fillStyle = '#ff88bb';
+    ctx.fillRect(6, 32, 5, 8);
+    ctx.fillRect(13, 32, 5, 8);
+    // Big pink wig
+    ctx.fillStyle = '#ff77aa';
+    ctx.beginPath(); ctx.ellipse(12, -2, 16, 14, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ff99cc';
+    ctx.beginPath(); ctx.arc(12, -12, 8, 0, Math.PI * 2); ctx.fill();
+    // Cute eyes (big, sparkly)
+    ctx.fillStyle = '#333';
+    ctx.fillRect(7, 4, 4, 4);
+    ctx.fillRect(14, 4, 4, 4);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(8, 4, 2, 2);
+    ctx.fillRect(15, 4, 2, 2);
+    // Open mouth (singing!)
+    ctx.fillStyle = '#ff3366';
+    ctx.fillRect(8, 10, 8, 4);
+    ctx.fillStyle = '#111';
+    ctx.fillRect(9, 11, 6, 2);
+    // Arm reaching into purse
+    ctx.fillStyle = '#ffaacc';
+    ctx.fillRect(-2, 14, 6, 4);
+    // Arm holding mic up high
+    ctx.fillStyle = '#ffaacc';
+    ctx.fillRect(20, 4, 4, 10);
+    // Microphone in raised hand
+    ctx.fillStyle = '#888';
+    ctx.fillRect(21, -4, 3, 8);
+    ctx.fillStyle = '#333';
+    ctx.fillRect(19, -8, 7, 5);
+    ctx.restore();
+
+    // Blue purse at her feet (open, mic was just pulled out)
+    ctx.save();
+    ctx.translate(jx - 20, jy + 80);
+    ctx.scale(2, 2);
+    ctx.fillStyle = COMIC_BLUE_BAG;
+    ctx.fillRect(0, 0, 14, 12);
+    ctx.fillStyle = '#3366aa';
+    ctx.fillRect(0, 0, 14, 3);
+    // Open top (flap open)
+    ctx.fillStyle = '#5599cc';
+    ctx.fillRect(0, -3, 14, 4);
+    ctx.strokeStyle = '#3366aa';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(7, -4, 5, Math.PI, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(5, 2, 4, 3);
+    ctx.restore();
+
+    // Music notes floating around
+    ctx.fillStyle = '#ffcc00';
+    ctx.font = 'bold 18px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('♪', jx - 30, jy + 20);
+    ctx.fillText('♫', jx + 90, jy + 10);
+    ctx.fillText('♪', jx + 70, jy - 10);
+    ctx.font = 'bold 24px monospace';
+    ctx.fillText('♫', jx - 10, jy - 20);
+    ctx.textAlign = 'left';
+
+    // Narration
+    drawComicNarration('Jigglypuff pulls a mic\nfrom her purse...', 14, 10, 210);
 }
 
 // ──────────────────────────────
@@ -4707,8 +4972,8 @@ function drawComicPanel6() {
 
     // Thought bubble
     drawComicThoughtBubble(
-        'They each have the\nsame blue purse...',
-        120, 140, 240, 46,
+        'They each have the same\nblue purse as the thief...',
+        110, 140, 260, 46,
         240, 210
     );
 }
@@ -5555,15 +5820,15 @@ function updateLevel3() {
         }
     }
 
-    // NPC proximity check
+    // NPC proximity check (shopkeeper gets extra range — talk across counter)
     l3NearNpc = null;
     for (const key of Object.keys(L3_NPCS)) {
         const npc = L3_NPCS[key];
         if (npc.room !== l3Room) continue;
-        // For RJ, redirect to AJ (they share conversation)
         const ncx = npc.x + 12;
         const ncy = npc.y + 18;
-        if (Math.abs(pcx - ncx) < 50 && Math.abs(pcy - ncy) < 50) {
+        const range = key === 'shopkeeper' ? 80 : 50;
+        if (Math.abs(pcx - ncx) < range && Math.abs(pcy - ncy) < range) {
             l3NearNpc = key;
             break;
         }
