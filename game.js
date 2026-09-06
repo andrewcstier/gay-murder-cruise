@@ -41,6 +41,15 @@ let musicEnabled = true;
 // Cutscene / murderer chase state
 let cutsceneState = null; // 'murderer-appears', 'exclamation', 'step1', 'step2', 'chase'
 let cutsceneTimer = 0;
+
+// Comic cutscene state
+let comicPanel = 0;
+let comicTimer = 0;
+
+// Level 3 shop state
+let l3ShopTextAlpha = 0;
+let l3ShopTextPhase = 'fadein'; // 'fadein', 'hold', 'fadeout'
+let l3ShopTimer = 0;
 let murdererY = 0;
 let murdererSpeed = 0.4;
 let playerDead = false;
@@ -137,7 +146,25 @@ function handleAction(key) {
     }
     if (gameState === 'gameover') { location.reload(); }
     if (gameState === 'level2') { handleLevel2Action(key); return; }
-    if (gameState === 'level2-complete') { location.reload(); }
+    if (gameState === 'level2-complete') {
+        dialogBox.classList.remove('visible');
+        promptEl.classList.remove('visible');
+        comicPanel = 0;
+        comicTimer = 0;
+        gameState = 'comic-cutscene';
+        return;
+    }
+    if (gameState === 'comic-cutscene') {
+        comicPanel++;
+        if (comicPanel >= 8) {
+            gameState = 'level3-shop';
+            l3ShopTextAlpha = 0;
+            l3ShopTextPhase = 'fadein';
+            l3ShopTimer = 0;
+        }
+        return;
+    }
+    if (gameState === 'level3-shop') { return; }
 }
 
 function showLevelSelect() {
@@ -2522,6 +2549,25 @@ function update() {
         return;
     }
 
+    if (gameState === 'comic-cutscene') {
+        comicTimer++;
+        return;
+    }
+
+    if (gameState === 'level3-shop') {
+        l3ShopTimer++;
+        if (l3ShopTextPhase === 'fadein') {
+            l3ShopTextAlpha += 0.015;
+            if (l3ShopTextAlpha >= 1) { l3ShopTextAlpha = 1; l3ShopTextPhase = 'hold'; l3ShopTimer = 0; }
+        } else if (l3ShopTextPhase === 'hold') {
+            if (l3ShopTimer > 120) { l3ShopTextPhase = 'fadeout'; }
+        } else if (l3ShopTextPhase === 'fadeout') {
+            l3ShopTextAlpha -= 0.015;
+            if (l3ShopTextAlpha <= 0) { l3ShopTextAlpha = 0; l3ShopTextPhase = 'done'; }
+        }
+        return;
+    }
+
     if (gameState !== 'playing') return;
 
     let moved = false;
@@ -2667,6 +2713,16 @@ function draw() {
 
     if (gameState === 'level2' || gameState === 'level2-complete') {
         drawLevel2();
+        return;
+    }
+
+    if (gameState === 'comic-cutscene') {
+        drawComicPanel(comicPanel);
+        return;
+    }
+
+    if (gameState === 'level3-shop') {
+        drawLevel3Shop();
         return;
     }
 
@@ -3421,7 +3477,7 @@ function updateLevel2() {
         // Level 2 complete!
         gameState = 'level2-complete';
         GameMusic.stopMusic();
-        dialogBox.innerHTML = '<span style="color:#ffcc00; font-size:16px;">Level 2 Complete!</span><br><br>You solved the mystery! Vanessa had the room key in her bosoms the whole time.<br><br><span style="color:#aaa">Thanks for playing!</span>';
+        dialogBox.innerHTML = '<span style="color:#ffcc00; font-size:16px;">Level 2 Complete!</span><br><br>You solved the mystery! Vanessa had the room key in her bosoms the whole time.<br><br><span style="color:#aaa">Press any key to continue...</span>';
         dialogBox.classList.add('visible');
         return;
     }
@@ -3851,6 +3907,984 @@ document.getElementById('notebook-overlay').addEventListener('click', () => {
     l2State = 'free';
     document.getElementById('notebook-overlay').style.display = 'none';
 });
+
+// ═══════════════════════════════════════════════════════════════
+// COMIC CUTSCENE — Between Level 2 and Level 3
+// ═══════════════════════════════════════════════════════════════
+
+const COMIC_BLUE_BAG = '#4488cc';
+const COMIC_BORDER = 6;
+
+function drawComicPanel(n) {
+    // Black background
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+    switch (n) {
+        case 0: drawComicPanel1(); break;
+        case 1: drawComicPanel2(); break;
+        case 2: drawComicPanel3(); break;
+        case 3: drawComicPanel4(); break;
+        case 4: drawComicPanel5(); break;
+        case 5: drawComicPanel6(); break;
+        case 6: drawComicPanel7(); break;
+        case 7: drawComicPanel8(); break;
+    }
+
+    // Thick comic border
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = COMIC_BORDER;
+    ctx.strokeRect(COMIC_BORDER / 2, COMIC_BORDER / 2, WIDTH - COMIC_BORDER, HEIGHT - COMIC_BORDER);
+
+    // "TAP TO CONTINUE" prompt
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(0, HEIGHT - 24, WIDTH, 24);
+    ctx.fillStyle = '#ffcc00';
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'center';
+    const promptText = isMobile() ? 'TAP TO CONTINUE' : 'PRESS ANY KEY';
+    const blink = Math.floor(comicTimer / 30) % 2 === 0;
+    if (blink) ctx.fillText(promptText, WIDTH / 2, HEIGHT - 9);
+    ctx.textAlign = 'left';
+}
+
+// Helper: draw a comic speech bubble with pointed tail
+function drawComicSpeechBubble(text, bx, by, bw, bh, tailX, tailY) {
+    // White bubble with thick black border and rounded corners
+    ctx.fillStyle = '#fff';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    const r = 8;
+    ctx.moveTo(bx + r, by);
+    ctx.lineTo(bx + bw - r, by);
+    ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + r);
+    ctx.lineTo(bx + bw, by + bh - r);
+    ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - r, by + bh);
+    ctx.lineTo(bx + r, by + bh);
+    ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - r);
+    ctx.lineTo(bx, by + r);
+    ctx.quadraticCurveTo(bx, by, bx + r, by);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // Tail
+    ctx.fillStyle = '#fff';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    const tailBase = Math.min(Math.max(tailX, bx + 15), bx + bw - 15);
+    ctx.moveTo(tailBase - 8, by + bh - 1);
+    ctx.lineTo(tailX, tailY);
+    ctx.lineTo(tailBase + 8, by + bh - 1);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // Redraw bottom edge to hide tail base overlap
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(tailBase - 7, by + bh - 3, 14, 4);
+    // Text
+    ctx.fillStyle = '#000';
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'left';
+    const lines = text.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+        ctx.fillText(lines[i], bx + 10, by + 16 + i * 14);
+    }
+    ctx.textAlign = 'left';
+}
+
+// Helper: draw a comic thought bubble (cloud border)
+function drawComicThoughtBubble(text, bx, by, bw, bh, tailX, tailY) {
+    ctx.fillStyle = '#fff';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 3;
+    // Cloud-shaped bubble using overlapping circles
+    ctx.beginPath();
+    const r = 8;
+    ctx.moveTo(bx + r, by);
+    ctx.lineTo(bx + bw - r, by);
+    ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + r);
+    ctx.lineTo(bx + bw, by + bh - r);
+    ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - r, by + bh);
+    ctx.lineTo(bx + r, by + bh);
+    ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - r);
+    ctx.lineTo(bx, by + r);
+    ctx.quadraticCurveTo(bx, by, bx + r, by);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // Cloud bumps along edges
+    ctx.fillStyle = '#fff';
+    for (let i = 0; i < 6; i++) {
+        ctx.beginPath();
+        ctx.arc(bx + 12 + i * ((bw - 24) / 5), by, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(bx + 12 + i * ((bw - 24) / 5), by + bh, 7, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    // Redraw border after cloud bumps
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 6; i++) {
+        ctx.beginPath();
+        ctx.arc(bx + 12 + i * ((bw - 24) / 5), by, 7, Math.PI, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(bx + 12 + i * ((bw - 24) / 5), by + bh, 7, 0, Math.PI);
+        ctx.stroke();
+    }
+    // Thought tail (small circles leading to speaker)
+    const dx = tailX - (bx + bw / 2);
+    const dy = tailY - (by + bh);
+    for (let i = 1; i <= 3; i++) {
+        const t = i / 4;
+        ctx.fillStyle = '#fff';
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(bx + bw / 2 + dx * t, by + bh + dy * t, 5 - i, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+    }
+    // Text (italic for thoughts)
+    ctx.fillStyle = '#000';
+    ctx.font = 'italic 11px monospace';
+    ctx.textAlign = 'left';
+    const lines = text.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+        ctx.fillText(lines[i], bx + 10, by + 16 + i * 14);
+    }
+    ctx.textAlign = 'left';
+}
+
+// Helper: draw a narration box (yellow/cream rectangle in corner)
+function drawComicNarration(text, x, y, w) {
+    const lines = text.split('\n');
+    const h = lines.length * 14 + 16;
+    // Cream background
+    ctx.fillStyle = '#fff8dc';
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(x, y, w, h);
+    // Text
+    ctx.fillStyle = '#000';
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'left';
+    for (let i = 0; i < lines.length; i++) {
+        ctx.fillText(lines[i], x + 8, y + 14 + i * 14);
+    }
+}
+
+// Helper: draw a blue bag/purse
+function drawBlueBag(x, y, scale) {
+    const s = scale || 1;
+    ctx.fillStyle = COMIC_BLUE_BAG;
+    ctx.fillRect(x, y, 14 * s, 12 * s);
+    ctx.fillStyle = '#3366aa';
+    ctx.fillRect(x, y, 14 * s, 3 * s);
+    // Handle
+    ctx.strokeStyle = '#3366aa';
+    ctx.lineWidth = 2 * s;
+    ctx.beginPath();
+    ctx.arc(x + 7 * s, y - 2 * s, 5 * s, Math.PI, Math.PI * 2);
+    ctx.stroke();
+    // Clasp
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(x + 5 * s, y + 2 * s, 4 * s, 3 * s);
+}
+
+// Helper: draw the player character at position (static, facing direction)
+function drawComicPlayerChar(x, y, facing) {
+    const char = selectedChar || CHARACTERS[0];
+    if (facing === 'down') drawCharFront(x, y, 0, 0, 0, char);
+    else if (facing === 'up') drawCharBack(x, y, 0, 0, 0, char);
+    else if (facing === 'left') drawCharSide(x, y, 0, 0, 0, -1, char);
+    else drawCharSide(x, y, 0, 0, 0, 1, char);
+}
+
+// Helper: draw a hooded/murderer figure (same style as drawMurderer but no knife)
+function drawHoodedFigure(x, y) {
+    ctx.fillStyle = '#111';
+    ctx.fillRect(x + 6, y + 26, 5, 10);
+    ctx.fillRect(x + 13, y + 26, 5, 10);
+    ctx.fillRect(x + 4, y + 8, 16, 20);
+    ctx.fillRect(x + 1, y + 10, 4, 12);
+    ctx.fillRect(x + 19, y + 10, 4, 12);
+    ctx.fillRect(x + 6, y - 4, 12, 12);
+    // Hood detail
+    ctx.fillStyle = '#222';
+    ctx.fillRect(x + 5, y - 6, 14, 4);
+}
+
+// Helper: draw a security guard in white uniform
+function drawSecurityGuard(x, y, facing) {
+    const b = 0;
+    // Legs
+    ctx.fillStyle = '#1a1a44';
+    ctx.fillRect(x + 6, y + 26 + b, 5, 10);
+    ctx.fillRect(x + 13, y + 26 + b, 5, 10);
+    // Pants
+    ctx.fillStyle = '#1a1a44';
+    ctx.fillRect(x + 5, y + 22 + b, 14, 6);
+    // Torso (white uniform)
+    ctx.fillStyle = '#eee';
+    ctx.fillRect(x + 3, y + 7 + b, 18, 16);
+    ctx.fillStyle = '#ccc';
+    ctx.fillRect(x + 3, y + 21 + b, 18, 2);
+    // Badge
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(x + 5, y + 10, 4, 4);
+    // Arms
+    ctx.fillStyle = '#eee';
+    ctx.fillRect(x + 1, y + 8 + b, 3, 12);
+    ctx.fillRect(x + 20, y + 8 + b, 3, 12);
+    // Head
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(x + 6, y - 2 + b, 12, 10);
+    // Cap
+    ctx.fillStyle = '#1a1a44';
+    ctx.fillRect(x + 4, y - 6 + b, 16, 5);
+    ctx.fillRect(x + 3, y - 2 + b, 18, 2);
+    // Eyes
+    if (facing === 'down' || facing === 'left' || facing === 'right') {
+        ctx.fillStyle = '#333';
+        ctx.fillRect(x + 8, y + 1, 2, 2);
+        ctx.fillRect(x + 14, y + 1, 2, 2);
+    }
+}
+
+// Helper: draw a shopkeeper
+function drawShopkeeper(x, y) {
+    // Legs
+    ctx.fillStyle = '#4a4a4a';
+    ctx.fillRect(x + 6, y + 26, 5, 10);
+    ctx.fillRect(x + 13, y + 26, 5, 10);
+    // Apron/body
+    ctx.fillStyle = '#cc8844';
+    ctx.fillRect(x + 3, y + 7, 18, 20);
+    // Apron front
+    ctx.fillStyle = '#eee';
+    ctx.fillRect(x + 5, y + 12, 14, 14);
+    // Arms
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(x + 1, y + 8, 3, 12);
+    ctx.fillRect(x + 20, y + 8, 3, 12);
+    // Head
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(x + 6, y - 2, 12, 10);
+    // Hair
+    ctx.fillStyle = '#888';
+    ctx.fillRect(x + 5, y - 5, 14, 4);
+    // Eyes
+    ctx.fillStyle = '#333';
+    ctx.fillRect(x + 8, y + 1, 2, 2);
+    ctx.fillRect(x + 14, y + 1, 2, 2);
+    // Mouth (distressed in panel 2, neutral otherwise)
+    ctx.fillStyle = '#cc4444';
+    ctx.fillRect(x + 9, y + 5, 6, 2);
+}
+
+// Helper: draw a drag queen on stage
+function drawDragQueen(x, y, wigColor, outfitColor, outfitShade) {
+    // Legs (heels)
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(x + 7, y + 28, 4, 8);
+    ctx.fillRect(x + 13, y + 28, 4, 8);
+    ctx.fillStyle = outfitColor;
+    ctx.fillRect(x + 6, y + 34, 5, 3);
+    ctx.fillRect(x + 12, y + 34, 5, 3);
+    // Dress
+    ctx.fillStyle = outfitColor;
+    ctx.fillRect(x + 2, y + 7, 20, 22);
+    ctx.fillStyle = outfitShade;
+    ctx.fillRect(x + 2, y + 27, 20, 3);
+    // Sparkle detail
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(x + 6, y + 10, 2, 2);
+    ctx.fillRect(x + 14, y + 14, 2, 2);
+    ctx.fillRect(x + 8, y + 20, 2, 2);
+    // Arms
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(x + 0, y + 8, 3, 10);
+    ctx.fillRect(x + 21, y + 8, 3, 10);
+    // Head
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(x + 6, y - 2, 12, 10);
+    // Wig
+    ctx.fillStyle = wigColor;
+    ctx.fillRect(x + 3, y - 12, 18, 12);
+    ctx.fillRect(x + 2, y - 8, 20, 8);
+    ctx.fillRect(x + 1, y - 4, 4, 10);
+    ctx.fillRect(x + 19, y - 4, 4, 10);
+    // Eyes
+    ctx.fillStyle = '#333';
+    ctx.fillRect(x + 8, y + 1, 2, 2);
+    ctx.fillRect(x + 14, y + 1, 2, 2);
+    // Lips
+    ctx.fillStyle = '#ff3366';
+    ctx.fillRect(x + 9, y + 5, 6, 2);
+}
+
+// ──────────────────────────────
+// Panel 1: "Leaving the Room"
+// ──────────────────────────────
+function drawComicPanel1() {
+    // Background: ship interior corridor opening to roundabout area
+    ctx.fillStyle = '#2a1a3a';
+    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, HEIGHT - COMIC_BORDER * 2);
+
+    // Corridor perspective - dark walls narrowing
+    ctx.fillStyle = '#1a0e28';
+    ctx.fillRect(10, 30, 120, HEIGHT - 60);
+    ctx.fillRect(WIDTH - 130, 30, 120, HEIGHT - 60);
+
+    // Corridor floor
+    ctx.fillStyle = '#4a0e2e';
+    ctx.fillRect(130, 30, WIDTH - 260, HEIGHT - 60);
+    for (let x = 135; x < WIDTH - 135; x += 20) {
+        for (let y = 35; y < HEIGHT - 35; y += 20) {
+            ctx.fillStyle = '#5c1438';
+            ctx.fillRect(x, y, 8, 8);
+        }
+    }
+
+    // Wide opening at end of corridor (interior roundabout area, lit)
+    ctx.fillStyle = '#3a2a5c';
+    ctx.fillRect(150, 30, WIDTH - 300, 100);
+    // Warm interior lighting
+    ctx.fillStyle = '#4a3a6a';
+    ctx.fillRect(160, 40, WIDTH - 320, 80);
+    // Ceiling lights
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(190, 35, 6, 4);
+    ctx.fillRect(250, 35, 6, 4);
+    ctx.fillStyle = 'rgba(255, 200, 100, 0.15)';
+    ctx.fillRect(180, 38, 26, 60);
+    ctx.fillRect(240, 38, 26, 60);
+
+    // Group walking toward the opening - backs shown (walking up)
+    const groupY = 180;
+    drawComicPlayerChar(195, groupY, 'up');
+    drawBlakeSprite(220, groupY, 'up');
+    drawAbrahamSprite(245, groupY, 'up');
+    drawVanessaSprite(270, groupY, 'up');
+
+    // Wall sconces
+    ctx.fillStyle = '#ffcc44';
+    ctx.fillRect(125, 80, 8, 12);
+    ctx.fillRect(WIDTH - 133, 80, 8, 12);
+    ctx.fillStyle = 'rgba(255, 200, 100, 0.2)';
+    ctx.fillRect(118, 70, 22, 32);
+    ctx.fillRect(WIDTH - 140, 70, 22, 32);
+
+    // Narration
+    drawComicNarration('Later that day...', 14, 10, 160);
+}
+
+// ──────────────────────────────
+// Panel 2: "The Robbery"
+// ──────────────────────────────
+function drawComicPanel2() {
+    // Ship interior corridor with shop storefront
+    ctx.fillStyle = '#2a1a3a';
+    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, HEIGHT - COMIC_BORDER * 2);
+
+    // Corridor floor
+    ctx.fillStyle = '#4a0e2e';
+    ctx.fillRect(COMIC_BORDER, 180, WIDTH - COMIC_BORDER * 2, HEIGHT - 180 - COMIC_BORDER);
+    for (let x = 10; x < WIDTH - 10; x += 24) {
+        ctx.fillStyle = '#5c1438';
+        ctx.fillRect(x, 185, 10, 10);
+        ctx.fillRect(x + 12, 205, 10, 10);
+    }
+
+    // Corridor walls
+    ctx.fillStyle = '#3a2a5c';
+    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, 50);
+    ctx.fillStyle = '#4a2a1a';
+    ctx.fillRect(COMIC_BORDER, 46, WIDTH - COMIC_BORDER * 2, 4);
+
+    // Shop storefront (right side, built into wall)
+    ctx.fillStyle = '#8b6040';
+    ctx.fillRect(300, 50, 170, 140);
+    // Shop sign
+    ctx.fillStyle = '#fff8dc';
+    ctx.fillRect(330, 54, 110, 16);
+    ctx.fillStyle = '#333';
+    ctx.font = 'bold 9px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('CRUISE GIFTS', 385, 66);
+    ctx.textAlign = 'left';
+    // Shop window
+    ctx.fillStyle = '#aaddff';
+    ctx.fillRect(320, 80, 60, 50);
+    ctx.strokeStyle = '#6b4423';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(320, 80, 60, 50);
+    // Shop counter
+    ctx.fillStyle = '#6b4423';
+    ctx.fillRect(310, 150, 100, 20);
+    // Door
+    ctx.fillStyle = '#5c3a1a';
+    ctx.fillRect(400, 80, 40, 90);
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(432, 130, 4, 4);
+
+    // Shopkeeper behind counter (distressed)
+    drawShopkeeper(340, 115);
+    ctx.fillStyle = '#ff0000';
+    ctx.font = 'bold 16px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('!', 352, 108);
+
+    // Hooded figure running left with blue bag
+    drawHoodedFigure(130, 190);
+    drawBlueBag(110, 204, 1.2);
+
+    // Motion lines
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 5; i++) {
+        const ly = 195 + i * 8;
+        ctx.beginPath();
+        ctx.moveTo(170, ly);
+        ctx.lineTo(200 + i * 5, ly);
+        ctx.stroke();
+    }
+
+    // Sound effect text
+    ctx.save();
+    ctx.fillStyle = '#ff0000';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 3;
+    ctx.font = 'bold 22px monospace';
+    ctx.textAlign = 'center';
+    ctx.strokeText('STOP! THIEF!', 240, 170);
+    ctx.fillText('STOP! THIEF!', 240, 170);
+    ctx.restore();
+
+    // Wall sconces
+    ctx.fillStyle = '#ffcc44';
+    ctx.fillRect(50, 60, 6, 8);
+    ctx.fillRect(200, 60, 6, 8);
+    ctx.fillStyle = 'rgba(255, 200, 100, 0.15)';
+    ctx.fillRect(44, 55, 18, 24);
+    ctx.fillRect(194, 55, 18, 24);
+}
+
+// ──────────────────────────────
+// Panel 3: "The Chase"
+// ──────────────────────────────
+function drawComicPanel3() {
+    // Ship interior corridor, guards chasing
+    ctx.fillStyle = '#2a1a3a';
+    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, HEIGHT - COMIC_BORDER * 2);
+
+    // Corridor floor
+    ctx.fillStyle = '#4a0e2e';
+    ctx.fillRect(COMIC_BORDER, 160, WIDTH - COMIC_BORDER * 2, HEIGHT - 160 - COMIC_BORDER);
+    for (let x = 10; x < WIDTH - 10; x += 24) {
+        ctx.fillStyle = '#5c1438';
+        ctx.fillRect(x, 165, 10, 10);
+        ctx.fillRect(x + 12, 185, 10, 10);
+    }
+
+    // Corridor walls
+    ctx.fillStyle = '#3a2a5c';
+    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, 50);
+    ctx.fillStyle = '#4a2a1a';
+    ctx.fillRect(COMIC_BORDER, 46, WIDTH - COMIC_BORDER * 2, 4);
+    // Wall accent
+    ctx.fillStyle = '#3d2a5c';
+    ctx.fillRect(COMIC_BORDER, 80, WIDTH - COMIC_BORDER * 2, 4);
+    ctx.fillRect(COMIC_BORDER, 130, WIDTH - COMIC_BORDER * 2, 4);
+
+    // Hooded figure running (far left)
+    drawHoodedFigure(40, 170);
+    drawBlueBag(20, 184, 1);
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 4; i++) {
+        ctx.beginPath();
+        ctx.moveTo(75, 176 + i * 7);
+        ctx.lineTo(100 + i * 4, 176 + i * 7);
+        ctx.stroke();
+    }
+
+    // Two security guards chasing
+    drawSecurityGuard(140, 175, 'left');
+    drawSecurityGuard(180, 180, 'left');
+    ctx.strokeStyle = '#444';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.moveTo(215, 182 + i * 6);
+        ctx.lineTo(232, 182 + i * 6);
+        ctx.stroke();
+    }
+
+    // The group watching from the right side
+    const groupX = 330;
+    const groupY = 185;
+    drawComicPlayerChar(groupX, groupY, 'left');
+    drawBlakeSprite(groupX + 28, groupY, 'left');
+    drawAbrahamSprite(groupX + 56, groupY, 'left');
+    drawVanessaSprite(groupX + 84, groupY, 'left');
+
+    // Wall sconces
+    ctx.fillStyle = '#ffcc44';
+    ctx.fillRect(260, 60, 6, 8);
+    ctx.fillStyle = 'rgba(255, 200, 100, 0.15)';
+    ctx.fillRect(254, 55, 18, 24);
+
+    // Abraham speech bubble
+    drawComicSpeechBubble(
+        'I hope they\'re able\nto catch him.',
+        290, 90, 180, 46,
+        groupX + 68, groupY - 5
+    );
+}
+
+// ──────────────────────────────
+// Panel 4: "Off to the Show"
+// ──────────────────────────────
+function drawComicPanel4() {
+    // Close-up of Blake looking excited
+    // Dark background suggesting indoor/close-up vibe
+    ctx.fillStyle = '#2a1a3a';
+    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, HEIGHT - COMIC_BORDER * 2);
+
+    // Radial highlight behind Blake
+    const grd = ctx.createRadialGradient(WIDTH / 2, HEIGHT / 2, 20, WIDTH / 2, HEIGHT / 2, 200);
+    grd.addColorStop(0, '#4a2a5c');
+    grd.addColorStop(1, '#1a0e28');
+    ctx.fillStyle = grd;
+    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, HEIGHT - COMIC_BORDER * 2);
+
+    // Big Blake (3x scale, close-up)
+    ctx.save();
+    ctx.translate(WIDTH / 2 - 36, HEIGHT / 2 - 40);
+    ctx.scale(3, 3);
+    drawBlakeSprite(0, 0, 'down');
+    ctx.restore();
+
+    // Excitement marks around Blake
+    ctx.fillStyle = '#ffcc00';
+    ctx.font = 'bold 20px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('*', WIDTH / 2 - 60, HEIGHT / 2 - 30);
+    ctx.fillText('*', WIDTH / 2 + 60, HEIGHT / 2 - 20);
+    ctx.fillText('*', WIDTH / 2 - 50, HEIGHT / 2 + 40);
+
+    // Blake speech bubble at top
+    drawComicSpeechBubble(
+        'Me too. We\'re running late,\nCher\'s already on stage!',
+        120, 20, 240, 46,
+        WIDTH / 2, HEIGHT / 2 - 50
+    );
+}
+
+// ──────────────────────────────
+// Panel 5: "The Drag Show" (wide panel)
+// ──────────────────────────────
+function drawComicPanel5() {
+    // Theater interior
+    // Dark theater background
+    ctx.fillStyle = '#1a0a0a';
+    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, HEIGHT - COMIC_BORDER * 2);
+
+    // Stage floor
+    ctx.fillStyle = '#5c3a1a';
+    ctx.fillRect(60, 160, WIDTH - 120, 100);
+    ctx.fillStyle = '#6b4423';
+    ctx.fillRect(60, 155, WIDTH - 120, 8);
+
+    // Red curtains on sides
+    ctx.fillStyle = '#8b0000';
+    ctx.fillRect(10, 10, 55, 250);
+    ctx.fillStyle = '#cc2222';
+    ctx.fillRect(15, 10, 20, 250);
+    ctx.fillRect(40, 10, 15, 250);
+    // Right curtain
+    ctx.fillStyle = '#8b0000';
+    ctx.fillRect(WIDTH - 65, 10, 55, 250);
+    ctx.fillStyle = '#cc2222';
+    ctx.fillRect(WIDTH - 55, 10, 20, 250);
+    ctx.fillRect(WIDTH - 35, 10, 15, 250);
+
+    // Curtain valance at top
+    ctx.fillStyle = '#8b0000';
+    ctx.fillRect(10, 10, WIDTH - 20, 25);
+    ctx.fillStyle = '#cc2222';
+    for (let x = 20; x < WIDTH - 20; x += 30) {
+        ctx.beginPath();
+        ctx.moveTo(x, 35);
+        ctx.lineTo(x + 15, 50);
+        ctx.lineTo(x + 30, 35);
+        ctx.fill();
+    }
+
+    // Spotlights
+    ctx.fillStyle = 'rgba(255, 255, 200, 0.15)';
+    ctx.beginPath();
+    ctx.moveTo(150, 10);
+    ctx.lineTo(120, 250);
+    ctx.lineTo(180, 250);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(240, 10);
+    ctx.lineTo(210, 250);
+    ctx.lineTo(270, 250);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(330, 10);
+    ctx.lineTo(300, 250);
+    ctx.lineTo(360, 250);
+    ctx.closePath();
+    ctx.fill();
+
+    // Three drag queens on stage
+    // 1. Jigglypuff persona (pink wig, cute) — pulling microphone from purse
+    drawDragQueen(130, 165, '#ff99cc', '#ffaacc', '#ff88aa');
+    drawBlueBag(125, 200, 1);
+    // Microphone in Jigglypuff's hand
+    ctx.fillStyle = '#888';
+    ctx.fillRect(152, 174, 3, 8);
+    ctx.fillStyle = '#333';
+    ctx.fillRect(150, 170, 7, 5);
+
+    // 2. Mariah Carey persona (long wavy brown hair, sparkly corset)
+    drawDragQueen(220, 165, '#8B4513', '#cc3366', '#992244');
+    drawBlueBag(240, 200, 1);
+
+    // 3. Cher persona (long black hair, sparkly)
+    drawDragQueen(310, 165, '#111', '#cc44ff', '#9933cc');
+    drawBlueBag(330, 200, 1);
+
+    // Audience silhouettes in foreground
+    ctx.fillStyle = '#111';
+    for (let x = 20; x < WIDTH - 20; x += 28) {
+        // Head silhouette
+        ctx.beginPath();
+        ctx.arc(x + 14, HEIGHT - 45, 10, 0, Math.PI * 2);
+        ctx.fill();
+        // Shoulders
+        ctx.fillRect(x + 4, HEIGHT - 35, 20, 15);
+    }
+
+    // Narration
+    drawComicNarration('The Queens dazzle\nthe crowd.', WIDTH - 190, 55, 170);
+}
+
+// ──────────────────────────────
+// Panel 6: "The Purses"
+// ──────────────────────────────
+function drawComicPanel6() {
+    // Closer shot: focus on three purses + player's noticing eyes
+    // Stage floor background
+    ctx.fillStyle = '#5c3a1a';
+    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, HEIGHT - COMIC_BORDER * 2);
+    ctx.fillStyle = '#6b4423';
+    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, 30);
+
+    // Spotlight effect
+    const grd = ctx.createRadialGradient(WIDTH / 2, 140, 30, WIDTH / 2, 140, 200);
+    grd.addColorStop(0, 'rgba(255, 255, 200, 0.2)');
+    grd.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, HEIGHT - COMIC_BORDER * 2);
+
+    // Three identical blue purses prominently displayed
+    ctx.save();
+    ctx.translate(80, 80);
+    ctx.scale(3, 3);
+    drawBlueBag(0, 0, 1);
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(200, 80);
+    ctx.scale(3, 3);
+    drawBlueBag(0, 0, 1);
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(320, 80);
+    ctx.scale(3, 3);
+    drawBlueBag(0, 0, 1);
+    ctx.restore();
+
+    // Emphasis lines around the purses
+    ctx.strokeStyle = '#ffcc00';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 3; i++) {
+        const cx = [122, 242, 362][i];
+        for (let a = 0; a < 8; a++) {
+            const angle = (a / 8) * Math.PI * 2;
+            ctx.beginPath();
+            ctx.moveTo(cx + Math.cos(angle) * 30, 100 + Math.sin(angle) * 25);
+            ctx.lineTo(cx + Math.cos(angle) * 38, 100 + Math.sin(angle) * 32);
+            ctx.stroke();
+        }
+    }
+
+    // Player eyes close-up at bottom
+    // Eye background (face strip)
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(140, 210, 200, 50);
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(140, 210, 200, 50);
+    // Left eye
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(175, 222, 30, 20);
+    ctx.fillStyle = '#4477aa';
+    ctx.fillRect(184, 226, 14, 14);
+    ctx.fillStyle = '#222';
+    ctx.fillRect(188, 229, 8, 8);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(191, 230, 3, 3);
+    // Right eye
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(275, 222, 30, 20);
+    ctx.fillStyle = '#4477aa';
+    ctx.fillRect(284, 226, 14, 14);
+    ctx.fillStyle = '#222';
+    ctx.fillRect(288, 229, 8, 8);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(291, 230, 3, 3);
+    // Eyebrows (slightly raised = noticing)
+    ctx.fillStyle = selectedChar && selectedChar.type === 'redhead' ? '#cc3300' : '#3a2a1a';
+    ctx.fillRect(174, 216, 32, 5);
+    ctx.fillRect(274, 216, 32, 5);
+
+    // Thought bubble
+    drawComicThoughtBubble(
+        'They each have the\nsame blue purse...',
+        120, 140, 240, 46,
+        240, 210
+    );
+}
+
+// ──────────────────────────────
+// Panel 7: "A Decision"
+// ──────────────────────────────
+function drawComicPanel7() {
+    // Player turning to friends
+    // Dark indoor theater lobby background
+    ctx.fillStyle = '#2a1a3a';
+    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, HEIGHT - COMIC_BORDER * 2);
+    // Floor
+    ctx.fillStyle = '#4a0e2e';
+    ctx.fillRect(COMIC_BORDER, 200, WIDTH - COMIC_BORDER * 2, HEIGHT - 200 - COMIC_BORDER);
+    for (let x = 10; x < WIDTH - 10; x += 24) {
+        ctx.fillStyle = '#5c1438';
+        ctx.fillRect(x, 205, 10, 10);
+    }
+
+    // Wall details
+    ctx.fillStyle = '#3d2a5c';
+    ctx.fillRect(10, 80, WIDTH - 20, 6);
+    ctx.fillRect(10, 160, WIDTH - 20, 4);
+
+    // Player character facing right toward friends
+    drawComicPlayerChar(120, 210, 'right');
+
+    // Friends group (facing left, looking confused)
+    drawBlakeSprite(280, 210, 'left');
+    drawAbrahamSprite(315, 215, 'left');
+    drawVanessaSprite(350, 208, 'left');
+
+    // Confusion marks above friends
+    ctx.fillStyle = '#ffcc00';
+    ctx.font = 'bold 14px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('?', 292, 200);
+    ctx.fillText('?', 327, 205);
+    ctx.fillText('?', 362, 198);
+
+    // Player speech bubble
+    drawComicSpeechBubble(
+        'You guys go ahead --\nI need to go talk to\nthe shop owner.',
+        60, 100, 220, 60,
+        132, 210
+    );
+}
+
+// ──────────────────────────────
+// Panel 8: "The Shop"
+// ──────────────────────────────
+function drawComicPanel8() {
+    // Ship interior — player approaching the shop entrance
+    ctx.fillStyle = '#2a1a3a';
+    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, HEIGHT - COMIC_BORDER * 2);
+
+    // Corridor floor
+    ctx.fillStyle = '#4a0e2e';
+    ctx.fillRect(COMIC_BORDER, 200, WIDTH - COMIC_BORDER * 2, HEIGHT - 200 - COMIC_BORDER);
+    for (let x = 10; x < WIDTH - 10; x += 24) {
+        ctx.fillStyle = '#5c1438';
+        ctx.fillRect(x, 205, 10, 10);
+        ctx.fillRect(x + 12, 225, 10, 10);
+    }
+
+    // Corridor walls
+    ctx.fillStyle = '#3a2a5c';
+    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, 50);
+    ctx.fillStyle = '#4a2a1a';
+    ctx.fillRect(COMIC_BORDER, 46, WIDTH - COMIC_BORDER * 2, 4);
+    ctx.fillStyle = '#3d2a5c';
+    ctx.fillRect(COMIC_BORDER, 90, WIDTH - COMIC_BORDER * 2, 4);
+    ctx.fillRect(COMIC_BORDER, 140, WIDTH - COMIC_BORDER * 2, 4);
+
+    // Shop storefront built into wall (large, prominent)
+    ctx.fillStyle = '#8b6040';
+    ctx.fillRect(100, 50, 280, 160);
+    // Shop sign
+    ctx.fillStyle = '#fff8dc';
+    ctx.fillRect(170, 54, 140, 16);
+    ctx.fillStyle = '#333';
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('CRUISE GIFTS', 240, 66);
+    ctx.textAlign = 'left';
+    // Windows (warm light from inside)
+    ctx.fillStyle = '#ffeeaa';
+    ctx.fillRect(120, 80, 80, 60);
+    ctx.fillRect(280, 80, 80, 60);
+    ctx.strokeStyle = '#6b4423';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(120, 80, 80, 60);
+    ctx.strokeRect(280, 80, 80, 60);
+    // Window cross frames
+    ctx.beginPath();
+    ctx.moveTo(160, 80); ctx.lineTo(160, 140);
+    ctx.moveTo(120, 110); ctx.lineTo(200, 110);
+    ctx.moveTo(320, 80); ctx.lineTo(320, 140);
+    ctx.moveTo(280, 110); ctx.lineTo(360, 110);
+    ctx.stroke();
+    // Door (center, warm light)
+    ctx.fillStyle = '#ffddaa';
+    ctx.fillRect(210, 90, 60, 120);
+    ctx.strokeStyle = '#6b4423';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(210, 90, 60, 120);
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(260, 155, 5, 5);
+
+    // Player approaching
+    drawComicPlayerChar(240, 230, 'up');
+
+    // Warm light from doorway
+    ctx.fillStyle = 'rgba(255, 220, 150, 0.15)';
+    ctx.beginPath();
+    ctx.moveTo(210, 210);
+    ctx.lineTo(195, 280);
+    ctx.lineTo(285, 280);
+    ctx.lineTo(270, 210);
+    ctx.closePath();
+    ctx.fill();
+
+    // Wall sconces
+    ctx.fillStyle = '#ffcc44';
+    ctx.fillRect(50, 70, 6, 8);
+    ctx.fillRect(430, 70, 6, 8);
+    ctx.fillStyle = 'rgba(255, 200, 100, 0.15)';
+    ctx.fillRect(44, 65, 18, 24);
+    ctx.fillRect(424, 65, 18, 24);
+
+    // Narration
+    drawComicNarration('You return to the\nscene of the crime...', 14, 10, 200);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LEVEL 3 — Shop (Stub)
+// ═══════════════════════════════════════════════════════════════
+
+function drawLevel3Shop() {
+    // Shop interior
+    ctx.fillStyle = '#3a2a1a';
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+    // Floor tiles
+    ctx.fillStyle = '#4a3a2a';
+    for (let x = 0; x < WIDTH; x += 32) {
+        for (let y = 160; y < HEIGHT; y += 32) {
+            ctx.fillRect(x + 1, y + 1, 30, 30);
+        }
+    }
+
+    // Back wall
+    ctx.fillStyle = '#5c4a3a';
+    ctx.fillRect(0, 0, WIDTH, 160);
+    // Wall trim
+    ctx.fillStyle = '#6b4423';
+    ctx.fillRect(0, 155, WIDTH, 8);
+
+    // Shelves on back wall
+    ctx.fillStyle = '#8b6040';
+    ctx.fillRect(20, 40, 120, 10);
+    ctx.fillRect(20, 80, 120, 10);
+    ctx.fillRect(20, 120, 120, 10);
+    ctx.fillRect(340, 40, 120, 10);
+    ctx.fillRect(340, 80, 120, 10);
+    ctx.fillRect(340, 120, 120, 10);
+
+    // Items on shelves (small colored rectangles = souvenirs)
+    const shelfItems = [
+        [30, 28, '#ff6666'], [55, 30, '#66ff66'], [85, 26, '#6666ff'], [110, 28, '#ffcc00'],
+        [30, 68, '#ff99cc'], [60, 70, '#99ffcc'], [90, 66, '#cc99ff'],
+        [30, 108, '#ffaa44'], [65, 106, '#44aaff'], [95, 110, '#ff44aa'],
+        [350, 28, '#66ccff'], [375, 30, '#ffcc66'], [400, 26, '#cc66ff'], [430, 28, '#66ffcc'],
+        [350, 68, '#ff8844'], [380, 70, '#4488ff'], [410, 66, '#88ff44'],
+        [350, 108, '#ff4488'], [385, 106, '#44ff88'], [420, 110, '#8844ff'],
+    ];
+    for (const [ix, iy, ic] of shelfItems) {
+        ctx.fillStyle = ic;
+        ctx.fillRect(ix, iy, 12, 10);
+    }
+
+    // Display case (center back)
+    ctx.fillStyle = '#aaddff';
+    ctx.fillRect(190, 50, 100, 80);
+    ctx.strokeStyle = '#6b4423';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(190, 50, 100, 80);
+    // Items in display case
+    drawBlueBag(215, 70, 2);
+
+    // Counter
+    ctx.fillStyle = '#6b4423';
+    ctx.fillRect(160, 180, 160, 25);
+    ctx.fillStyle = '#8b6040';
+    ctx.fillRect(160, 175, 160, 8);
+    // Cash register
+    ctx.fillStyle = '#444';
+    ctx.fillRect(220, 165, 30, 18);
+    ctx.fillStyle = '#66ff66';
+    ctx.fillRect(225, 168, 20, 8);
+
+    // Shopkeeper behind counter
+    drawShopkeeper(230, 140);
+
+    // Player character in front of counter
+    drawComicPlayerChar(228, 230, 'up');
+
+    // Thought text overlay (same style as "Wow, that was a wild dream...")
+    if (l3ShopTextAlpha > 0) {
+        ctx.fillStyle = `rgba(0, 0, 20, ${l3ShopTextAlpha * 0.7})`;
+        ctx.fillRect(0, HEIGHT / 2 - 30, WIDTH, 60);
+        ctx.fillStyle = `rgba(255, 255, 255, ${l3ShopTextAlpha})`;
+        ctx.font = '14px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('It\'s that book!', WIDTH / 2, HEIGHT / 2 + 5);
+        ctx.textAlign = 'left';
+    }
+}
 
 function gameLoop() {
     update();
