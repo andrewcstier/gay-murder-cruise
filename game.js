@@ -4880,7 +4880,7 @@ const L3_DIALOG = {
     chuck: [
         "Oh hey. Look, I don't do drag. I wouldn't even fit in half those costumes!",
         "Can you imagine me in that Mariah Carey corset? Ha!",
-        "I'm just here to have a good time on the cruise, that's all.",
+        "You know AJ cheats on his husband, right? I wonder if someone like that can be trusted.",
     ],
     aj: [
         "Oh hi! We're just looking at rings.",
