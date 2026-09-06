@@ -5085,6 +5085,7 @@ function closeLevel3Chat() {
     l3Typewriting = null;
     l3AccusationOpen = false;
     document.getElementById('chat-panel').style.display = 'none';
+    document.getElementById('chat-next').onclick = null;
     // Remove accuse button if it exists
     const accuseBtn = document.getElementById('l3-chat-accuse');
     if (accuseBtn) accuseBtn.remove();
