@@ -70,6 +70,7 @@ let l3Notebook = {
 };
 let l3TalkingTo = null;
 let l3AccusationOpen = false;
+let l3BookReveal = false;
 let l3Typewriting = null; // { full, current, charIndex }
 let l3TypeTimer = 0;
 let l3Solved = false;
@@ -4863,6 +4864,7 @@ const L3_DIALOG = {
     shopkeeper: [
         "Someone stole one of my books! A rare, valuable one. The thief grabbed it right off the display and ran.",
         "Security is handling it, but I'm beside myself. It was in one of those blue bags -- you know, the ones from the drag show.",
+        "Here, let me show you a picture of what was taken...",
     ],
     guard: [
         "I remember those blue bags from the show. Each performer had one.",
@@ -4964,14 +4966,15 @@ const L3_COLLIDERS = {
 
 function startLevel3() {
     gameState = 'level3';
-    l3State = 'shop-intro';
+    l3State = 'free';
     l3Room = 'shop';
     l3PlayerX = 228;
     l3PlayerY = 230;
     l3PlayerFacing = 'up';
     l3ShopTextAlpha = 0;
-    l3ShopTextPhase = 'fadein';
+    l3ShopTextPhase = 'done';
     l3ShopTimer = 0;
+    l3BookReveal = false;
     l3NearNpc = null;
     l3NearDoor = null;
     l3TalkedTo = { chuck: false, flint: false, aj: false };
@@ -5002,7 +5005,14 @@ function startLevel3() {
 
 function handleLevel3Action(key) {
     const k = key.toLowerCase();
-    if (l3State === 'shop-intro') return; // auto-advances
+    if (l3State === 'shop-intro') return;
+    if (l3State === 'book-reveal') {
+        l3State = 'shop-intro';
+        l3ShopTextAlpha = 0;
+        l3ShopTextPhase = 'fadein';
+        l3ShopTimer = 0;
+        return;
+    }
     if (l3State === 'complete') return;
     if (l3State === 'chat') {
         if (k === 'escape') {
@@ -5117,6 +5127,12 @@ function advanceLevel3Dialog() {
     const idx = l3DialogIndex[npcKey];
 
     if (idx >= lines.length) {
+        if (npcKey === 'shopkeeper' && !l3BookReveal) {
+            l3BookReveal = true;
+            closeLevel3Chat();
+            l3State = 'book-reveal';
+            return;
+        }
         closeLevel3Chat();
         return;
     }
@@ -5579,6 +5595,40 @@ function drawLevel3() {
             ctx.lineTo(npc.x + 17, npc.y - 18 + bob);
             ctx.fill();
         }
+    }
+
+    // Book reveal overlay (same purple book from the dream)
+    if (l3State === 'book-reveal') {
+        ctx.fillStyle = '#0a0a12';
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+        // Large purple book
+        ctx.fillStyle = '#5a1a7a';
+        ctx.fillRect(140, 40, 200, 240);
+        ctx.fillStyle = '#7a2a9a';
+        ctx.fillRect(145, 45, 190, 230);
+        ctx.fillStyle = '#4a0a6a';
+        ctx.fillRect(140, 40, 8, 240);
+        // Giant eye
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.ellipse(240, 150, 50, 35, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#6a1a9a';
+        ctx.beginPath();
+        ctx.arc(240, 150, 20, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.arc(240, 150, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(234, 140, 4, 4);
+        // Prompt
+        ctx.fillStyle = '#ffcc00';
+        ctx.font = '12px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(isMobile() ? 'Tap to continue' : 'Press any key', WIDTH / 2, HEIGHT - 20);
+        ctx.textAlign = 'left';
     }
 
     // Thought text overlay for shop intro
