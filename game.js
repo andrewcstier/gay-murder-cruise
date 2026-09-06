@@ -5116,7 +5116,7 @@ function drawComicPanel8() {
 const L3_NPCS = {
     shopkeeper: { room: 'shop', x: 230, y: 140, facing: 'down', name: 'SHOPKEEPER', color: '#cc8844' },
     guard: { room: 'theater', x: 230, y: 160, facing: 'down', name: 'SECURITY', color: '#cccccc' },
-    flint: { room: 'roundabout', x: 200, y: 140, facing: 'down', name: 'FLINT', color: '#ff8800' },
+    flint: { room: 'roundabout', x: 250, y: 138, facing: 'left', name: 'FLINT', color: '#ff8800' },
     chuck: { room: 'chucks-room', x: 240, y: 140, facing: 'down', name: 'CHUCK', color: '#cc4444' },
     aj: { room: 'jewelry', x: 180, y: 160, facing: 'right', name: 'AJ', color: '#33ccff' },
     rj: { room: 'jewelry', x: 280, y: 160, facing: 'left', name: 'RJ', color: '#33cc99' },
@@ -5205,7 +5205,7 @@ const L3_COLLIDERS = {
         { x: 340, y: 30, w: 120, h: 105 }, // right shelves
     ],
     roundabout: [
-        { x: 190, y: 110, w: 100, h: 70 }, // piano
+        { x: 155, y: 105, w: 115, h: 105 }, // piano + bench
     ],
     theater: [
         { x: 60, y: 40, w: 360, h: 80 },  // stage
@@ -6097,19 +6097,49 @@ function drawL3Roundabout() {
     ctx.fillRect(36, 0, 4, HEIGHT);
     ctx.fillRect(440, 0, 4, HEIGHT);
 
-    // Piano in center
+    // Grand piano in center (rotated — keys face right, lid opens left)
+    // Piano body (glossy black)
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(170, 105, 70, 100);
     ctx.fillStyle = '#1a1a1a';
-    ctx.fillRect(195, 115, 90, 60);
-    ctx.fillStyle = '#111';
-    ctx.fillRect(200, 120, 80, 50);
-    // Piano keys
+    ctx.fillRect(175, 110, 60, 90);
+    // Curved side (grand piano shape)
+    ctx.fillStyle = '#0a0a0a';
+    ctx.beginPath();
+    ctx.ellipse(170, 155, 15, 50, 0, Math.PI * 0.5, Math.PI * 1.5);
+    ctx.fill();
+    // Open lid (angled, reflecting light)
+    ctx.fillStyle = '#222';
+    ctx.fillRect(158, 105, 14, 100);
+    ctx.fillStyle = '#333';
+    ctx.fillRect(160, 108, 10, 94);
+    // Lid prop stick
+    ctx.fillStyle = '#444';
+    ctx.fillRect(168, 115, 2, 30);
+    // Piano keys (vertical strip on right side)
+    ctx.fillStyle = '#eee';
+    ctx.fillRect(235, 115, 12, 80);
     for (let k = 0; k < 10; k++) {
-        ctx.fillStyle = k % 2 === 0 ? '#eee' : '#111';
-        ctx.fillRect(202 + k * 7.6, 155, 6, 12);
+        ctx.fillStyle = '#ddd';
+        ctx.fillRect(235, 116 + k * 8, 12, 1);
     }
-    // Piano bench
+    // Black keys
+    for (let k = 0; k < 7; k++) {
+        if (k % 3 !== 2) {
+            ctx.fillStyle = '#111';
+            ctx.fillRect(235, 118 + k * 11, 7, 6);
+        }
+    }
+    // Piano legs
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(172, 200, 4, 10);
+    ctx.fillRect(230, 200, 4, 10);
+    ctx.fillRect(172, 105, 4, 8);
+    // Piano bench (to the right of keys)
     ctx.fillStyle = '#4a2a1a';
-    ctx.fillRect(210, 178, 60, 14);
+    ctx.fillRect(248, 135, 16, 40);
+    ctx.fillStyle = '#3a1a0a';
+    ctx.fillRect(250, 137, 12, 36);
 
     // Doors
     for (const door of L3_DOORS.roundabout) drawL3DoorIndicator(door);
@@ -6146,8 +6176,44 @@ function drawL3Roundabout() {
     ctx.beginPath(); ctx.arc(44, 82, 16, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(436, 82, 16, 0, Math.PI * 2); ctx.fill();
 
-    // NPCs in roundabout
-    drawFlintSprite(L3_NPCS.flint.x, L3_NPCS.flint.y, L3_NPCS.flint.facing);
+    // Flint seated at piano (custom pose — sitting on bench, hands on keys, facing left)
+    const fx = L3_NPCS.flint.x, fy = L3_NPCS.flint.y;
+    // Legs (bent, seated on bench)
+    ctx.fillStyle = '#333';
+    ctx.fillRect(fx + 4, fy + 22, 6, 8);
+    ctx.fillRect(fx + 12, fy + 22, 6, 8);
+    ctx.fillStyle = '#222';
+    ctx.fillRect(fx + 3, fy + 18, 18, 6);
+    // Torso (orange shirt, leaning slightly left toward keys)
+    ctx.fillStyle = '#ff8800';
+    ctx.fillRect(fx + 2, fy + 4, 16, 15);
+    ctx.fillStyle = '#cc6600';
+    ctx.fillRect(fx + 2, fy + 17, 16, 2);
+    ctx.fillStyle = '#ffaa33';
+    ctx.fillRect(fx + 4, fy + 7, 4, 4);
+    ctx.fillRect(fx + 10, fy + 11, 4, 4);
+    // Arms reaching left toward keys
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(fx - 6, fy + 8, 10, 4);
+    ctx.fillRect(fx - 6, fy + 14, 10, 4);
+    // Hands on keys
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(fx - 10, fy + 7, 5, 5);
+    ctx.fillRect(fx - 10, fy + 13, 5, 5);
+    // Head (facing left / slightly down at keys)
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(fx + 4, fy - 6, 12, 10);
+    // Styled hair
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(fx + 3, fy - 11, 14, 6);
+    ctx.fillRect(fx + 2, fy - 8, 4, 4);
+    ctx.fillRect(fx + 14, fy - 8, 4, 4);
+    // Eyes (looking left at keys)
+    ctx.fillStyle = '#333';
+    ctx.fillRect(fx + 5, fy - 3, 2, 2);
+    ctx.fillRect(fx + 10, fy - 3, 2, 2);
+    ctx.fillStyle = '#cc6644';
+    ctx.fillRect(fx + 7, fy + 1, 5, 2);
     drawBlakeSprite(L3_NPCS.blake.x, L3_NPCS.blake.y, L3_NPCS.blake.facing);
     drawAbrahamSprite(L3_NPCS.abraham.x, L3_NPCS.abraham.y, L3_NPCS.abraham.facing);
     drawVanessaSprite(L3_NPCS.vanessa.x, L3_NPCS.vanessa.y, L3_NPCS.vanessa.facing);
