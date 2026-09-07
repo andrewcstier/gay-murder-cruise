@@ -223,7 +223,7 @@ function selectLevel(level) {
         comicTimer = 0;
         comicEnteredAt = Date.now();
         GameMusic.stopMusic();
-        if (musicEnabled) GameMusic.startMusic('charselect');
+        if (musicEnabled) GameMusic.startMusic('level3');
         gameState = 'comic-cutscene';
         return;
     }
@@ -3994,7 +3994,7 @@ function drawComicPanel(n) {
     ctx.fillStyle = '#ffcc00';
     ctx.font = 'bold 10px monospace';
     ctx.textAlign = 'center';
-    const promptText = isMobile() ? 'TAP TO CONTINUE' : 'PRESS ANY KEY';
+    const promptText = isMobile() ? 'TAP LOOK TO CONTINUE' : 'PRESS LOOK TO CONTINUE';
     const blink = Math.floor(comicTimer / 30) % 2 === 0;
     if (blink) ctx.fillText(promptText, WIDTH / 2, HEIGHT - 9);
     ctx.textAlign = 'left';
@@ -5272,9 +5272,9 @@ const L3_NPCS = {
     chuck: { room: 'chucks-room', x: 240, y: 140, facing: 'down', name: 'CHUCK', color: '#cc4444' },
     aj: { room: 'jewelry', x: 180, y: 160, facing: 'right', name: 'AJ', color: '#33ccff' },
     rj: { room: 'jewelry', x: 280, y: 160, facing: 'left', name: 'RJ', color: '#33cc99' },
-    blake: { room: 'theater', x: 200, y: 200, facing: 'up', name: 'BLAKE', color: '#ff69b4' },
-    abraham: { room: 'jewelry', x: 300, y: 200, facing: 'left', name: 'ABRAHAM', color: '#44cc88' },
-    vanessa: { room: 'roundabout', x: 200, y: 460, facing: 'right', name: 'VANESSA', color: '#cc44ff' },
+    blake: { room: 'roundabout', x: 260, y: 400, facing: 'down', name: 'BLAKE', color: '#ff69b4' },
+    abraham: { room: 'jewelry', x: 350, y: 220, facing: 'left', name: 'ABRAHAM', color: '#44cc88' },
+    vanessa: { room: 'roundabout', x: 160, y: 520, facing: 'right', name: 'VANESSA', color: '#cc44ff' },
 };
 
 const L3_DIALOG = {
@@ -5294,11 +5294,11 @@ const L3_DIALOG = {
         "You know, it's funny. Chuck is so 'masc' that he's ashamed he does drag, and tells everyone he doesn't. I wonder if someone like that can be trusted?",
     ],
     chuck: [
-        "You want to talk to me about the robbery? Aint those drag queens the subjects?",
+        "You want to talk to me about the robbery? Ain't those drag queens the suspects?",
         "I don't do drag. I'm not THAT gay.",
         "I have a reputation to uphold as a senator.",
-        "I wouldn't even fit in half those costumes!",
-        "Can you imagine me in that Mariah Carey corset? Ha!",
+        "I'm 340 pounds. It would be physically impossible for me to be Mariah Carey.",
+        "Can you imagine me in that corset? Ha!",
         "You know AJ cheats on his husband, right? I wonder if someone like that can be trusted.",
     ],
     aj: [
@@ -5316,8 +5316,8 @@ const L3_DIALOG = {
         "You know, Cher was already on stage when the robbery happened. So it couldn't have been whoever was performing as Cher.",
     ],
     abraham: [
-        "This is crazy! First the murder mystery, now a robbery?",
-        "At least this time nobody's dead... that we know of.",
+        "Can you believe someone robbed the antique shop? During a drag show!",
+        "I swear, this cruise gets crazier every day.",
     ],
     vanessa: [
         "Darling, I could solve this faster than you. But I'll let you have your moment.",
@@ -5509,10 +5509,10 @@ function openLevel3Chat(npcKey) {
         addL3Clue("Purse contents: Book, PrEP, Microphone.");
     }
     if (npcKey === 'blake' && l3DialogIndex.blake === 0) {
-        addL3Clue("Cher was on stage during the robbery (Cher != Book).");
+        addL3Clue("Cher was already on stage when the robbery happened.");
     }
     if (npcKey === 'vanessa' && l3DialogIndex.vanessa === 0) {
-        addL3Clue("Jigglypuff pulled a microphone from her purse (Jigglypuff = Microphone).");
+        addL3Clue("Jigglypuff pulled a microphone from her purse during the show.");
     }
     if (npcKey === 'flint' && l3DialogIndex.flint === 0) {
         l3TalkedTo.flint = true;
@@ -5520,11 +5520,11 @@ function openLevel3Chat(npcKey) {
     }
     if (npcKey === 'chuck' && l3DialogIndex.chuck === 0) {
         l3TalkedTo.chuck = true;
-        addL3Clue("Chuck says he couldn't fit in the Mariah Carey corset (Chuck != Mariah Carey).");
+        addL3Clue("Chuck is 340 pounds — physically impossible for him to be Skinny Mariah Carey.");
     }
     if (npcKey === 'aj' && l3DialogIndex.aj === 0) {
         l3TalkedTo.aj = true;
-        addL3Clue("AJ says he performed as Cher (AJ = Cher).");
+        addL3Clue("AJ says he performed as Cher.");
     }
 
     updateL3AccusationButton();
@@ -6107,12 +6107,6 @@ function drawLevel3() {
         ctx.fill();
         ctx.fillStyle = '#fff';
         ctx.fillRect(234, 140, 4, 4);
-        // Prompt
-        ctx.fillStyle = '#ffcc00';
-        ctx.font = '12px monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText(isMobile() ? 'Tap to continue' : 'Press any key', WIDTH / 2, HEIGHT - 20);
-        ctx.textAlign = 'left';
     }
 
     // Thought text overlay for shop intro
@@ -6523,6 +6517,9 @@ function drawL3Roundabout() {
     ctx.fillStyle = '#cc6644';
     ctx.fillRect(fx + 7, fy + 1, 5, 2);
 
+    // Blake in hallway section
+    drawBlakeSprite(L3_NPCS.blake.x, l3sy(L3_NPCS.blake.y), L3_NPCS.blake.facing);
+
     // Vanessa in hallway section
     drawVanessaSprite(L3_NPCS.vanessa.x, l3sy(L3_NPCS.vanessa.y), L3_NPCS.vanessa.facing);
 
@@ -6588,9 +6585,6 @@ function drawL3Theater() {
 
     // Security guard
     drawSecurityGuard(L3_NPCS.guard.x, L3_NPCS.guard.y, L3_NPCS.guard.facing);
-
-    // Blake watching the empty stage
-    drawBlakeSprite(L3_NPCS.blake.x, L3_NPCS.blake.y, L3_NPCS.blake.facing);
 
     // Door to roundabout (south)
     for (const door of L3_DOORS.theater) drawL3DoorIndicator(door);
