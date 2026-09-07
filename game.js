@@ -74,6 +74,7 @@ let l3Notebook = {
 };
 let l3TalkingTo = null;
 let l3AccusationOpen = false;
+let l3ShopkeeperTalked = false;
 let l3BookReveal = false;
 let l3Typewriting = null; // { full, current, charIndex }
 let l3TypeTimer = 0;
@@ -194,7 +195,7 @@ function handleAction(key) {
         if (Date.now() - comicEnteredAt < 400) return;
         comicPanel++;
         comicEnteredAt = Date.now();
-        if (comicPanel >= 12) {
+        if (comicPanel >= 13) {
             startLevel3();
         }
         return;
@@ -3978,9 +3979,10 @@ function drawComicPanel(n) {
         case 6: drawComicPanel5(); break;
         case 7: drawComicPanel5b(); break;
         case 8: drawComicPanel6(); break;
-        case 9: drawComicPanel7(); break;
-        case 10: drawComicPanel7b(); break;
-        case 11: drawComicPanel8(); break;
+        case 9: drawComicPanel6b(); break;
+        case 10: drawComicPanel6c(); break;
+        case 11: drawComicPanel7(); break;
+        case 12: drawComicPanel8(); break;
     }
 
     // Thick comic border
@@ -5071,6 +5073,159 @@ function drawComicPanel6() {
 }
 
 // ──────────────────────────────
+// Panel 6b: "Show Ends" — curtain closing, audience applauding
+// ──────────────────────────────
+function drawComicPanel6b() {
+    // Theater interior — show ending, curtains closing, lights coming up
+    ctx.fillStyle = '#1a0a0a';
+    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, HEIGHT - COMIC_BORDER * 2);
+
+    // Stage floor
+    ctx.fillStyle = '#5c3a1a';
+    ctx.fillRect(60, 160, WIDTH - 120, 100);
+    ctx.fillStyle = '#6b4423';
+    ctx.fillRect(60, 155, WIDTH - 120, 8);
+
+    // Red curtains closing (wider than before, covering most of stage)
+    ctx.fillStyle = '#8b0000';
+    ctx.fillRect(10, 10, 180, 250);
+    ctx.fillStyle = '#cc2222';
+    ctx.fillRect(15, 10, 40, 250);
+    ctx.fillRect(60, 10, 30, 250);
+    ctx.fillRect(100, 10, 20, 250);
+    ctx.fillRect(140, 10, 15, 250);
+    ctx.fillRect(WIDTH - 190, 10, 180, 250);
+    ctx.fillStyle = '#cc2222';
+    ctx.fillRect(WIDTH - 185, 10, 40, 250);
+    ctx.fillRect(WIDTH - 130, 10, 30, 250);
+    ctx.fillRect(WIDTH - 90, 10, 20, 250);
+    ctx.fillRect(WIDTH - 55, 10, 15, 250);
+
+    // Curtain valance
+    ctx.fillStyle = '#8b0000';
+    ctx.fillRect(10, 10, WIDTH - 20, 25);
+
+    // Small gap in center showing empty stage
+    ctx.fillStyle = '#2a1a1a';
+    ctx.fillRect(190, 35, 100, 120);
+
+    // Overhead lights coming up (warm glow)
+    ctx.fillStyle = 'rgba(255, 220, 150, 0.15)';
+    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, HEIGHT - COMIC_BORDER * 2);
+
+    // Audience standing and applauding
+    ctx.fillStyle = '#111';
+    for (let x = 30; x < WIDTH - 30; x += 24) {
+        // Standing silhouettes (taller than sitting)
+        ctx.beginPath();
+        ctx.arc(x + 12, HEIGHT - 65, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillRect(x + 4, HEIGHT - 57, 16, 20);
+        // Raised hands (clapping)
+        if (x % 48 < 24) {
+            ctx.fillRect(x + 2, HEIGHT - 72, 4, 8);
+            ctx.fillRect(x + 18, HEIGHT - 70, 4, 8);
+        } else {
+            ctx.fillRect(x + 3, HEIGHT - 68, 4, 6);
+            ctx.fillRect(x + 17, HEIGHT - 72, 4, 8);
+        }
+    }
+
+    // Applause text
+    ctx.save();
+    ctx.fillStyle = '#ffcc00';
+    ctx.font = 'bold 14px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('CLAP CLAP CLAP', WIDTH / 2, HEIGHT - 88);
+    ctx.font = 'bold 10px monospace';
+    ctx.fillText('CLAP CLAP', WIDTH / 2 - 80, HEIGHT - 78);
+    ctx.fillText('CLAP CLAP', WIDTH / 2 + 80, HEIGHT - 78);
+    ctx.restore();
+
+    // Narration
+    drawComicNarration('The show ends.\nThe lights come up.', 14, 10, 190);
+}
+
+// ──────────────────────────────
+// Panel 6c: Player approaches guard at EXIT, queue of men
+// ──────────────────────────────
+function drawComicPanel6c() {
+    // Theater interior — guard by EXIT door, line of people queuing
+    ctx.fillStyle = '#1a0a0a';
+    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, HEIGHT - COMIC_BORDER * 2);
+
+    // Theater floor
+    ctx.fillStyle = '#2a1a3a';
+    ctx.fillRect(COMIC_BORDER, 100, WIDTH - COMIC_BORDER * 2, HEIGHT - 100 - COMIC_BORDER);
+    for (let x = 10; x < WIDTH - 10; x += 24) {
+        ctx.fillStyle = '#321e44';
+        ctx.fillRect(x, 110, 10, 10);
+        ctx.fillRect(x + 12, 130, 10, 10);
+    }
+
+    // EXIT door on right wall
+    ctx.fillStyle = '#3a2a5c';
+    ctx.fillRect(WIDTH - 60, COMIC_BORDER, 60, HEIGHT - COMIC_BORDER * 2);
+    ctx.fillStyle = '#d4a574';
+    ctx.fillRect(WIDTH - 50, 100, 40, 80);
+    ctx.fillStyle = '#8B4513';
+    ctx.fillRect(WIDTH - 46, 104, 32, 72);
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(WIDTH - 42, 138, 4, 4);
+    // EXIT sign above door
+    ctx.fillStyle = '#ff0000';
+    ctx.fillRect(WIDTH - 52, 85, 44, 14);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('EXIT', WIDTH - 30, 96);
+    ctx.textAlign = 'left';
+
+    // Security guard by the door (large, 2x scale)
+    ctx.save();
+    ctx.translate(WIDTH - 100, 115);
+    ctx.scale(1.8, 1.8);
+    drawSecurityGuard(0, 0, 'left');
+    ctx.restore();
+
+    // Queue of gay men heading toward the exit (5 people in a line)
+    const queueStartX = 180;
+    for (let i = 0; i < 5; i++) {
+        const qx = queueStartX + i * 30;
+        const qy = 160 + (i % 2) * 4;
+        // Simple figure silhouettes with varied colors
+        const colors = ['#ff69b4', '#33ccff', '#cc44ff', '#44cc88', '#ffcc00'];
+        ctx.fillStyle = '#d4a076';
+        ctx.fillRect(qx + 6, qy - 2, 12, 10);
+        ctx.fillStyle = colors[i];
+        ctx.fillRect(qx + 3, qy + 7, 18, 16);
+        ctx.fillStyle = '#333';
+        ctx.fillRect(qx + 6, qy + 22, 5, 10);
+        ctx.fillRect(qx + 13, qy + 22, 5, 10);
+        // Hair
+        ctx.fillStyle = '#3a2a1a';
+        ctx.fillRect(qx + 5, qy - 5, 14, 4);
+    }
+
+    // Player approaching from the left/below
+    drawComicPlayerChar(80, 200, 'right');
+
+    // Player speech bubble
+    drawComicSpeechBubble(
+        'Excuse me, sir?',
+        50, 130, 140, 30,
+        92, 200
+    );
+
+    // Guard speech bubble
+    drawComicSpeechBubble(
+        'I\'m busy. Come back\nafter the theater empties.',
+        200, 40, 230, 46,
+        WIDTH - 80, 115
+    );
+}
+
+// ──────────────────────────────
 // Panel 7: "A Decision"
 // ──────────────────────────────
 function drawComicPanel7() {
@@ -5112,66 +5267,6 @@ function drawComicPanel7() {
         'You guys go ahead --\nI need to go talk to\nthe shop owner.',
         60, 100, 220, 60,
         132, 210
-    );
-}
-
-// ──────────────────────────────
-// Panel 7b: Security guard is busy
-// ──────────────────────────────
-function drawComicPanel7b() {
-    // Theater interior — player approaches security guard who waves them off
-    ctx.fillStyle = '#1a0a0a';
-    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, HEIGHT - COMIC_BORDER * 2);
-
-    // Stage area (background)
-    ctx.fillStyle = '#5c3a1a';
-    ctx.fillRect(60, 40, WIDTH - 120, 80);
-    ctx.fillStyle = '#6b4423';
-    ctx.fillRect(60, 115, WIDTH - 120, 8);
-
-    // Red curtains
-    ctx.fillStyle = '#8b0000';
-    ctx.fillRect(10, 10, 55, 200);
-    ctx.fillStyle = '#cc2222';
-    ctx.fillRect(15, 10, 20, 200);
-    ctx.fillRect(WIDTH - 65, 10, 55, 200);
-    ctx.fillStyle = '#cc2222';
-    ctx.fillRect(WIDTH - 55, 10, 20, 200);
-
-    // Theater floor
-    ctx.fillStyle = '#2a1a3a';
-    ctx.fillRect(60, 120, WIDTH - 120, HEIGHT - 120 - COMIC_BORDER);
-    for (let x = 65; x < WIDTH - 65; x += 24) {
-        ctx.fillStyle = '#321e44';
-        ctx.fillRect(x, 130, 10, 10);
-        ctx.fillRect(x + 12, 150, 10, 10);
-    }
-
-    // Empty chairs
-    for (let r = 0; r < 3; r++) {
-        for (let cx = 100; cx < 380; cx += 40) {
-            ctx.fillStyle = '#4a2a1a';
-            ctx.fillRect(cx, 170 + r * 30, 20, 16);
-            ctx.fillStyle = '#3a1a0a';
-            ctx.fillRect(cx + 2, 170 + r * 30, 16, 4);
-        }
-    }
-
-    // Security guard (center, facing player, hand up in "stop" gesture)
-    ctx.save();
-    ctx.translate(WIDTH / 2 - 30, 160);
-    ctx.scale(2.5, 2.5);
-    drawSecurityGuard(0, 0, 'down');
-    ctx.restore();
-
-    // Player approaching from below
-    drawComicPlayerChar(WIDTH / 2 - 12, 260, 'up');
-
-    // Guard speech bubble
-    drawComicSpeechBubble(
-        'I\'m busy. Come back\nafter the theater empties.',
-        140, 100, 230, 46,
-        WIDTH / 2 - 10, 160
     );
 }
 
@@ -5270,8 +5365,8 @@ const L3_NPCS = {
     guard: { room: 'theater', x: 230, y: 160, facing: 'down', name: 'SECURITY', color: '#cccccc' },
     flint: { room: 'roundabout', x: 250, y: 138, facing: 'left', name: 'FLINT', color: '#ff8800' },
     chuck: { room: 'chucks-room', x: 240, y: 140, facing: 'down', name: 'CHUCK', color: '#cc4444' },
-    aj: { room: 'jewelry', x: 180, y: 160, facing: 'right', name: 'AJ', color: '#33ccff' },
-    rj: { room: 'jewelry', x: 280, y: 160, facing: 'left', name: 'RJ', color: '#33cc99' },
+    aj: { room: 'jewelry', x: 200, y: 160, facing: 'right', name: 'AJ', color: '#33ccff' },
+    rj: { room: 'jewelry', x: 224, y: 160, facing: 'left', name: 'RJ', color: '#33cc99' },
     blake: { room: 'roundabout', x: 260, y: 400, facing: 'down', name: 'BLAKE', color: '#ff69b4' },
     abraham: { room: 'jewelry', x: 350, y: 220, facing: 'left', name: 'ABRAHAM', color: '#44cc88' },
     vanessa: { room: 'roundabout', x: 160, y: 520, facing: 'right', name: 'VANESSA', color: '#cc44ff' },
@@ -5302,14 +5397,14 @@ const L3_DIALOG = {
         "You know AJ cheats on his husband, right? I wonder if someone like that can be trusted.",
     ],
     aj: [
-        "Oh hi! We're just looking at rings.",
-        "I was Cher! It was so much fun performing. The crowd loved it.",
-        "My purse? I... no. I don't... I don't want to talk about that. There was nothing in it. It was just a prop, okay?",
-        "What about Flint? Did you know he's a side? I wonder if someone like that can be trusted.",
+        {speaker: 'aj', text: "Oh hi! We're just looking at rings."},
+        {speaker: 'rj', text: "Hey! Nice to meet you. AJ won't stop talking about the drag show."},
+        {speaker: 'aj', text: "I was Cher! It was so much fun performing. The crowd loved it."},
+        {speaker: 'rj', text: "He was incredible up there, I'm so proud of him."},
+        {speaker: 'aj', text: "My purse? I... no. I don't... I don't want to talk about that. There was nothing in it. It was just a prop, okay?"},
+        {speaker: 'aj', text: "What about Flint? Did you know he's a side? I wonder if someone like that can be trusted."},
     ],
-    rj: [
-        "Hey! Nice to meet you. AJ won't stop talking about the drag show.",
-    ],
+    rj: [],
     blake: [
         "Hey babe! I'm glad you're on the case. Let me know if you need anything.",
         "This ship is wild. Someone robbed the gift shop during the drag show!",
@@ -5403,6 +5498,7 @@ function startLevel3() {
     l3ShopTextPhase = 'done';
     l3ShopTimer = 0;
     l3BookReveal = false;
+    l3ShopkeeperTalked = false;
     l3NearNpc = null;
     l3NearDoor = null;
     l3TalkedTo = { chuck: false, flint: false, aj: false };
@@ -5443,6 +5539,11 @@ function handleLevel3Action(key) {
         return;
     }
     if (l3State === 'complete') return;
+    if (l3State === 'shop-exit-blocked') {
+        dialogBox.classList.remove('visible');
+        l3State = 'free';
+        return;
+    }
     if (l3State === 'chat') {
         if (k === 'escape') {
             closeLevel3Chat();
@@ -5478,6 +5579,8 @@ function handleLevel3Action(key) {
 // ── Level 3 Chat System ──
 
 function openLevel3Chat(npcKey) {
+    // Redirect RJ talk to combined AJ+RJ conversation
+    if (npcKey === 'rj') npcKey = 'aj';
     l3State = 'chat';
     l3TalkingTo = npcKey;
 
@@ -5497,11 +5600,23 @@ function openLevel3Chat(npcKey) {
 
     const lines = L3_DIALOG[npcKey];
     const idx = l3DialogIndex[npcKey];
-    const line = lines[Math.min(idx, lines.length - 1)];
+    const lineData = lines[Math.min(idx, lines.length - 1)];
+    const line = typeof lineData === 'object' ? lineData.text : lineData;
+    const speaker = typeof lineData === 'object' ? lineData.speaker : null;
     startLevel3Typing(line);
-    renderL3ChatLine(npcKey, line);
+    renderL3ChatLine(npcKey, line, speaker);
+    // Update portrait and name for current speaker
+    if (speaker) {
+        const speakerNpc = L3_NPCS[speaker];
+        document.getElementById('chat-npc-name').style.color = speakerNpc.color;
+        document.getElementById('chat-npc-name').textContent = `--- ${speakerNpc.name} ---`;
+        document.getElementById('chat-portrait').style.borderColor = speakerNpc.color;
+        document.getElementById('chat-portrait').style.boxShadow = `0 0 10px ${speakerNpc.color}66`;
+        drawLevel3Portrait(speaker);
+    }
 
     // Trigger clues on first talk
+    if (npcKey === 'shopkeeper') l3ShopkeeperTalked = true;
     if (npcKey === 'guard' && l3DialogIndex.guard === 0) {
         l3GridUnlocked = true;
         document.getElementById('notebook-btn').style.display = 'flex';
@@ -5570,9 +5685,19 @@ function advanceLevel3Dialog() {
         return;
     }
 
-    const line = lines[idx];
+    const lineData = lines[idx];
+    const line = typeof lineData === 'object' ? lineData.text : lineData;
+    const speaker = typeof lineData === 'object' ? lineData.speaker : null;
     startLevel3Typing(line);
-    renderL3ChatLine(npcKey, line);
+    renderL3ChatLine(npcKey, line, speaker);
+    if (speaker) {
+        const speakerNpc = L3_NPCS[speaker];
+        document.getElementById('chat-npc-name').style.color = speakerNpc.color;
+        document.getElementById('chat-npc-name').textContent = `--- ${speakerNpc.name} ---`;
+        document.getElementById('chat-portrait').style.borderColor = speakerNpc.color;
+        document.getElementById('chat-portrait').style.boxShadow = `0 0 10px ${speakerNpc.color}66`;
+        drawLevel3Portrait(speaker);
+    }
 }
 
 function startLevel3Typing(text) {
@@ -5580,22 +5705,26 @@ function startLevel3Typing(text) {
     l3TypeTimer = 0;
 }
 
-function renderL3ChatLine(npcKey, text) {
+function renderL3ChatLine(npcKey, text, speakerKey) {
     const container = document.getElementById('chat-messages');
-    const npc = L3_NPCS[npcKey];
+    const displayNpc = speakerKey ? L3_NPCS[speakerKey] : L3_NPCS[npcKey];
     const displayText = (l3Typewriting && l3Typewriting.current !== l3Typewriting.full)
         ? l3Typewriting.current : text;
-    container.innerHTML = `<div class="msg-npc"><span style="color:${npc.color}">${npc.name}:</span> ${displayText}</div>`;
+    container.innerHTML = `<div class="msg-npc"><span style="color:${displayNpc.color}">${displayNpc.name}:</span> ${displayText}</div>`;
     document.getElementById('chat-next').style.display = 'block';
 }
 
 function updateL3ChatDisplay() {
     if (!l3TalkingTo || !l3Typewriting) return;
     const container = document.getElementById('chat-messages');
-    const npc = L3_NPCS[l3TalkingTo];
+    const lines = L3_DIALOG[l3TalkingTo];
+    const idx = l3DialogIndex[l3TalkingTo];
+    const lineData = lines[Math.min(idx, lines.length - 1)];
+    const speaker = typeof lineData === 'object' ? lineData.speaker : null;
+    const displayNpc = speaker ? L3_NPCS[speaker] : L3_NPCS[l3TalkingTo];
     const firstDiv = container.querySelector('.msg-npc');
     if (firstDiv) {
-        firstDiv.innerHTML = `<span style="color:${npc.color}">${npc.name}:</span> ${l3Typewriting.current}`;
+        firstDiv.innerHTML = `<span style="color:${displayNpc.color}">${displayNpc.name}:</span> ${l3Typewriting.current}`;
     }
 }
 
@@ -5604,7 +5733,6 @@ function addL3Clue(text) {
 }
 
 function updateL3AccusationButton() {
-    // Show accuse button when talking to a suspect and all 3 suspects talked to
     const allTalked = l3TalkedTo.chuck && l3TalkedTo.flint && l3TalkedTo.aj;
     const isSuspect = l3TalkingTo === 'chuck' || l3TalkingTo === 'flint' || l3TalkingTo === 'aj';
 
@@ -5613,58 +5741,68 @@ function updateL3AccusationButton() {
         btn = document.createElement('button');
         btn.id = 'l3-chat-accuse';
         btn.style.cssText = 'margin-top:6px; width:calc(100% - 16px); margin-left:8px; background:#cc3030; border:2px solid #ff4444; border-radius:4px; color:#fff; font-family:monospace; font-size:11px; padding:6px 8px; cursor:pointer; box-shadow:0 0 10px rgba(204,48,48,0.3);';
-        btn.textContent = 'READY TO ACCUSE';
         btn.addEventListener('click', openL3Accusation);
         document.getElementById('chat-panel').appendChild(btn);
     }
+    const suspectName = l3TalkingTo ? (L3_NPCS[l3TalkingTo] ? L3_NPCS[l3TalkingTo].name : '') : '';
+    btn.textContent = 'Accuse ' + suspectName;
     btn.style.display = (allTalked && isSuspect && !l3Solved && !l3AccusationOpen) ? 'block' : 'none';
 }
 
 function openL3Accusation() {
     l3AccusationOpen = true;
+    const target = l3TalkingTo;
     const container = document.getElementById('chat-messages');
-    let html = '<div class="msg-npc"><span style="color:#ffcc00">DETECTIVE:</span> Whose purse had the book?</div>';
-    html += '<div style="margin-top:8px;">';
-    for (const s of L3_SUSPECTS) {
-        html += `<button class="l3-accuse-btn" data-target="${s.toLowerCase()}" style="display:block; width:100%; margin-bottom:4px; padding:6px 8px; font-family:monospace; font-size:11px; cursor:pointer; background:#2a1020; border:1px solid #cc3030; border-radius:3px; color:#e8d070; text-align:left;">${s}</button>`;
-    }
-    html += '</div>';
-    container.innerHTML = html;
-
+    const npc = L3_NPCS[target];
+    container.innerHTML = `<div class="msg-npc"><span style="color:#ffcc00">You:</span> I think it was you, ${npc.name}.</div>`;
+    container.innerHTML += '<div style="margin-top:8px; text-align:center; color:#aaa; font-size:11px;">Are you sure?</div>';
+    container.innerHTML += '<div style="margin-top:6px; display:flex; gap:8px; justify-content:center;">';
+    container.innerHTML += `<button id="l3-accuse-yes" style="padding:6px 20px; font-family:monospace; font-size:11px; cursor:pointer; background:#cc3030; border:2px solid #ff4444; border-radius:4px; color:#fff;">YES</button>`;
+    container.innerHTML += `<button id="l3-accuse-no" style="padding:6px 20px; font-family:monospace; font-size:11px; cursor:pointer; background:rgba(255,255,255,0.1); border:2px solid #888; border-radius:4px; color:#aaa;">NO</button>`;
+    container.innerHTML += '</div>';
     document.getElementById('chat-next').style.display = 'none';
     const accuseBtn = document.getElementById('l3-chat-accuse');
     if (accuseBtn) accuseBtn.style.display = 'none';
 
-    container.querySelectorAll('.l3-accuse-btn').forEach(btn => {
-        btn.addEventListener('click', () => handleL3Accusation(btn.dataset.target));
-    });
+    setTimeout(() => {
+        const yesBtn = document.getElementById('l3-accuse-yes');
+        const noBtn = document.getElementById('l3-accuse-no');
+        if (yesBtn) yesBtn.addEventListener('click', () => handleL3Accusation(target));
+        if (noBtn) noBtn.addEventListener('click', () => {
+            l3AccusationOpen = false;
+            const lines = L3_DIALOG[target];
+            const idx = l3DialogIndex[target];
+            const lineData = lines[Math.min(idx, lines.length - 1)];
+            const line = typeof lineData === 'object' ? lineData.text : lineData;
+            renderL3ChatLine(target, line);
+            document.getElementById('chat-next').style.display = 'block';
+            updateL3AccusationButton();
+        });
+    }, 0);
 }
 
 function handleL3Accusation(target) {
     const container = document.getElementById('chat-messages');
 
     if (target === 'chuck') {
-        container.innerHTML = '<div class="msg-npc"><span style="color:#cc4444">CHUCK:</span> Me? Nah. I just had my stuff. Try again.</div>';
-        document.getElementById('chat-next').textContent = 'NEXT';
+        container.innerHTML = '<div class="msg-npc"><span style="color:#cc4444">CHUCK:</span> No, it wasn\'t me.</div>';
+        document.getElementById('chat-next').textContent = 'CLOSE';
         document.getElementById('chat-next').style.display = 'block';
         document.getElementById('chat-next').onclick = () => {
             l3AccusationOpen = false;
             document.getElementById('chat-next').onclick = null;
-            updateL3AccusationButton();
-            renderL3ChatLine('chuck', "It wasn't me. Try again when you're ready.");
+            closeLevel3Chat();
         };
     } else if (target === 'aj') {
-        container.innerHTML = '<div class="msg-npc"><span style="color:#33ccff">AJ:</span> It wasn\'t me! I told you, my purse was empty. Think harder.</div>';
-        document.getElementById('chat-next').textContent = 'NEXT';
+        container.innerHTML = '<div class="msg-npc"><span style="color:#33ccff">AJ:</span> No, it wasn\'t me.</div>';
+        document.getElementById('chat-next').textContent = 'CLOSE';
         document.getElementById('chat-next').style.display = 'block';
         document.getElementById('chat-next').onclick = () => {
             l3AccusationOpen = false;
             document.getElementById('chat-next').onclick = null;
-            updateL3AccusationButton();
-            renderL3ChatLine('aj', "Not me. My purse was just a prop. Try again!");
+            closeLevel3Chat();
         };
     } else if (target === 'flint') {
-        // Correct!
         document.getElementById('chat-next').style.display = 'none';
         container.innerHTML = '<div class="msg-npc"><span style="color:#ff8800">FLINT:</span> ...</div>';
         setTimeout(() => {
@@ -5707,69 +5845,69 @@ function renderL3Notebook() {
     if (!l3GridUnlocked) {
         html += '<div style="color:#8a8a7a; font-size:11px; line-height:20px; font-style:italic; text-align:center; padding:20px;">I need more info before I can start organizing...</div>';
     } else {
-        // Suspect x Item grid (top-left)
-        html += '<div style="color:#e8d070; font-size:10px; margin-bottom:4px; text-align:center;">SUSPECT x ITEM</div>';
-        html += '<table style="border-collapse:collapse; margin:0 auto 10px; font-family:monospace;">';
-        html += '<thead><tr><td style="width:50px;"></td>';
+        // L-shaped grid: one unified table
+        // Columns: [row label] | Book | PrEP | Mic | Jiggly | Mariah | Cher
+        // Top 3 rows: Chuck, Flint, AJ (suspectItem left, suspectPersona right)
+        // Bottom 3 rows: Jiggly, Mariah, Cher (personaItem left, empty right)
+        html += '<table style="border-collapse:collapse; margin:0 auto 12px; font-family:monospace;">';
+        // Column headers
+        html += '<thead><tr><td style="width:46px;"></td>';
+        // Items header group
         for (let c = 0; c < 3; c++) {
-            html += `<td style="width:32px; text-align:center; color:#e8d070; font-size:9px; padding:2px;">${L3_ITEMS[c]}</td>`;
+            const borderRight = (c === 2) ? 'border-right:2px solid #6a5090;' : '';
+            html += `<td style="width:30px; text-align:center; color:#e8d070; font-size:8px; padding:2px; ${borderRight}">${L3_ITEMS[c]}</td>`;
+        }
+        // Personas header group
+        for (let c = 0; c < 3; c++) {
+            html += `<td style="width:30px; text-align:center; color:#e8d070; font-size:8px; padding:2px;">${L3_PERSONAS[c]}</td>`;
         }
         html += '</tr></thead><tbody>';
+
+        // Top 3 rows: Suspects
         for (let r = 0; r < 3; r++) {
-            html += `<tr><td style="color:#e8d070; font-size:9px; text-align:right; padding-right:4px;">${L3_SUSPECTS[r]}</td>`;
+            const borderBottom = (r === 2) ? 'border-bottom:2px solid #6a5090;' : '';
+            html += `<tr><td style="color:#e8d070; font-size:9px; text-align:right; padding-right:4px; ${borderBottom}">${L3_SUSPECTS[r]}</td>`;
+            // Suspect x Item cells (top-left quadrant)
             for (let c = 0; c < 3; c++) {
                 const val = l3Notebook.suspectItem[r][c];
                 const display = val === 'check' ? '✓' : val === 'x' ? '✗' : val === '?' ? '?' : '';
                 const color = val === 'check' ? '#44ff44' : val === 'x' ? '#ff4444' : val === '?' ? '#e8d070' : '#888';
-                html += `<td data-grid="si" data-r="${r}" data-c="${c}" class="l3-nb-cell" style="width:32px; height:32px; border:1px solid #3a3060; background:#1a1420; text-align:center; cursor:pointer; font-size:14px; color:${color}; user-select:none;">${display}</td>`;
+                const brRight = (c === 2) ? 'border-right:2px solid #6a5090;' : '';
+                html += `<td data-grid="si" data-r="${r}" data-c="${c}" class="l3-nb-cell" style="width:30px; height:30px; border:1px solid #3a3060; background:#1a1420; text-align:center; cursor:pointer; font-size:14px; color:${color}; user-select:none; ${borderBottom}${brRight}">${display}</td>`;
             }
-            html += '</tr>';
-        }
-        html += '</tbody></table>';
-
-        // Suspect x Persona grid (top-right)
-        html += '<div style="color:#e8d070; font-size:10px; margin-bottom:4px; text-align:center;">SUSPECT x PERSONA</div>';
-        html += '<table style="border-collapse:collapse; margin:0 auto 10px; font-family:monospace;">';
-        html += '<thead><tr><td style="width:50px;"></td>';
-        for (let c = 0; c < 3; c++) {
-            html += `<td style="width:32px; text-align:center; color:#e8d070; font-size:9px; padding:2px;">${L3_PERSONAS[c]}</td>`;
-        }
-        html += '</tr></thead><tbody>';
-        for (let r = 0; r < 3; r++) {
-            html += `<tr><td style="color:#e8d070; font-size:9px; text-align:right; padding-right:4px;">${L3_SUSPECTS[r]}</td>`;
+            // Suspect x Persona cells (top-right quadrant)
             for (let c = 0; c < 3; c++) {
                 const val = l3Notebook.suspectPersona[r][c];
                 const display = val === 'check' ? '✓' : val === 'x' ? '✗' : val === '?' ? '?' : '';
                 const color = val === 'check' ? '#44ff44' : val === 'x' ? '#ff4444' : val === '?' ? '#e8d070' : '#888';
-                html += `<td data-grid="sp" data-r="${r}" data-c="${c}" class="l3-nb-cell" style="width:32px; height:32px; border:1px solid #3a3060; background:#1a1420; text-align:center; cursor:pointer; font-size:14px; color:${color}; user-select:none;">${display}</td>`;
+                html += `<td data-grid="sp" data-r="${r}" data-c="${c}" class="l3-nb-cell" style="width:30px; height:30px; border:1px solid #3a3060; background:#1a1420; text-align:center; cursor:pointer; font-size:14px; color:${color}; user-select:none; ${borderBottom}">${display}</td>`;
             }
             html += '</tr>';
         }
-        html += '</tbody></table>';
 
-        // Persona x Item grid (bottom-left)
-        html += '<div style="color:#e8d070; font-size:10px; margin-bottom:4px; text-align:center;">PERSONA x ITEM</div>';
-        html += '<table style="border-collapse:collapse; margin:0 auto 10px; font-family:monospace;">';
-        html += '<thead><tr><td style="width:50px;"></td>';
-        for (let c = 0; c < 3; c++) {
-            html += `<td style="width:32px; text-align:center; color:#e8d070; font-size:9px; padding:2px;">${L3_ITEMS[c]}</td>`;
-        }
-        html += '</tr></thead><tbody>';
+        // Bottom 3 rows: Personas
         for (let r = 0; r < 3; r++) {
             html += `<tr><td style="color:#e8d070; font-size:9px; text-align:right; padding-right:4px;">${L3_PERSONAS[r]}</td>`;
+            // Persona x Item cells (bottom-left quadrant)
             for (let c = 0; c < 3; c++) {
                 const val = l3Notebook.personaItem[r][c];
                 const display = val === 'check' ? '✓' : val === 'x' ? '✗' : val === '?' ? '?' : '';
                 const color = val === 'check' ? '#44ff44' : val === 'x' ? '#ff4444' : val === '?' ? '#e8d070' : '#888';
-                html += `<td data-grid="pi" data-r="${r}" data-c="${c}" class="l3-nb-cell" style="width:32px; height:32px; border:1px solid #3a3060; background:#1a1420; text-align:center; cursor:pointer; font-size:14px; color:${color}; user-select:none;">${display}</td>`;
+                const brRight = (c === 2) ? 'border-right:2px solid #6a5090;' : '';
+                html += `<td data-grid="pi" data-r="${r}" data-c="${c}" class="l3-nb-cell" style="width:30px; height:30px; border:1px solid #3a3060; background:#1a1420; text-align:center; cursor:pointer; font-size:14px; color:${color}; user-select:none; ${brRight}">${display}</td>`;
+            }
+            // Empty cells (bottom-right quadrant — Persona x Persona, no interaction)
+            for (let c = 0; c < 3; c++) {
+                html += '<td style="width:30px; height:30px; border:1px solid #2a2040; background:#0f0a18;"></td>';
             }
             html += '</tr>';
         }
+
         html += '</tbody></table>';
     }
 
-    // Clues
-    html += '<div style="border-top:1px solid #3a3060; padding-top:10px; margin-bottom:10px;">';
+    // Clues (scrollable)
+    html += '<div style="border-top:1px solid #3a3060; padding-top:10px; margin-bottom:10px; max-height:120px; overflow-y:auto;">';
     html += '<div style="color:#e8d070; font-size:10px; margin-bottom:6px; text-align:center;">--- CLUES & EVIDENCE ---</div>';
     if (l3DiscoveredClues.length === 0) {
         html += '<div style="color:#8a8a7a; font-size:10px; line-height:18px; font-style:italic;">No clues discovered yet. Talk to people.</div>';
@@ -6004,6 +6142,14 @@ function updateLevel3() {
     const pcy = l3PlayerY + 18;
     for (const door of doors) {
         if (pcx > door.x && pcx < door.x + door.w && pcy > door.y && pcy < door.y + door.h) {
+            // Block shop exit until shopkeeper talked to
+            if (l3Room === 'shop' && !l3ShopkeeperTalked) {
+                l3State = 'shop-exit-blocked';
+                dialogBox.innerHTML = '<span style="color:#ffcc00;">I should talk to the shop owner first.</span><br><br><span style="color:#aaa">Press any key...</span>';
+                dialogBox.classList.add('visible');
+                l3PlayerX = 30;
+                return;
+            }
             const prevRoom = l3Room;
             const prevY = l3PlayerY;
             l3Room = door.target;
@@ -6754,85 +6900,117 @@ function drawL3Jewelry() {
 // ── NPC Sprite Functions ──
 
 function drawChuckSprite(x, y, facing) {
-    // Chuck: big/masc guy, red tank top, short buzzed hair
+    // Chuck: 340lb man in a suit, wider body (~32px wide)
     const b = 0;
-    // Legs
-    ctx.fillStyle = '#2b4570';
-    ctx.fillRect(x + 5, y + 26 + b, 6, 10);
-    ctx.fillRect(x + 13, y + 26 + b, 6, 10);
-    // Shorts
-    ctx.fillStyle = '#1e3350';
-    ctx.fillRect(x + 4, y + 22 + b, 16, 6);
-    // Torso (red tank top, wider build)
-    ctx.fillStyle = '#cc4444';
-    ctx.fillRect(x + 2, y + 6 + b, 20, 18);
-    ctx.fillStyle = '#aa3333';
-    ctx.fillRect(x + 2, y + 22 + b, 20, 2);
-    // Arms (thick)
+    const ox = -4; // offset to center wider sprite
+    // Legs (thick)
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(x + 4 + ox, y + 28 + b, 8, 10);
+    ctx.fillRect(x + 16 + ox, y + 28 + b, 8, 10);
+    // Shoes
+    ctx.fillStyle = '#111';
+    ctx.fillRect(x + 3 + ox, y + 36 + b, 9, 3);
+    ctx.fillRect(x + 15 + ox, y + 36 + b, 9, 3);
+    // Dark suit pants
+    ctx.fillStyle = '#1a1a3a';
+    ctx.fillRect(x + 2 + ox, y + 22 + b, 24, 8);
+    // Belt
+    ctx.fillStyle = '#111';
+    ctx.fillRect(x + 2 + ox, y + 20 + b, 24, 3);
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(x + 12 + ox, y + 20 + b, 4, 3);
+    // Torso (dark suit jacket, wide)
+    ctx.fillStyle = '#1a1a3a';
+    ctx.fillRect(x + 0 + ox, y + 4 + b, 28, 18);
+    // Suit lapels
+    ctx.fillStyle = '#2a2a4a';
+    ctx.fillRect(x + 4 + ox, y + 5 + b, 4, 12);
+    ctx.fillRect(x + 20 + ox, y + 5 + b, 4, 12);
+    // White shirt showing
+    ctx.fillStyle = '#eee';
+    ctx.fillRect(x + 8 + ox, y + 5 + b, 12, 14);
+    // Tie
+    ctx.fillStyle = '#cc2222';
+    ctx.fillRect(x + 12 + ox, y + 5 + b, 4, 14);
+    ctx.fillStyle = '#aa1111';
+    ctx.fillRect(x + 13 + ox, y + 18 + b, 2, 3);
+    // Arms (thick, suit sleeves)
+    ctx.fillStyle = '#1a1a3a';
+    ctx.fillRect(x - 2 + ox, y + 5 + b, 4, 16);
+    ctx.fillRect(x + 26 + ox, y + 5 + b, 4, 16);
+    // Hands
     ctx.fillStyle = '#d4a076';
-    ctx.fillRect(x + 0, y + 7 + b, 4, 14);
-    ctx.fillRect(x + 20, y + 7 + b, 4, 14);
-    // Head
+    ctx.fillRect(x - 2 + ox, y + 19 + b, 4, 4);
+    ctx.fillRect(x + 26 + ox, y + 19 + b, 4, 4);
+    // Head (bigger)
     ctx.fillStyle = '#d4a076';
-    ctx.fillRect(x + 5, y - 2 + b, 14, 10);
-    // Hair (short buzz)
+    ctx.fillRect(x + 4 + ox, y - 4 + b, 20, 10);
+    // Short hair
     ctx.fillStyle = '#3a2a1a';
-    ctx.fillRect(x + 4, y - 5 + b, 16, 4);
+    ctx.fillRect(x + 3 + ox, y - 7 + b, 22, 4);
     // Eyes
     if (facing === 'down') {
         ctx.fillStyle = '#333';
-        ctx.fillRect(x + 7, y + 1, 3, 2);
-        ctx.fillRect(x + 14, y + 1, 3, 2);
+        ctx.fillRect(x + 7 + ox, y - 1, 3, 2);
+        ctx.fillRect(x + 16 + ox, y - 1, 3, 2);
         // Stubble
         ctx.fillStyle = 'rgba(60,40,20,0.3)';
-        ctx.fillRect(x + 7, y + 5, 10, 3);
+        ctx.fillRect(x + 7 + ox, y + 3, 14, 3);
     }
 }
 
 function drawFlintSprite(x, y, facing) {
-    // Flint: slender, colorful orange shirt, styled hair
+    // Flint: emo look — all black, longer hair covering one eye, slimmer, eyeliner
     const b = 0;
-    // Legs
-    ctx.fillStyle = '#333';
+    // Legs (skinny black jeans)
+    ctx.fillStyle = '#111';
     ctx.fillRect(x + 7, y + 26 + b, 4, 10);
     ctx.fillRect(x + 13, y + 26 + b, 4, 10);
-    // Tight pants
-    ctx.fillStyle = '#222';
+    // Black skinny jeans
+    ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(x + 6, y + 22 + b, 12, 6);
-    // Torso (orange patterned shirt)
-    ctx.fillStyle = '#ff8800';
+    // Torso (black shirt/hoodie)
+    ctx.fillStyle = '#111';
     ctx.fillRect(x + 4, y + 7 + b, 16, 16);
-    ctx.fillStyle = '#cc6600';
+    ctx.fillStyle = '#1a1a1a';
     ctx.fillRect(x + 4, y + 21 + b, 16, 2);
-    // Shirt pattern
-    ctx.fillStyle = '#ffaa33';
-    ctx.fillRect(x + 6, y + 10, 4, 4);
-    ctx.fillRect(x + 12, y + 14, 4, 4);
-    // Arms (slender)
-    ctx.fillStyle = '#d4a076';
+    // Hood/collar detail
+    ctx.fillStyle = '#222';
+    ctx.fillRect(x + 6, y + 7 + b, 12, 3);
+    // Arms (slender, black sleeves)
+    ctx.fillStyle = '#111';
     ctx.fillRect(x + 2, y + 8 + b, 3, 10);
     ctx.fillRect(x + 19, y + 8 + b, 3, 10);
+    // Hands
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(x + 2, y + 17 + b, 3, 4);
+    ctx.fillRect(x + 19, y + 17 + b, 3, 4);
     // Head
     ctx.fillStyle = '#d4a076';
     ctx.fillRect(x + 6, y - 2 + b, 12, 10);
-    // Hair (styled, swept)
-    ctx.fillStyle = '#1a1a1a';
-    ctx.fillRect(x + 5, y - 7 + b, 14, 6);
-    ctx.fillRect(x + 4, y - 4 + b, 4, 4);
-    ctx.fillRect(x + 16, y - 4 + b, 4, 4);
-    // Eyes
+    // Long emo hair (covers one eye, swept to the side)
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(x + 4, y - 9 + b, 16, 8);
+    ctx.fillRect(x + 3, y - 6 + b, 6, 10); // hair hanging over left eye
+    ctx.fillRect(x + 15, y - 6 + b, 5, 6);
+    // Hair fringe covering left side of face
+    ctx.fillStyle = '#111';
+    ctx.fillRect(x + 4, y - 3 + b, 7, 6);
+    // Eyes (only right eye visible, with eyeliner)
     if (facing === 'down') {
+        // Eyeliner around right eye
+        ctx.fillStyle = '#000';
+        ctx.fillRect(x + 13, y - 1, 5, 5);
         ctx.fillStyle = '#333';
-        ctx.fillRect(x + 8, y + 1, 2, 2);
-        ctx.fillRect(x + 14, y + 1, 2, 2);
-        // Sly smirk
-        ctx.fillStyle = '#cc6644';
-        ctx.fillRect(x + 10, y + 5, 5, 2);
+        ctx.fillRect(x + 14, y + 0, 3, 3);
+        // Thin mouth
+        ctx.fillStyle = '#666';
+        ctx.fillRect(x + 10, y + 5, 5, 1);
     }
 }
 
 function drawAJSprite(x, y, facing) {
-    // AJ: party vibe, bright blue tank top, short blond-ish hair
+    // AJ: muscular, blue muscle tank (sleeveless), wider arms
     const b = 0;
     // Legs
     ctx.fillStyle = '#4a4a4a';
@@ -6841,15 +7019,22 @@ function drawAJSprite(x, y, facing) {
     // Shorts
     ctx.fillStyle = '#333';
     ctx.fillRect(x + 5, y + 22 + b, 14, 6);
-    // Torso (bright blue)
-    ctx.fillStyle = '#33ccff';
-    ctx.fillRect(x + 3, y + 7 + b, 18, 16);
-    ctx.fillStyle = '#2299cc';
-    ctx.fillRect(x + 3, y + 21 + b, 18, 2);
-    // Arms
+    // Torso (blue muscle tank — sleeveless)
+    ctx.fillStyle = '#3366ff';
+    ctx.fillRect(x + 4, y + 7 + b, 16, 16);
+    ctx.fillStyle = '#2244cc';
+    ctx.fillRect(x + 4, y + 21 + b, 16, 2);
+    // Tank top neckline
     ctx.fillStyle = '#d4a076';
-    ctx.fillRect(x + 1, y + 8 + b, 3, 12);
-    ctx.fillRect(x + 20, y + 8 + b, 3, 12);
+    ctx.fillRect(x + 7, y + 7 + b, 10, 3);
+    // Arms (muscular — wider rectangles, skin showing)
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(x + 0, y + 7 + b, 5, 14);
+    ctx.fillRect(x + 19, y + 7 + b, 5, 14);
+    // Arm muscle definition
+    ctx.fillStyle = '#c09060';
+    ctx.fillRect(x + 0, y + 12 + b, 5, 2);
+    ctx.fillRect(x + 19, y + 12 + b, 5, 2);
     // Head
     ctx.fillStyle = '#d4a076';
     ctx.fillRect(x + 6, y - 2 + b, 12, 10);
@@ -6867,7 +7052,7 @@ function drawAJSprite(x, y, facing) {
 }
 
 function drawRJSprite(x, y, facing) {
-    // RJ: AJ's husband, similar build, green shirt, dark hair
+    // RJ: muscular, green muscle tank (sleeveless), wider arms
     const b = 0;
     // Legs
     ctx.fillStyle = '#4a4a4a';
@@ -6876,15 +7061,22 @@ function drawRJSprite(x, y, facing) {
     // Shorts
     ctx.fillStyle = '#333';
     ctx.fillRect(x + 5, y + 22 + b, 14, 6);
-    // Torso (green)
-    ctx.fillStyle = '#33cc99';
-    ctx.fillRect(x + 3, y + 7 + b, 18, 16);
-    ctx.fillStyle = '#229966';
-    ctx.fillRect(x + 3, y + 21 + b, 18, 2);
-    // Arms
+    // Torso (green muscle tank — sleeveless)
+    ctx.fillStyle = '#33cc66';
+    ctx.fillRect(x + 4, y + 7 + b, 16, 16);
+    ctx.fillStyle = '#229944';
+    ctx.fillRect(x + 4, y + 21 + b, 16, 2);
+    // Tank top neckline
     ctx.fillStyle = '#d4a076';
-    ctx.fillRect(x + 1, y + 8 + b, 3, 12);
-    ctx.fillRect(x + 20, y + 8 + b, 3, 12);
+    ctx.fillRect(x + 7, y + 7 + b, 10, 3);
+    // Arms (muscular — wider rectangles, skin showing)
+    ctx.fillStyle = '#d4a076';
+    ctx.fillRect(x + 0, y + 7 + b, 5, 14);
+    ctx.fillRect(x + 19, y + 7 + b, 5, 14);
+    // Arm muscle definition
+    ctx.fillStyle = '#c09060';
+    ctx.fillRect(x + 0, y + 12 + b, 5, 2);
+    ctx.fillRect(x + 19, y + 12 + b, 5, 2);
     // Head
     ctx.fillStyle = '#d4a076';
     ctx.fillRect(x + 6, y - 2 + b, 12, 10);
@@ -6952,58 +7144,88 @@ function drawLevel3Portrait(npcKey) {
         pCtx.fillRect(35, 33, 2, 2);
         pCtx.fillRect(55, 33, 2, 2);
     } else if (npcKey === 'flint') {
-        // Flint portrait: orange shirt, styled dark hair, sly look
-        pCtx.fillStyle = '#ff8800';
+        // Flint portrait: emo — black clothes, hair over one eye, eyeliner
+        pCtx.fillStyle = '#111';
         pCtx.fillRect(16, 60, 64, 36);
-        pCtx.fillStyle = '#cc6600';
+        pCtx.fillStyle = '#1a1a1a';
         pCtx.fillRect(16, 90, 64, 6);
-        pCtx.fillStyle = '#ffaa33';
-        pCtx.fillRect(24, 66, 10, 10);
-        pCtx.fillRect(50, 74, 10, 10);
+        // Hood/collar
+        pCtx.fillStyle = '#222';
+        pCtx.fillRect(24, 62, 48, 8);
         pCtx.fillStyle = '#d4a076';
         pCtx.fillRect(38, 50, 20, 14);
         pCtx.fillStyle = '#d4a076';
         pCtx.fillRect(28, 20, 40, 34);
-        pCtx.fillStyle = '#1a1a1a';
-        pCtx.fillRect(24, 6, 48, 18);
-        pCtx.fillRect(22, 14, 8, 12);
-        pCtx.fillRect(66, 14, 8, 12);
+        // Long emo hair
+        pCtx.fillStyle = '#0a0a0a';
+        pCtx.fillRect(22, 4, 52, 22);
+        pCtx.fillRect(20, 12, 14, 24); // hair over left eye
+        pCtx.fillRect(62, 12, 14, 16);
+        // Hair fringe over left face
+        pCtx.fillStyle = '#111';
+        pCtx.fillRect(22, 18, 22, 18);
+        // Right eye with eyeliner
+        pCtx.fillStyle = '#000';
+        pCtx.fillRect(52, 28, 10, 10);
         pCtx.fillStyle = '#333';
-        pCtx.fillRect(34, 32, 6, 6);
-        pCtx.fillRect(54, 32, 6, 6);
-        pCtx.fillStyle = '#fff';
-        pCtx.fillRect(35, 33, 2, 2);
-        pCtx.fillRect(55, 33, 2, 2);
-        // Sly smirk
-        pCtx.fillStyle = '#cc6644';
-        pCtx.fillRect(40, 44, 18, 3);
-    } else if (npcKey === 'chuck') {
-        // Chuck portrait: big masc guy, red tank, buzzed hair
-        pCtx.fillStyle = '#cc4444';
-        pCtx.fillRect(12, 58, 72, 38);
-        pCtx.fillStyle = '#aa3333';
-        pCtx.fillRect(12, 90, 72, 6);
-        pCtx.fillStyle = '#d4a076';
-        pCtx.fillRect(36, 48, 24, 14);
-        pCtx.fillStyle = '#d4a076';
-        pCtx.fillRect(26, 18, 44, 34);
-        pCtx.fillStyle = '#3a2a1a';
-        pCtx.fillRect(24, 10, 48, 12);
-        pCtx.fillStyle = '#333';
-        pCtx.fillRect(34, 30, 6, 6);
         pCtx.fillRect(54, 30, 6, 6);
         pCtx.fillStyle = '#fff';
-        pCtx.fillRect(35, 31, 2, 2);
+        pCtx.fillRect(55, 31, 2, 2);
+        // Thin mouth
+        pCtx.fillStyle = '#666';
+        pCtx.fillRect(40, 44, 16, 2);
+    } else if (npcKey === 'chuck') {
+        // Chuck portrait: 340lb man in suit
+        // Suit jacket (wider)
+        pCtx.fillStyle = '#1a1a3a';
+        pCtx.fillRect(8, 56, 80, 40);
+        pCtx.fillStyle = '#2a2a4a';
+        pCtx.fillRect(14, 58, 10, 28);
+        pCtx.fillRect(72, 58, 10, 28);
+        // White shirt
+        pCtx.fillStyle = '#eee';
+        pCtx.fillRect(28, 58, 40, 28);
+        // Tie
+        pCtx.fillStyle = '#cc2222';
+        pCtx.fillRect(44, 58, 8, 28);
+        pCtx.fillStyle = '#aa1111';
+        pCtx.fillRect(45, 84, 6, 6);
+        // Neck
+        pCtx.fillStyle = '#d4a076';
+        pCtx.fillRect(36, 46, 24, 14);
+        // Head (bigger)
+        pCtx.fillStyle = '#d4a076';
+        pCtx.fillRect(24, 16, 48, 34);
+        // Short hair
+        pCtx.fillStyle = '#3a2a1a';
+        pCtx.fillRect(22, 8, 52, 12);
+        // Eyes
+        pCtx.fillStyle = '#333';
+        pCtx.fillRect(32, 30, 6, 6);
+        pCtx.fillRect(54, 30, 6, 6);
+        pCtx.fillStyle = '#fff';
+        pCtx.fillRect(33, 31, 2, 2);
         pCtx.fillRect(55, 31, 2, 2);
         // Stubble
         pCtx.fillStyle = 'rgba(60,40,20,0.3)';
-        pCtx.fillRect(32, 42, 32, 8);
+        pCtx.fillRect(30, 42, 36, 8);
     } else if (npcKey === 'aj') {
-        // AJ portrait: bright blue tank, blond hair
-        pCtx.fillStyle = '#33ccff';
-        pCtx.fillRect(16, 60, 64, 36);
-        pCtx.fillStyle = '#2299cc';
-        pCtx.fillRect(16, 90, 64, 6);
+        // AJ portrait: blue muscle tank, muscular arms showing
+        pCtx.fillStyle = '#3366ff';
+        pCtx.fillRect(24, 60, 48, 36);
+        pCtx.fillStyle = '#2244cc';
+        pCtx.fillRect(24, 90, 48, 6);
+        // Bare muscular arms/shoulders
+        pCtx.fillStyle = '#d4a076';
+        pCtx.fillRect(10, 58, 18, 30);
+        pCtx.fillRect(68, 58, 18, 30);
+        // Arm muscle lines
+        pCtx.fillStyle = '#c09060';
+        pCtx.fillRect(12, 70, 14, 3);
+        pCtx.fillRect(70, 70, 14, 3);
+        // Tank neckline
+        pCtx.fillStyle = '#d4a076';
+        pCtx.fillRect(32, 60, 32, 8);
         pCtx.fillStyle = '#d4a076';
         pCtx.fillRect(38, 50, 20, 14);
         pCtx.fillStyle = '#d4a076';
@@ -7020,11 +7242,22 @@ function drawLevel3Portrait(npcKey) {
         pCtx.fillStyle = '#cc4444';
         pCtx.fillRect(38, 44, 20, 4);
     } else if (npcKey === 'rj') {
-        // RJ portrait: green shirt, dark hair
-        pCtx.fillStyle = '#33cc99';
-        pCtx.fillRect(16, 60, 64, 36);
-        pCtx.fillStyle = '#229966';
-        pCtx.fillRect(16, 90, 64, 6);
+        // RJ portrait: green muscle tank, muscular arms showing
+        pCtx.fillStyle = '#33cc66';
+        pCtx.fillRect(24, 60, 48, 36);
+        pCtx.fillStyle = '#229944';
+        pCtx.fillRect(24, 90, 48, 6);
+        // Bare muscular arms/shoulders
+        pCtx.fillStyle = '#d4a076';
+        pCtx.fillRect(10, 58, 18, 30);
+        pCtx.fillRect(68, 58, 18, 30);
+        // Arm muscle lines
+        pCtx.fillStyle = '#c09060';
+        pCtx.fillRect(12, 70, 14, 3);
+        pCtx.fillRect(70, 70, 14, 3);
+        // Tank neckline
+        pCtx.fillStyle = '#d4a076';
+        pCtx.fillRect(32, 60, 32, 8);
         pCtx.fillStyle = '#d4a076';
         pCtx.fillRect(38, 50, 20, 14);
         pCtx.fillStyle = '#d4a076';
