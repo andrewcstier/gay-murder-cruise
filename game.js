@@ -80,6 +80,7 @@ let l3Typewriting = null; // { full, current, charIndex }
 let l3TypeTimer = 0;
 let l3Solved = false;
 let l3CompleteTimer = 0;
+let l3FlintWalkX = 0, l3FlintWalkY = 0, l3FlintWalkPhase = 'to-hallway'; // phases: 'to-hallway', 'to-door', 'done'
 function l3sy(worldY) { return worldY - l3Camera.y; }
 
 const L3_SUSPECTS = ['Chuck', 'Flint', 'AJ'];
@@ -195,7 +196,7 @@ function handleAction(key) {
         if (Date.now() - comicEnteredAt < 400) return;
         comicPanel++;
         comicEnteredAt = Date.now();
-        if (comicPanel >= 13) {
+        if (comicPanel >= 15) {
             startLevel3();
         }
         return;
@@ -3983,6 +3984,8 @@ function drawComicPanel(n) {
         case 10: drawComicPanel6c(); break;
         case 11: drawComicPanel7(); break;
         case 12: drawComicPanel8(); break;
+        case 13: drawComicPanel8b(); break;
+        case 14: drawComicPanel8c(); break;
     }
 
     // Thick comic border
@@ -4286,78 +4289,111 @@ function drawDragQueen(x, y, wigColor, outfitColor, outfitShade) {
 // Panel 1: "Leaving the Room"
 // ──────────────────────────────
 function drawComicRoundaboutBg() {
-    // Shared roundabout background for panels 1 and 1b
-    ctx.fillStyle = '#2a1a3a';
-    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, HEIGHT - COMIC_BORDER * 2);
+    // Shared roundabout background for panels 1 and 1b — matches in-game drawL3Roundabout
+    const B = COMIC_BORDER;
+    const W = WIDTH - B * 2;
+    const H = HEIGHT - B * 2;
 
-    // Floor
-    ctx.fillStyle = '#4a0e2e';
-    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, HEIGHT - COMIC_BORDER * 2);
-    for (let x = 10; x < WIDTH - 10; x += 20) {
-        for (let y = 10; y < HEIGHT - 10; y += 20) {
-            ctx.fillStyle = '#5c1438';
-            ctx.fillRect(x, y, 8, 8);
+    // Floor (matches in-game #2a1a3a base with #321e44 tiles)
+    ctx.fillStyle = '#2a1a3a';
+    ctx.fillRect(B, B, W, H);
+    for (let x = B; x < WIDTH - B; x += 18) {
+        for (let y = B; y < HEIGHT - B; y += 18) {
+            ctx.fillStyle = '#321e44';
+            ctx.fillRect(x + 2, y + 2, 7, 7);
         }
     }
 
-    // Walls
+    // Walls (matches in-game #3a2a5c)
     ctx.fillStyle = '#3a2a5c';
-    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, 35);
-    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, 35, HEIGHT - COMIC_BORDER * 2);
-    ctx.fillRect(WIDTH - 35 - COMIC_BORDER, COMIC_BORDER, 35, HEIGHT - COMIC_BORDER * 2);
-    // Wall trim
+    ctx.fillRect(B, B, W, 30);              // north wall
+    ctx.fillRect(B, B, 30, H);              // west wall
+    ctx.fillRect(WIDTH - 30 - B, B, 30, H); // east wall
+    // Wall trim (#4a2a1a)
     ctx.fillStyle = '#4a2a1a';
-    ctx.fillRect(COMIC_BORDER, 38, WIDTH - COMIC_BORDER * 2, 4);
-    ctx.fillRect(38, COMIC_BORDER, 4, HEIGHT - COMIC_BORDER * 2);
-    ctx.fillRect(WIDTH - 39, COMIC_BORDER, 4, HEIGHT - COMIC_BORDER * 2);
+    ctx.fillRect(B, B + 27, W, 3);
+    ctx.fillRect(B + 27, B, 3, H);
+    ctx.fillRect(WIDTH - 30 - B, B, 3, H);
 
-    // Piano (small, in the background center-left)
+    // Grand piano in center (scaled-down version of in-game piano, NO Flint)
+    const px = 155, py = 55;
     ctx.fillStyle = '#0a0a0a';
-    ctx.fillRect(100, 70, 50, 60);
+    ctx.fillRect(px, py, 50, 70);
     ctx.fillStyle = '#1a1a1a';
-    ctx.fillRect(104, 74, 42, 52);
-    // Keys
+    ctx.fillRect(px + 4, py + 4, 42, 62);
+    // Piano curve (left side)
+    ctx.fillStyle = '#0a0a0a';
+    ctx.beginPath();
+    ctx.ellipse(px, py + 35, 10, 35, 0, Math.PI * 0.5, Math.PI * 1.5);
+    ctx.fill();
+    ctx.fillStyle = '#222';
+    ctx.fillRect(px - 10, py, 10, 70);
+    ctx.fillStyle = '#333';
+    ctx.fillRect(px - 8, py + 2, 7, 66);
+    // Keyboard (right side)
     ctx.fillStyle = '#eee';
-    ctx.fillRect(148, 78, 8, 44);
-    for (let k = 0; k < 5; k++) {
+    ctx.fillRect(px + 46, py + 8, 9, 56);
+    for (let k = 0; k < 7; k++) {
         ctx.fillStyle = '#ddd';
-        ctx.fillRect(148, 79 + k * 9, 8, 1);
+        ctx.fillRect(px + 46, py + 9 + k * 8, 9, 1);
     }
+    for (let k = 0; k < 5; k++) {
+        if (k % 3 !== 2) {
+            ctx.fillStyle = '#111';
+            ctx.fillRect(px + 46, py + 11 + k * 10, 5, 5);
+        }
+    }
+    // Piano legs
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(px + 2, py + 68, 3, 7);
+    ctx.fillRect(px + 42, py + 68, 3, 7);
+    // Bench
+    ctx.fillStyle = '#4a2a1a';
+    ctx.fillRect(px + 56, py + 20, 12, 28);
+    ctx.fillStyle = '#3a1a0a';
+    ctx.fillRect(px + 58, py + 22, 8, 24);
 
-    // Door frames visible in walls
+    // Door frames — matching in-game layout
     // North (theater) - top wall
     ctx.fillStyle = '#d4a574';
-    ctx.fillRect(200, COMIC_BORDER, 60, 10);
+    ctx.fillRect(185, B, 70, 8);
     ctx.fillStyle = '#030305';
-    ctx.fillRect(205, COMIC_BORDER, 50, 6);
+    ctx.fillRect(190, B, 60, 5);
     ctx.fillStyle = '#e8d070';
     ctx.font = '7px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('THEATER', 230, 22);
+    ctx.fillText('THEATER', 220, B + 18);
     // East (shop) - right wall
     ctx.fillStyle = '#d4a574';
-    ctx.fillRect(WIDTH - 39, 120, 10, 50);
+    ctx.fillRect(WIDTH - B - 30, 85, 24, 60);
     ctx.fillStyle = '#030305';
-    ctx.fillRect(WIDTH - 35, 125, 6, 40);
+    ctx.fillRect(WIDTH - B - 26, 90, 20, 50);
+    ctx.fillStyle = '#e8d070';
+    ctx.font = '7px monospace';
+    ctx.fillText('SHOP', WIDTH - B - 14, 80);
     // West (jewelry) - left wall
     ctx.fillStyle = '#d4a574';
-    ctx.fillRect(COMIC_BORDER + 29, 120, 10, 50);
+    ctx.fillRect(B, 85, 8, 60);
     ctx.fillStyle = '#030305';
-    ctx.fillRect(COMIC_BORDER + 29, 125, 6, 40);
+    ctx.fillRect(B, 90, 5, 50);
+    ctx.fillStyle = '#e8d070';
+    ctx.fillText('JEWELRY', B + 14, 80);
 
     // Hallway entrance at bottom (where group came from)
     ctx.fillStyle = '#030305';
-    ctx.fillRect(190, HEIGHT - 35 - COMIC_BORDER, 80, 40);
-    ctx.fillStyle = '#4a0e2e';
-    ctx.fillRect(195, HEIGHT - 30 - COMIC_BORDER, 70, 35);
+    ctx.fillRect(180, HEIGHT - B - 30, 80, 36);
+    ctx.fillStyle = '#2a1a3a';
+    ctx.fillRect(185, HEIGHT - B - 25, 70, 30);
 
-    // Sconces
+    // Sconces (matching in-game positions)
     ctx.fillStyle = '#ffd700';
-    ctx.fillRect(44, 70, 4, 4);
-    ctx.fillRect(WIDTH - 48, 70, 4, 4);
+    ctx.fillRect(B + 30, 55, 4, 4);
+    ctx.fillRect(WIDTH - B - 34, 55, 4, 4);
+    ctx.fillRect(B + 30, 155, 4, 4);
+    ctx.fillRect(WIDTH - B - 34, 155, 4, 4);
     ctx.fillStyle = 'rgba(255, 200, 0, 0.10)';
-    ctx.beginPath(); ctx.arc(46, 72, 12, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(WIDTH - 46, 72, 12, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(B + 32, 57, 12, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(WIDTH - B - 32, 57, 12, 0, Math.PI * 2); ctx.fill();
     ctx.textAlign = 'left';
 }
 
@@ -4627,7 +4663,7 @@ function drawComicPanel4() {
 
     // Blake speech bubble at top
     drawComicSpeechBubble(
-        'Come on, let\'s go!\nThe show must go on!',
+        'But let\'s go.\nThe show\'s starting soon.',
         140, 20, 220, 46,
         WIDTH / 2, HEIGHT / 2 - 50
     );
@@ -5212,16 +5248,16 @@ function drawComicPanel6c() {
 
     // Player speech bubble
     drawComicSpeechBubble(
-        'Excuse me, sir?',
-        50, 130, 140, 30,
+        'Excuse me,\nsecurity officer?',
+        30, 130, 160, 40,
         92, 200
     );
 
-    // Guard speech bubble
+    // Guard speech bubble (above the guard)
     drawComicSpeechBubble(
         'I\'m busy. Come back\nafter the theater empties.',
-        200, 40, 230, 46,
-        WIDTH - 80, 115
+        270, 20, 200, 46,
+        WIDTH - 80, 100
     );
 }
 
@@ -5356,6 +5392,87 @@ function drawComicPanel8() {
     drawComicNarration('You return to the\nscene of the crime...', 14, 10, 200);
 }
 
+// ──────────────────────────────
+// Panel 8b: Blake calls after you
+// ──────────────────────────────
+function drawComicPanel8b() {
+    // Same corridor as panel 8 — Blake calling from behind
+    ctx.fillStyle = '#2a1a3a';
+    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, HEIGHT - COMIC_BORDER * 2);
+
+    // Corridor floor
+    ctx.fillStyle = '#4a0e2e';
+    ctx.fillRect(COMIC_BORDER, 200, WIDTH - COMIC_BORDER * 2, HEIGHT - 200 - COMIC_BORDER);
+    for (let x = 10; x < WIDTH - 10; x += 24) {
+        ctx.fillStyle = '#5c1438';
+        ctx.fillRect(x, 205, 10, 10);
+        ctx.fillRect(x + 12, 225, 10, 10);
+    }
+
+    // Corridor walls
+    ctx.fillStyle = '#3a2a5c';
+    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, 50);
+    ctx.fillStyle = '#4a2a1a';
+    ctx.fillRect(COMIC_BORDER, 46, WIDTH - COMIC_BORDER * 2, 4);
+
+    // Blake (left side, calling out)
+    drawBlakeSprite(100, 220, 'right');
+
+    // Player (right side, turning back to face Blake)
+    drawComicPlayerChar(340, 215, 'left');
+
+    // Blake speech bubble
+    drawComicSpeechBubble(
+        'Where are you going?',
+        60, 130, 180, 34,
+        112, 220
+    );
+
+    // Player speech bubble
+    drawComicSpeechBubble(
+        'I need to report this\ndetail concerning the\ncrime to the shop owner!',
+        250, 100, 210, 60,
+        352, 215
+    );
+}
+
+// ──────────────────────────────
+// Panel 8c: Blake responds
+// ──────────────────────────────
+function drawComicPanel8c() {
+    // Close-up of Blake looking exasperated
+    ctx.fillStyle = '#2a1a3a';
+    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, HEIGHT - COMIC_BORDER * 2);
+
+    // Radial highlight behind Blake
+    const grd = ctx.createRadialGradient(WIDTH / 2, HEIGHT / 2, 20, WIDTH / 2, HEIGHT / 2, 200);
+    grd.addColorStop(0, '#4a2a5c');
+    grd.addColorStop(1, '#1a0e28');
+    ctx.fillStyle = grd;
+    ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, HEIGHT - COMIC_BORDER * 2);
+
+    // Big Blake (3x scale, close-up)
+    ctx.save();
+    ctx.translate(WIDTH / 2 - 36, HEIGHT / 2 - 30);
+    ctx.scale(3, 3);
+    drawBlakeSprite(0, 0, 'down');
+    ctx.restore();
+
+    // Frustration marks
+    ctx.fillStyle = '#ff6666';
+    ctx.font = 'bold 18px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('#', WIDTH / 2 - 70, HEIGHT / 2 - 30);
+    ctx.fillText('!', WIDTH / 2 + 70, HEIGHT / 2 - 20);
+
+    // Blake speech bubble at top
+    drawComicSpeechBubble(
+        'You don\'t need to get\ninvolved in every\ninvestigation!',
+        110, 15, 260, 60,
+        WIDTH / 2, HEIGHT / 2 - 40
+    );
+}
+
 // ═══════════════════════════════════════════════════════════════
 // LEVEL 3 — The Blue Purse Mystery
 // ═══════════════════════════════════════════════════════════════
@@ -5406,13 +5523,14 @@ const L3_DIALOG = {
     ],
     rj: [],
     blake: [
-        "Hey babe! I'm glad you're on the case. Let me know if you need anything.",
-        "This ship is wild. Someone robbed the gift shop during the drag show!",
-        "You know, Cher was already on stage when the robbery happened. So it couldn't have been whoever was performing as Cher.",
+        "I can't believe you're doing this on our vacation.",
+        "You always have to get involved in everything!",
+        "Fine. I'll help. Cher was already on stage when the robbery happened. So it couldn't have been whoever was performing as Cher.",
     ],
     abraham: [
         "Can you believe someone robbed the antique shop? During a drag show!",
         "I swear, this cruise gets crazier every day.",
+        "Oh hey, you know Cher was already on stage when the robbery happened. So it couldn't have been whoever was performing as Cher.",
     ],
     vanessa: [
         "Darling, I could solve this faster than you. But I'll let you have your moment.",
@@ -5623,7 +5741,7 @@ function openLevel3Chat(npcKey) {
         addL3Clue("Performers: Jigglypuff, Mariah Carey, Cher.");
         addL3Clue("Purse contents: Book, PrEP, Microphone.");
     }
-    if (npcKey === 'blake' && l3DialogIndex.blake === 0) {
+    if (npcKey === 'abraham' && l3DialogIndex.abraham === 0) {
         addL3Clue("Cher was already on stage when the robbery happened.");
     }
     if (npcKey === 'vanessa' && l3DialogIndex.vanessa === 0) {
@@ -5810,7 +5928,7 @@ function handleL3Accusation(target) {
             setTimeout(() => {
                 container.innerHTML = '<div class="msg-npc"><span style="color:#ff8800">FLINT:</span> I was testing you, and you passed. Come, come now. I must show you something.</div>';
                 setTimeout(() => {
-                    container.innerHTML += '<div class="msg-npc" style="color:#ffcc00; text-align:center; margin-top:8px;">Level 3 Complete!</div>';
+                    container.innerHTML += '<div class="msg-npc" style="color:#ffcc00; text-align:center; margin-top:8px;">Follow me...</div>';
                     l3Solved = true;
                     l3AccusationOpen = false;
                     const accuseBtn = document.getElementById('l3-chat-accuse');
@@ -5820,8 +5938,11 @@ function handleL3Accusation(target) {
                     document.getElementById('chat-next').onclick = () => {
                         document.getElementById('chat-next').onclick = null;
                         closeLevel3Chat();
-                        l3State = 'complete';
-                        l3CompleteTimer = 0;
+                        // Start Flint walking cutscene
+                        l3FlintWalkX = L3_NPCS.flint.x;
+                        l3FlintWalkY = L3_NPCS.flint.y;
+                        l3FlintWalkPhase = 'to-hallway';
+                        l3State = 'flint-walking';
                     };
                 }, 1500);
             }, 1500);
@@ -6050,6 +6171,54 @@ function updateLevel3() {
         return;
     }
 
+    if (l3State === 'flint-walking') {
+        const walkSpd = 1.5;
+        const doorX = 340, doorY = 460; // middle decorative door on right wall
+        if (l3FlintWalkPhase === 'to-hallway') {
+            // Flint walks down from piano area into the hallway
+            l3FlintWalkY += walkSpd;
+            if (l3FlintWalkY >= 400) {
+                l3FlintWalkPhase = 'to-door';
+            }
+        } else if (l3FlintWalkPhase === 'to-door') {
+            // Flint walks toward the decorative door on the right wall
+            const dx = doorX - l3FlintWalkX;
+            const dy = doorY - l3FlintWalkY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 4) {
+                l3FlintWalkPhase = 'done';
+                l3State = 'complete';
+                l3CompleteTimer = 0;
+            } else {
+                l3FlintWalkX += (dx / dist) * walkSpd;
+                l3FlintWalkY += (dy / dist) * walkSpd;
+            }
+        }
+        // Player auto-follows behind Flint
+        const followDist = 40;
+        const pfx = l3FlintWalkX;
+        const pfy = l3FlintWalkY - followDist;
+        const pdx = pfx - l3PlayerX;
+        const pdy = pfy - l3PlayerY;
+        const pDist = Math.sqrt(pdx * pdx + pdy * pdy);
+        if (pDist > 4) {
+            l3PlayerX += (pdx / pDist) * walkSpd;
+            l3PlayerY += (pdy / pDist) * walkSpd;
+        }
+        // Update player facing direction
+        if (Math.abs(pdx) > Math.abs(pdy)) {
+            l3PlayerFacing = pdx > 0 ? 'right' : 'left';
+        } else {
+            l3PlayerFacing = pdy > 0 ? 'down' : 'up';
+        }
+        // Camera follows the player
+        if (l3Room === 'roundabout') {
+            const targetCamY = l3PlayerY - HEIGHT / 2;
+            l3Camera.y = Math.max(0, Math.min(targetCamY, L3_ROUNDABOUT_HEIGHT - HEIGHT));
+        }
+        return;
+    }
+
     if (l3State !== 'free') return;
 
     // Player movement
@@ -6147,6 +6316,7 @@ function updateLevel3() {
                 l3State = 'shop-exit-blocked';
                 dialogBox.innerHTML = '<span style="color:#ffcc00;">I should talk to the shop owner first.</span><br><br><span style="color:#aaa">Press any key...</span>';
                 dialogBox.classList.add('visible');
+                promptEl.classList.remove('visible');
                 l3PlayerX = 30;
                 return;
             }
@@ -6402,11 +6572,11 @@ function drawL3Shop() {
     ctx.fillStyle = '#5c3a1a';
     ctx.fillRect(225, 95, 30, 6);
     ctx.fillRect(232, 88, 16, 8);
-    // "STOLEN" label
-    ctx.fillStyle = '#ff4444';
-    ctx.font = 'bold 8px monospace';
+    // "ANTIQUES" label on display case
+    ctx.fillStyle = '#e8d070';
+    ctx.font = 'bold 7px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('STOLEN', 240, 82);
+    ctx.fillText('ANTIQUES', 240, 62);
     ctx.textAlign = 'left';
 
     // Counter
@@ -6631,37 +6801,59 @@ function drawL3Roundabout() {
         }
     }
 
-    // Flint seated at piano (custom pose)
+    // Flint seated at piano (emo look — black clothes, long hair covering one eye, eyeliner)
+    if (l3State !== 'flint-walking') {
     const fx = L3_NPCS.flint.x, fy = l3sy(L3_NPCS.flint.y);
-    ctx.fillStyle = '#333';
+    // Legs (skinny black jeans, seated)
+    ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(fx + 4, fy + 22, 6, 8);
     ctx.fillRect(fx + 12, fy + 22, 6, 8);
-    ctx.fillStyle = '#222';
+    // Seated hips
+    ctx.fillStyle = '#111';
     ctx.fillRect(fx + 3, fy + 18, 18, 6);
-    ctx.fillStyle = '#ff8800';
+    // Torso (black hoodie)
+    ctx.fillStyle = '#111';
     ctx.fillRect(fx + 2, fy + 4, 16, 15);
-    ctx.fillStyle = '#cc6600';
+    ctx.fillStyle = '#1a1a1a';
     ctx.fillRect(fx + 2, fy + 17, 16, 2);
-    ctx.fillStyle = '#ffaa33';
-    ctx.fillRect(fx + 4, fy + 7, 4, 4);
-    ctx.fillRect(fx + 10, fy + 11, 4, 4);
-    ctx.fillStyle = '#d4a076';
-    ctx.fillRect(fx - 6, fy + 8, 10, 4);
-    ctx.fillRect(fx - 6, fy + 14, 10, 4);
+    // Hood/collar detail
+    ctx.fillStyle = '#222';
+    ctx.fillRect(fx + 4, fy + 4, 12, 3);
+    // Arms reaching to piano (slender, black sleeves)
+    ctx.fillStyle = '#111';
+    ctx.fillRect(fx - 6, fy + 8, 10, 3);
+    ctx.fillRect(fx - 6, fy + 14, 10, 3);
+    // Hands on keys
     ctx.fillStyle = '#d4a076';
     ctx.fillRect(fx - 10, fy + 7, 5, 5);
     ctx.fillRect(fx - 10, fy + 13, 5, 5);
+    // Head
     ctx.fillStyle = '#d4a076';
     ctx.fillRect(fx + 4, fy - 6, 12, 10);
-    ctx.fillStyle = '#1a1a1a';
+    // Long emo hair (covers one eye, swept to the side)
+    ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(fx + 3, fy - 11, 14, 6);
-    ctx.fillRect(fx + 2, fy - 8, 4, 4);
-    ctx.fillRect(fx + 14, fy - 8, 4, 4);
+    ctx.fillRect(fx + 2, fy - 8, 6, 10); // hair hanging over left eye
+    ctx.fillRect(fx + 14, fy - 8, 4, 5);
+    // Hair fringe covering left side of face
+    ctx.fillStyle = '#111';
+    ctx.fillRect(fx + 3, fy - 5, 7, 6);
+    // Only right eye visible with eyeliner
+    ctx.fillStyle = '#000';
+    ctx.fillRect(fx + 12, fy - 3, 4, 4);
     ctx.fillStyle = '#333';
-    ctx.fillRect(fx + 5, fy - 3, 2, 2);
-    ctx.fillRect(fx + 10, fy - 3, 2, 2);
-    ctx.fillStyle = '#cc6644';
-    ctx.fillRect(fx + 7, fy + 1, 5, 2);
+    ctx.fillRect(fx + 13, fy - 2, 2, 2);
+    // Thin mouth
+    ctx.fillStyle = '#666';
+    ctx.fillRect(fx + 8, fy + 1, 5, 1);
+    }
+
+    // Flint walking (during accusation cutscene)
+    if (l3State === 'flint-walking') {
+        const fwFacing = l3FlintWalkPhase === 'to-hallway' ? 'down' :
+            (l3FlintWalkX < 340 ? 'right' : 'down');
+        drawFlintSprite(l3FlintWalkX, l3sy(l3FlintWalkY), fwFacing);
+    }
 
     // Blake in hallway section
     drawBlakeSprite(L3_NPCS.blake.x, l3sy(L3_NPCS.blake.y), L3_NPCS.blake.facing);
