@@ -5434,33 +5434,33 @@ function drawComicCorridorBg() {
     ctx.fillRect(COMIC_BORDER, 140, WIDTH - COMIC_BORDER * 2, 4);
 }
 
-// Panel: Blake asks "Where are you going?" (Blake on left, player walking away on right)
+// Panel: Blake asks "Where are you going?" (Blake on right, player walking away on left)
 function drawComicPanelBlakeWhere() {
     drawComicCorridorBg();
-    // Blake on left side, facing right
-    drawBlakeSprite(80, 220, 'right');
-    // Player on right side, walking away (back turned)
-    drawComicPlayerChar(370, 215, 'right');
+    // Player on left side, walking away (back turned)
+    drawComicPlayerChar(80, 215, 'left');
+    // Blake on right side, facing left
+    drawBlakeSprite(370, 220, 'left');
     // Blake speech bubble
     drawComicSpeechBubble(
         'Where are you going?',
-        40, 140, 180, 34,
-        92, 215
+        280, 140, 180, 34,
+        382, 215
     );
 }
 
-// Panel: Player turns back and replies (player on right facing left, Blake on left)
+// Panel: Player turns back and replies (player on left facing right, Blake on right)
 function drawComicPanelPlayerReply() {
     drawComicCorridorBg();
-    // Blake on left side
-    drawBlakeSprite(80, 220, 'right');
-    // Player on right side, turned to face Blake
-    drawComicPlayerChar(370, 215, 'left');
+    // Player on left side, turned to face Blake
+    drawComicPlayerChar(80, 215, 'right');
+    // Blake on right side
+    drawBlakeSprite(370, 220, 'left');
     // Player speech bubble
     drawComicSpeechBubble(
         'I need to report this\ndetail concerning the\ncrime to the shop owner!',
-        230, 100, 230, 60,
-        382, 210
+        20, 100, 230, 60,
+        92, 210
     );
 }
 
