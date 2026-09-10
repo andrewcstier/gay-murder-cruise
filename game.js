@@ -5961,14 +5961,16 @@ function handleL3Accusation(target) {
                 setTimeout(() => {
                     container.innerHTML += '<div class="msg-npc" style="color:#ffcc00; text-align:center; margin-top:8px;">Follow me...</div>';
                     l3Solved = true;
-                    l3AccusationOpen = false;
                     const accuseBtn = document.getElementById('l3-chat-accuse');
                     if (accuseBtn) accuseBtn.style.display = 'none';
                     document.getElementById('chat-next').textContent = 'CONTINUE';
                     document.getElementById('chat-next').style.display = 'block';
                     document.getElementById('chat-next').onclick = () => {
                         document.getElementById('chat-next').onclick = null;
-                        closeLevel3Chat();
+                        l3AccusationOpen = false;
+                        l3TalkingTo = null;
+                        l3Typewriting = null;
+                        document.getElementById('chat-panel').style.display = 'none';
                         // Start Flint walking cutscene
                         l3FlintWalkX = L3_NPCS.flint.x;
                         l3FlintWalkY = L3_NPCS.flint.y;
