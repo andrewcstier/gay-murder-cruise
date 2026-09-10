@@ -4289,111 +4289,130 @@ function drawDragQueen(x, y, wigColor, outfitColor, outfitShade) {
 // Panel 1: "Leaving the Room"
 // ──────────────────────────────
 function drawComicRoundaboutBg() {
-    // Shared roundabout background for panels 1 and 1b — matches in-game drawL3Roundabout
     const B = COMIC_BORDER;
-    const W = WIDTH - B * 2;
-    const H = HEIGHT - B * 2;
+    const cx = WIDTH / 2;
+    const cy = HEIGHT / 2 - 10;
+    const rx = 200, ry = 130;
 
-    // Floor (matches in-game #2a1a3a base with #321e44 tiles)
+    // Dark background
+    ctx.fillStyle = '#1a0e28';
+    ctx.fillRect(B, B, WIDTH - B * 2, HEIGHT - B * 2);
+
+    // Round floor
     ctx.fillStyle = '#2a1a3a';
-    ctx.fillRect(B, B, W, H);
-    for (let x = B; x < WIDTH - B; x += 18) {
-        for (let y = B; y < HEIGHT - B; y += 18) {
-            ctx.fillStyle = '#321e44';
-            ctx.fillRect(x + 2, y + 2, 7, 7);
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Floor tiles
+    ctx.fillStyle = '#321e44';
+    for (let x = cx - rx; x < cx + rx; x += 20) {
+        for (let y = cy - ry; y < cy + ry; y += 20) {
+            const dx = (x - cx) / rx, dy = (y - cy) / ry;
+            if (dx * dx + dy * dy < 0.85) {
+                ctx.fillRect(x + 2, y + 2, 8, 8);
+            }
         }
     }
 
-    // Walls (matches in-game #3a2a5c)
-    ctx.fillStyle = '#3a2a5c';
-    ctx.fillRect(B, B, W, 30);              // north wall
-    ctx.fillRect(B, B, 30, H);              // west wall
-    ctx.fillRect(WIDTH - 30 - B, B, 30, H); // east wall
-    // Wall trim (#4a2a1a)
-    ctx.fillStyle = '#4a2a1a';
-    ctx.fillRect(B, B + 27, W, 3);
-    ctx.fillRect(B + 27, B, 3, H);
-    ctx.fillRect(WIDTH - 30 - B, B, 3, H);
+    // Circular wall border
+    ctx.strokeStyle = '#3a2a5c';
+    ctx.lineWidth = 20;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx + 10, ry + 10, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    // Trim ring
+    ctx.strokeStyle = '#4a2a1a';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    ctx.stroke();
 
-    // Grand piano in center (scaled-down version of in-game piano, NO Flint)
-    const px = 155, py = 55;
+    // Grand piano in center
+    const px = cx - 25, py = cy - 30;
     ctx.fillStyle = '#0a0a0a';
-    ctx.fillRect(px, py, 50, 70);
+    ctx.fillRect(px, py, 40, 55);
     ctx.fillStyle = '#1a1a1a';
-    ctx.fillRect(px + 4, py + 4, 42, 62);
-    // Piano curve (left side)
+    ctx.fillRect(px + 3, py + 3, 34, 49);
+    // Piano curve (left)
     ctx.fillStyle = '#0a0a0a';
     ctx.beginPath();
-    ctx.ellipse(px, py + 35, 10, 35, 0, Math.PI * 0.5, Math.PI * 1.5);
+    ctx.ellipse(px, py + 27, 8, 28, 0, Math.PI * 0.5, Math.PI * 1.5);
     ctx.fill();
+    // Open lid
     ctx.fillStyle = '#222';
-    ctx.fillRect(px - 10, py, 10, 70);
+    ctx.fillRect(px - 8, py, 8, 55);
     ctx.fillStyle = '#333';
-    ctx.fillRect(px - 8, py + 2, 7, 66);
+    ctx.fillRect(px - 6, py + 2, 5, 51);
     // Keyboard (right side)
     ctx.fillStyle = '#eee';
-    ctx.fillRect(px + 46, py + 8, 9, 56);
-    for (let k = 0; k < 7; k++) {
+    ctx.fillRect(px + 37, py + 6, 7, 44);
+    for (let k = 0; k < 6; k++) {
         ctx.fillStyle = '#ddd';
-        ctx.fillRect(px + 46, py + 9 + k * 8, 9, 1);
+        ctx.fillRect(px + 37, py + 7 + k * 7, 7, 1);
     }
-    for (let k = 0; k < 5; k++) {
-        if (k % 3 !== 2) {
-            ctx.fillStyle = '#111';
-            ctx.fillRect(px + 46, py + 11 + k * 10, 5, 5);
-        }
+    for (let k = 0; k < 4; k++) {
+        ctx.fillStyle = '#111';
+        ctx.fillRect(px + 37, py + 9 + k * 10, 4, 4);
     }
     // Piano legs
     ctx.fillStyle = '#0a0a0a';
-    ctx.fillRect(px + 2, py + 68, 3, 7);
-    ctx.fillRect(px + 42, py + 68, 3, 7);
-    // Bench
+    ctx.fillRect(px + 2, py + 53, 3, 6);
+    ctx.fillRect(px + 34, py + 53, 3, 6);
+    // Bench (right of keys)
     ctx.fillStyle = '#4a2a1a';
-    ctx.fillRect(px + 56, py + 20, 12, 28);
+    ctx.fillRect(px + 45, py + 14, 10, 24);
     ctx.fillStyle = '#3a1a0a';
-    ctx.fillRect(px + 58, py + 22, 8, 24);
+    ctx.fillRect(px + 47, py + 16, 6, 20);
 
-    // Door frames — matching in-game layout
-    // North (theater) - top wall
-    ctx.fillStyle = '#d4a574';
-    ctx.fillRect(185, B, 70, 8);
+    // Door openings in the circular wall
+    // North (theater)
     ctx.fillStyle = '#030305';
-    ctx.fillRect(190, B, 60, 5);
+    ctx.fillRect(cx - 25, B, 50, 20);
+    ctx.fillStyle = '#d4a574';
+    ctx.fillRect(cx - 28, B + 16, 56, 5);
     ctx.fillStyle = '#e8d070';
     ctx.font = '7px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('THEATER', 220, B + 18);
-    // East (shop) - right wall
+    ctx.fillText('THEATER', cx, B + 14);
+    // East (shop)
+    ctx.fillStyle = '#030305';
+    ctx.fillRect(WIDTH - B - 20, cy - 22, 20, 44);
     ctx.fillStyle = '#d4a574';
-    ctx.fillRect(WIDTH - B - 30, 85, 24, 60);
-    ctx.fillStyle = '#030305';
-    ctx.fillRect(WIDTH - B - 26, 90, 20, 50);
+    ctx.fillRect(WIDTH - B - 24, cy - 25, 5, 50);
     ctx.fillStyle = '#e8d070';
-    ctx.font = '7px monospace';
-    ctx.fillText('SHOP', WIDTH - B - 14, 80);
-    // West (jewelry) - left wall
+    ctx.save();
+    ctx.translate(WIDTH - B - 10, cy);
+    ctx.rotate(Math.PI / 2);
+    ctx.fillText('SHOP', 0, 0);
+    ctx.restore();
+    // West (jewelry)
+    ctx.fillStyle = '#030305';
+    ctx.fillRect(B, cy - 22, 20, 44);
     ctx.fillStyle = '#d4a574';
-    ctx.fillRect(B, 85, 8, 60);
-    ctx.fillStyle = '#030305';
-    ctx.fillRect(B, 90, 5, 50);
+    ctx.fillRect(B + 19, cy - 25, 5, 50);
     ctx.fillStyle = '#e8d070';
-    ctx.fillText('JEWELRY', B + 14, 80);
-
-    // Hallway entrance at bottom (where group came from)
+    ctx.save();
+    ctx.translate(B + 10, cy);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText('JEWELRY', 0, 0);
+    ctx.restore();
+    // South (hallway entrance)
     ctx.fillStyle = '#030305';
-    ctx.fillRect(180, HEIGHT - B - 30, 80, 36);
-    ctx.fillStyle = '#2a1a3a';
-    ctx.fillRect(185, HEIGHT - B - 25, 70, 30);
+    ctx.fillRect(cx - 25, HEIGHT - B - 20, 50, 20);
+    ctx.fillStyle = '#d4a574';
+    ctx.fillRect(cx - 28, HEIGHT - B - 24, 56, 5);
 
-    // Sconces (matching in-game positions)
-    ctx.fillStyle = '#ffd700';
-    ctx.fillRect(B + 30, 55, 4, 4);
-    ctx.fillRect(WIDTH - B - 34, 55, 4, 4);
-    ctx.fillRect(B + 30, 155, 4, 4);
-    ctx.fillRect(WIDTH - B - 34, 155, 4, 4);
-    ctx.fillStyle = 'rgba(255, 200, 0, 0.10)';
-    ctx.beginPath(); ctx.arc(B + 32, 57, 12, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(WIDTH - B - 32, 57, 12, 0, Math.PI * 2); ctx.fill();
+    // Sconces on the wall ring
+    const sconces = [
+        [cx - rx + 20, cy - 50], [cx + rx - 20, cy - 50],
+        [cx - rx + 20, cy + 50], [cx + rx - 20, cy + 50],
+    ];
+    for (const [sx, sy] of sconces) {
+        ctx.fillStyle = '#ffd700';
+        ctx.fillRect(sx - 2, sy - 2, 4, 4);
+        ctx.fillStyle = 'rgba(255, 200, 0, 0.10)';
+        ctx.beginPath(); ctx.arc(sx, sy, 12, 0, Math.PI * 2); ctx.fill();
+    }
     ctx.textAlign = 'left';
 }
 
@@ -5246,18 +5265,18 @@ function drawComicPanel6c() {
     // Player approaching from the left/below
     drawComicPlayerChar(80, 200, 'right');
 
-    // Player speech bubble
+    // Player speech bubble (high, above player)
     drawComicSpeechBubble(
         'Excuse me,\nsecurity officer?',
-        30, 130, 160, 40,
-        92, 200
+        20, 100, 160, 40,
+        92, 195
     );
 
-    // Guard speech bubble (above the guard)
+    // Guard speech bubble (lower, between player and guard)
     drawComicSpeechBubble(
         'I\'m busy. Come back\nafter the theater empties.',
-        270, 20, 200, 46,
-        WIDTH - 80, 100
+        200, 190, 220, 46,
+        WIDTH - 90, 150
     );
 }
 
