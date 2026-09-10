@@ -171,7 +171,7 @@ window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 
 function handleAction(key) {
     if (gameState === 'title') {
-        if (window.location.search.includes('dev')) { showLevelSelect(); } else { document.getElementById('level-select').style.display = 'none'; titleScreen.style.display = 'none'; startCharSelect(); }
+        if (window.location.hash === '#dev') { showLevelSelect(); } else { document.getElementById('level-select').style.display = 'none'; titleScreen.style.display = 'none'; startCharSelect(); }
         return;
     }
     if (gameState === 'levelselect') { return; }
