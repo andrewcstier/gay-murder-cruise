@@ -74,6 +74,7 @@ let l3Notebook = {
 };
 let l3TalkingTo = null;
 let l3AccusationOpen = false;
+let l3AllTalkedBeforeChat = false;
 let l3ShopkeeperTalked = false;
 let l3GuardTalked = false;
 let l3FadeToTheaterAlpha = 0;
@@ -5725,6 +5726,7 @@ function handleLevel3Action(key) {
 function openLevel3Chat(npcKey) {
     // Redirect RJ talk to combined AJ+RJ conversation
     if (npcKey === 'rj') npcKey = 'aj';
+    l3AllTalkedBeforeChat = l3TalkedTo.chuck && l3TalkedTo.flint && l3TalkedTo.aj;
     l3State = 'chat';
     l3TalkingTo = npcKey;
 
@@ -5880,7 +5882,7 @@ function addL3Clue(text) {
 }
 
 function updateL3AccusationButton() {
-    const allTalked = l3TalkedTo.chuck && l3TalkedTo.flint && l3TalkedTo.aj;
+    const allTalked = l3AllTalkedBeforeChat;
     const isSuspect = l3TalkingTo === 'chuck' || l3TalkingTo === 'flint' || l3TalkingTo === 'aj';
 
     let btn = document.getElementById('l3-chat-accuse');
