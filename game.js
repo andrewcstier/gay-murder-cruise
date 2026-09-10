@@ -75,6 +75,8 @@ let l3Notebook = {
 let l3TalkingTo = null;
 let l3AccusationOpen = false;
 let l3ShopkeeperTalked = false;
+let l3GuardTalked = false;
+let l3FadeToTheaterAlpha = 0;
 let l3BookReveal = false;
 let l3Typewriting = null; // { full, current, charIndex }
 let l3TypeTimer = 0;
@@ -168,7 +170,10 @@ window.addEventListener('keydown', (e) => {
 window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 
 function handleAction(key) {
-    if (gameState === 'title') { showLevelSelect(); return; }
+    if (gameState === 'title') {
+        if (window.location.search.includes('dev')) { showLevelSelect(); } else { document.getElementById('level-select').style.display = 'none'; titleScreen.style.display = 'none'; startCharSelect(); }
+        return;
+    }
     if (gameState === 'levelselect') { return; }
     if (gameState === 'charselect') { handleCharSelectAction(key); return; }
     if (gameState === 'dialog' || gameState === 'room-dialog') { closeDialog(); return; }
@@ -5517,6 +5522,7 @@ const L3_DIALOG = {
         "Those blue purses? Yeah I remember them. They stood out because they were identical.",
         "I had to check everyone's bag on the way in, even the performers.",
         "I remember the contents of the blue purses. One had a book, one had a bottle of PrEP, and one had a microphone.",
+        "The performers that night were Chuck, Flint, and AJ. But I don't know who played which character.",
     ],
     flint: [
         "I can't talk now, I'm playing.",
@@ -5635,6 +5641,8 @@ function startLevel3() {
     l3ShopTimer = 0;
     l3BookReveal = false;
     l3ShopkeeperTalked = false;
+    l3GuardTalked = false;
+    l3FadeToTheaterAlpha = 0;
     l3NearNpc = null;
     l3NearDoor = null;
     l3TalkedTo = { chuck: false, flint: false, aj: false };
@@ -5666,6 +5674,7 @@ function startLevel3() {
 function handleLevel3Action(key) {
     const k = key.toLowerCase();
     if (l3State === 'shop-intro') return;
+    if (l3State === 'fade-to-theater') return;
     if (l3State === 'book-reveal') {
         l3State = 'shop-intro';
         l3ShopTextIndex = 0;
@@ -5754,10 +5763,13 @@ function openLevel3Chat(npcKey) {
     // Trigger clues on first talk
     if (npcKey === 'shopkeeper') l3ShopkeeperTalked = true;
     if (npcKey === 'guard' && l3DialogIndex.guard === 0) {
+        l3GuardTalked = true;
         l3GridUnlocked = true;
         document.getElementById('notebook-btn').style.display = 'flex';
-        addL3Clue("Performers: Jigglypuff, Mariah Carey, Cher.");
+        addL3Clue("Performers that night: Chuck, Flint, and AJ.");
+        addL3Clue("Drag characters: Jigglypuff, Skinny Mariah Carey, and Cher.");
         addL3Clue("Purse contents: Book, PrEP, Microphone.");
+        addL3Clue("Guard doesn't know who played which character.");
     }
     if (npcKey === 'abraham' && l3DialogIndex.abraham === 0) {
         addL3Clue("Cher was already on stage when the robbery happened.");
@@ -6174,8 +6186,31 @@ function updateLevel3() {
                     l3ShopTimer = 0;
                 } else {
                     l3ShopTextPhase = 'done';
-                    l3State = 'free';
+                    if (!l3GuardTalked) {
+                        l3State = 'fade-to-theater';
+                        l3FadeToTheaterAlpha = 0;
+                    } else {
+                        l3State = 'free';
+                    }
                 }
+            }
+        }
+        return;
+    }
+
+    if (l3State === 'fade-to-theater') {
+        l3FadeToTheaterAlpha += 0.02;
+        if (l3FadeToTheaterAlpha >= 1) {
+            l3FadeToTheaterAlpha = 0;
+            l3Room = 'theater';
+            l3PlayerX = 228;
+            l3PlayerY = 200;
+            l3PlayerFacing = 'up';
+            l3Camera.y = 0;
+            l3State = 'free';
+            if (musicEnabled) {
+                GameMusic.stopMusic();
+                GameMusic.startMusic('level3');
             }
         }
         return;
@@ -6338,6 +6373,15 @@ function updateLevel3() {
                 l3PlayerX = 30;
                 return;
             }
+            // Block theater exit until guard talked to
+            if (l3Room === 'theater' && !l3GuardTalked) {
+                l3State = 'shop-exit-blocked';
+                dialogBox.innerHTML = '<span style="color:#ffcc00;">I should talk to the security guard first.</span><br><br><span style="color:#aaa">Press any key...</span>';
+                dialogBox.classList.add('visible');
+                promptEl.classList.remove('visible');
+                l3PlayerY = 260;
+                return;
+            }
             const prevRoom = l3Room;
             const prevY = l3PlayerY;
             l3Room = door.target;
@@ -6457,6 +6501,12 @@ function drawLevel3() {
             ctx.fillText(lines[i], WIDTH / 2, HEIGHT / 2 - (lines.length - 1) * 9 + i * 18 + 5);
         }
         ctx.textAlign = 'left';
+    }
+
+    // Fade to black for theater teleport
+    if (l3State === 'fade-to-theater') {
+        ctx.fillStyle = `rgba(0, 0, 0, ${l3FadeToTheaterAlpha})`;
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
     }
 
     // Complete overlay
