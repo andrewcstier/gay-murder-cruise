@@ -196,7 +196,7 @@ function handleAction(key) {
         if (Date.now() - comicEnteredAt < 400) return;
         comicPanel++;
         comicEnteredAt = Date.now();
-        if (comicPanel >= 15) {
+        if (comicPanel >= 16) {
             startLevel3();
         }
         return;
@@ -3983,9 +3983,10 @@ function drawComicPanel(n) {
         case 9: drawComicPanel6b(); break;
         case 10: drawComicPanel6c(); break;
         case 11: drawComicPanel7(); break;
-        case 12: drawComicPanel8(); break;
-        case 13: drawComicPanel8b(); break;
-        case 14: drawComicPanel8c(); break;
+        case 12: drawComicPanelBlakeWhere(); break;
+        case 13: drawComicPanelPlayerReply(); break;
+        case 14: drawComicPanelBlakeExasp(); break;
+        case 15: drawComicPanel8(); break;
     }
 
     // Thick comic border
@@ -5414,12 +5415,9 @@ function drawComicPanel8() {
 // ──────────────────────────────
 // Panel 8b: Blake calls after you
 // ──────────────────────────────
-function drawComicPanel8b() {
-    // Same corridor as panel 8 — Blake calling from behind
+function drawComicCorridorBg() {
     ctx.fillStyle = '#2a1a3a';
     ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, HEIGHT - COMIC_BORDER * 2);
-
-    // Corridor floor
     ctx.fillStyle = '#4a0e2e';
     ctx.fillRect(COMIC_BORDER, 200, WIDTH - COMIC_BORDER * 2, HEIGHT - 200 - COMIC_BORDER);
     for (let x = 10; x < WIDTH - 10; x += 24) {
@@ -5427,69 +5425,70 @@ function drawComicPanel8b() {
         ctx.fillRect(x, 205, 10, 10);
         ctx.fillRect(x + 12, 225, 10, 10);
     }
-
-    // Corridor walls
     ctx.fillStyle = '#3a2a5c';
     ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, 50);
     ctx.fillStyle = '#4a2a1a';
     ctx.fillRect(COMIC_BORDER, 46, WIDTH - COMIC_BORDER * 2, 4);
+    ctx.fillStyle = '#3d2a5c';
+    ctx.fillRect(COMIC_BORDER, 90, WIDTH - COMIC_BORDER * 2, 4);
+    ctx.fillRect(COMIC_BORDER, 140, WIDTH - COMIC_BORDER * 2, 4);
+}
 
-    // Blake (left side, calling out)
-    drawBlakeSprite(100, 220, 'right');
-
-    // Player (right side, turning back to face Blake)
-    drawComicPlayerChar(340, 215, 'left');
-
+// Panel: Blake asks "Where are you going?" (Blake on left, player walking away on right)
+function drawComicPanelBlakeWhere() {
+    drawComicCorridorBg();
+    // Blake on left side, facing right
+    drawBlakeSprite(80, 220, 'right');
+    // Player on right side, walking away (back turned)
+    drawComicPlayerChar(370, 215, 'right');
     // Blake speech bubble
     drawComicSpeechBubble(
         'Where are you going?',
-        60, 130, 180, 34,
-        112, 220
-    );
-
-    // Player speech bubble
-    drawComicSpeechBubble(
-        'I need to report this\ndetail concerning the\ncrime to the shop owner!',
-        250, 100, 210, 60,
-        352, 215
+        40, 140, 180, 34,
+        92, 215
     );
 }
 
-// ──────────────────────────────
-// Panel 8c: Blake responds
-// ──────────────────────────────
-function drawComicPanel8c() {
-    // Close-up of Blake looking exasperated
+// Panel: Player turns back and replies (player on right facing left, Blake on left)
+function drawComicPanelPlayerReply() {
+    drawComicCorridorBg();
+    // Blake on left side
+    drawBlakeSprite(80, 220, 'right');
+    // Player on right side, turned to face Blake
+    drawComicPlayerChar(370, 215, 'left');
+    // Player speech bubble
+    drawComicSpeechBubble(
+        'I need to report this\ndetail concerning the\ncrime to the shop owner!',
+        230, 100, 230, 60,
+        382, 210
+    );
+}
+
+// Panel: Blake exasperated close-up
+function drawComicPanelBlakeExasp() {
     ctx.fillStyle = '#2a1a3a';
     ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, HEIGHT - COMIC_BORDER * 2);
-
-    // Radial highlight behind Blake
     const grd = ctx.createRadialGradient(WIDTH / 2, HEIGHT / 2, 20, WIDTH / 2, HEIGHT / 2, 200);
     grd.addColorStop(0, '#4a2a5c');
     grd.addColorStop(1, '#1a0e28');
     ctx.fillStyle = grd;
     ctx.fillRect(COMIC_BORDER, COMIC_BORDER, WIDTH - COMIC_BORDER * 2, HEIGHT - COMIC_BORDER * 2);
-
-    // Big Blake (3x scale, close-up)
     ctx.save();
     ctx.translate(WIDTH / 2 - 36, HEIGHT / 2 - 30);
     ctx.scale(3, 3);
     drawBlakeSprite(0, 0, 'down');
     ctx.restore();
-
-    // Frustration marks
     ctx.fillStyle = '#ff6666';
     ctx.font = 'bold 18px monospace';
     ctx.textAlign = 'center';
     ctx.fillText('#', WIDTH / 2 - 70, HEIGHT / 2 - 30);
     ctx.fillText('!', WIDTH / 2 + 70, HEIGHT / 2 - 20);
-
-    // Blake speech bubble at top
     drawComicSpeechBubble(
         'You don\'t need to get\ninvolved in every\ninvestigation!',
         110, 15, 260, 60,
         WIDTH / 2, HEIGHT / 2 - 40
     );
+    ctx.textAlign = 'left';
 }
 
 // ═══════════════════════════════════════════════════════════════
