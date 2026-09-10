@@ -5549,7 +5549,6 @@ const L3_DIALOG = {
     blake: [
         "I can't believe you're doing this on our vacation.",
         "You always have to get involved in everything!",
-        "Fine. I'll help. Cher was already on stage when the robbery happened. So it couldn't have been whoever was performing as Cher.",
     ],
     abraham: [
         "Can you believe someone robbed the antique shop? During a drag show!",
