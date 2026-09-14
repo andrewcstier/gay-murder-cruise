@@ -90,6 +90,22 @@ const L3_SUSPECTS = ['Chuck', 'Flint', 'AJ'];
 const L3_ITEMS = ['Book', 'PrEP', 'Mic'];
 const L3_PERSONAS = ['Jiggly', 'Mariah', 'Cher'];
 
+// Level 4 state
+let l4State = 'intro'; // 'intro', 'free', 'dialog', 'cauldron-look', 'cutscene', 'complete'
+let l4PlayerX = 228, l4PlayerY = 250, l4PlayerFacing = 'up';
+let l4FlintX = 228, l4FlintY = 130, l4FlintFacing = 'down';
+let l4IntroTimer = 0;
+let l4IntroPhase = 'fade-in'; // 'fade-in', 'walk-in', 'flint-turns', 'flint-speaks', 'flint-done'
+let l4IntroAlpha = 1;
+let l4CauldronInteracted = false;
+let l4CutscenePhase = ''; // phases during the big cutscene
+let l4CutsceneTimer = 0;
+let l4DialogLines = [];
+let l4DialogIndex = 0;
+let l4FadeAlpha = 0;
+let l4BubbleTimer = 0;
+let l4ResumePhase = ''; // phase to resume after dialog during cutscene
+
 let murdererY = 0;
 let murdererSpeed = 0.4;
 let playerDead = false;
@@ -208,6 +224,7 @@ function handleAction(key) {
         return;
     }
     if (gameState === 'level3') { handleLevel3Action(key); return; }
+    if (gameState === 'level4') { handleLevel4Action(key); return; }
 }
 
 function showLevelSelect() {
@@ -234,6 +251,9 @@ function selectLevel(level) {
         if (musicEnabled) GameMusic.startMusic('level3');
         gameState = 'comic-cutscene';
         return;
+    } else if (level === 4) {
+        selectedChar = selectedChar || CHARACTERS[0];
+        startLevel4();
     }
 }
 
@@ -408,6 +428,7 @@ musicToggle.addEventListener('click', () => {
         else if (gameState === 'playing') GameMusic.startMusic('charselect');
         else if (gameState === 'level2') GameMusic.startMusic('charselect');
         else if (gameState === 'level3') GameMusic.startMusic(l3Room === 'chucks-room' || l3Room === 'roundabout' ? 'piano' : 'level3');
+        else if (gameState === 'level4') GameMusic.startMusic(l4CutscenePhase ? 'level4' : 'piano');
         else if (gameState === 'gameover' || gameState === 'cutscene' || gameState === 'chase' || gameState === 'room') GameMusic.startMusic('panic');
     } else {
         GameMusic.stopMusic();
@@ -2612,6 +2633,11 @@ function update() {
         return;
     }
 
+    if (gameState === 'level4') {
+        updateLevel4();
+        return;
+    }
+
     if (gameState !== 'playing') return;
 
     let moved = false;
@@ -2767,6 +2793,11 @@ function draw() {
 
     if (gameState === 'level3') {
         drawLevel3();
+        return;
+    }
+
+    if (gameState === 'level4') {
+        drawLevel4();
         return;
     }
 
@@ -5683,7 +5714,10 @@ function handleLevel3Action(key) {
         l3ShopTimer = 0;
         return;
     }
-    if (l3State === 'complete') return;
+    if (l3State === 'complete') {
+        if (l3CompleteTimer > 120) startLevel4();
+        return;
+    }
     if (l3State === 'shop-exit-blocked') {
         dialogBox.classList.remove('visible');
         l3State = 'free';
@@ -7542,6 +7576,738 @@ function drawLevel3Portrait(npcKey) {
         drawLevel2Portrait('abraham');
     } else if (npcKey === 'vanessa') {
         drawLevel2Portrait('vanessa');
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LEVEL 4 — The Cauldron
+// ═══════════════════════════════════════════════════════════════
+
+const L4_CAULDRON = { x: 200, y: 110, w: 80, h: 60 };
+const L4_SHELF_LEFT = { x: 30, y: 60, w: 60, h: 80 };
+const L4_TABLE_RIGHT = { x: 380, y: 80, w: 70, h: 50 };
+const L4_COLLIDERS = [
+    L4_CAULDRON,
+    L4_SHELF_LEFT,
+    L4_TABLE_RIGHT,
+    { x: 0, y: 0, w: WIDTH, h: 45 },
+    { x: 0, y: 0, w: 30, h: HEIGHT },
+    { x: 450, y: 0, w: 30, h: HEIGHT },
+];
+
+function startLevel4() {
+    gameState = 'level4';
+    l4State = 'intro';
+    l4IntroPhase = 'fade-in';
+    l4IntroTimer = 0;
+    l4IntroAlpha = 1;
+    l4PlayerX = 228;
+    l4PlayerY = 280;
+    l4PlayerFacing = 'up';
+    l4FlintX = 228;
+    l4FlintY = 200;
+    l4FlintFacing = 'up';
+    l4CauldronInteracted = false;
+    l4CutscenePhase = '';
+    l4CutsceneTimer = 0;
+    l4DialogLines = [];
+    l4DialogIndex = 0;
+    l4FadeAlpha = 0;
+    l4BubbleTimer = 0;
+    l4ResumePhase = '';
+    dialogBox.classList.remove('visible');
+    promptEl.classList.remove('visible');
+    document.getElementById('chat-panel').style.display = 'none';
+    document.getElementById('notebook-overlay').style.display = 'none';
+    document.getElementById('notebook-btn').style.display = 'none';
+    GameMusic.stopMusic();
+    if (musicEnabled) GameMusic.startMusic('piano');
+}
+
+function handleLevel4Action(key) {
+    const k = key.toLowerCase();
+    if (l4State === 'intro') return;
+    if (l4State === 'complete') return;
+
+    if (l4State === 'dialog') {
+        l4DialogIndex++;
+        if (l4DialogIndex >= l4DialogLines.length) {
+            dialogBox.classList.remove('visible');
+            if (l4ResumePhase) {
+                l4State = 'cutscene';
+                l4CutscenePhase = l4ResumePhase;
+                l4CutsceneTimer = 0;
+                l4ResumePhase = '';
+            } else if (l4CauldronInteracted && !l4CutscenePhase) {
+                l4State = 'cutscene';
+                l4CutscenePhase = 'step-back';
+                l4CutsceneTimer = 0;
+                GameMusic.stopMusic();
+                if (musicEnabled) GameMusic.startMusic('level4');
+            } else {
+                l4State = 'free';
+            }
+        } else {
+            showL4Dialog(l4DialogLines[l4DialogIndex]);
+        }
+        return;
+    }
+
+    if (l4State === 'cutscene') return;
+
+    if (l4State === 'free') {
+        if (k === 'e' || k === ' ' || k === 'examine') {
+            const pcx = l4PlayerX + 12;
+            const pcy = l4PlayerY + 18;
+            // Check cauldron
+            const cx = L4_CAULDRON.x + L4_CAULDRON.w / 2;
+            const cy = L4_CAULDRON.y + L4_CAULDRON.h / 2;
+            if (Math.abs(pcx - cx) < 60 && Math.abs(pcy - cy) < 60) {
+                if (!l4CauldronInteracted) {
+                    l4CauldronInteracted = true;
+                    l4State = 'cauldron-look';
+                    l4CutsceneTimer = 0;
+                } else {
+                    l4State = 'dialog';
+                    l4DialogLines = ['FLINT: The cauldron has gone dark.'];
+                    l4DialogIndex = 0;
+                    showL4Dialog(l4DialogLines[0]);
+                }
+                return;
+            }
+            // Check exit door (bottom)
+            if (pcy > 260) {
+                l4State = 'dialog';
+                l4DialogLines = ['FLINT: Not yet.'];
+                l4DialogIndex = 0;
+                showL4Dialog(l4DialogLines[0]);
+                return;
+            }
+            // Check shelf
+            const sx = L4_SHELF_LEFT.x + L4_SHELF_LEFT.w / 2;
+            const sy = L4_SHELF_LEFT.y + L4_SHELF_LEFT.h / 2;
+            if (Math.abs(pcx - sx) < 55 && Math.abs(pcy - sy) < 55) {
+                l4State = 'dialog';
+                l4DialogLines = ['Spell books, dried herbs, strange jars...'];
+                l4DialogIndex = 0;
+                showL4Dialog(l4DialogLines[0]);
+                return;
+            }
+            // Check table
+            const tx = L4_TABLE_RIGHT.x + L4_TABLE_RIGHT.w / 2;
+            const ty = L4_TABLE_RIGHT.y + L4_TABLE_RIGHT.h / 2;
+            if (Math.abs(pcx - tx) < 55 && Math.abs(pcy - ty) < 55) {
+                l4State = 'dialog';
+                l4DialogLines = ['Potions of every color line the table.'];
+                l4DialogIndex = 0;
+                showL4Dialog(l4DialogLines[0]);
+                return;
+            }
+            // Check Flint NPC
+            if (Math.abs(pcx - (l4FlintX + 12)) < 50 && Math.abs(pcy - (l4FlintY + 18)) < 50) {
+                l4State = 'dialog';
+                l4DialogLines = ['FLINT: Look into the cauldron.'];
+                l4DialogIndex = 0;
+                showL4Dialog(l4DialogLines[0]);
+                return;
+            }
+        }
+    }
+}
+
+function showL4Dialog(line) {
+    promptEl.classList.remove('visible');
+    const isFlint = line.startsWith('FLINT:');
+    if (isFlint) {
+        const text = line.substring(6).trim();
+        dialogBox.innerHTML = '<span style="color:#ff8800">FLINT:</span> ' + text + '<br><br><span style="color:#aaa; font-size:10px;">Press any key...</span>';
+    } else {
+        dialogBox.innerHTML = '<span style="color:#aaa">' + line + '</span><br><br><span style="color:#aaa; font-size:10px;">Press any key...</span>';
+    }
+    dialogBox.classList.add('visible');
+}
+
+function updateLevel4() {
+    player.animTimer++;
+
+    // Intro sequence
+    if (l4State === 'intro') {
+        l4IntroTimer++;
+        if (l4IntroPhase === 'fade-in') {
+            l4IntroAlpha = Math.max(0, 1 - l4IntroTimer / 60);
+            if (l4IntroTimer >= 60) {
+                l4IntroPhase = 'walk-in';
+                l4IntroTimer = 0;
+            }
+        } else if (l4IntroPhase === 'walk-in') {
+            const spd = 1.2;
+            if (l4FlintY > 150) {
+                l4FlintY -= spd;
+                l4FlintFacing = 'up';
+            }
+            if (l4PlayerY > 230) {
+                l4PlayerY -= spd;
+                l4PlayerFacing = 'up';
+            }
+            if (l4FlintY <= 150 && l4PlayerY <= 230) {
+                l4IntroPhase = 'flint-turns';
+                l4IntroTimer = 0;
+            }
+        } else if (l4IntroPhase === 'flint-turns') {
+            if (l4IntroTimer >= 30) {
+                l4FlintFacing = 'down';
+                l4IntroPhase = 'flint-speaks';
+                l4IntroTimer = 0;
+            }
+        } else if (l4IntroPhase === 'flint-speaks') {
+            if (l4IntroTimer === 1) {
+                l4State = 'dialog';
+                l4DialogLines = [
+                    'FLINT: I want to show you something.',
+                    'FLINT: Look into the cauldron.'
+                ];
+                l4DialogIndex = 0;
+                showL4Dialog(l4DialogLines[0]);
+                l4IntroPhase = 'flint-done';
+            }
+        }
+        return;
+    }
+
+    // Cauldron first look — show book vision
+    if (l4State === 'cauldron-look') {
+        l4CutsceneTimer++;
+        if (l4CutsceneTimer >= 120) {
+            l4State = 'dialog';
+            l4DialogLines = [
+                "FLINT: I'm a clairvoyant. I am drawn to things of importance.",
+                "FLINT: I thought I recognized you— and when you sleuthed out my actions, I knew it must be you.",
+                "FLINT: The book. It found you in your dreams, no?",
+                "FLINT: You must be the key. To what, I am not sure yet.",
+                "FLINT: But I sense we are in grave danger.",
+                "FLINT: Now stand back, I just need one more thing."
+            ];
+            l4DialogIndex = 0;
+            showL4Dialog(l4DialogLines[0]);
+        }
+        return;
+    }
+
+    // Main cutscene
+    if (l4State === 'cutscene') {
+        l4CutsceneTimer++;
+        l4BubbleTimer++;
+
+        if (l4CutscenePhase === 'step-back') {
+            // Player steps back
+            if (l4PlayerY < 260) l4PlayerY += 1;
+            l4PlayerFacing = 'up';
+            if (l4CutsceneTimer >= 40) {
+                l4CutscenePhase = 'hair-pull';
+                l4CutsceneTimer = 0;
+            }
+        } else if (l4CutscenePhase === 'hair-pull') {
+            // Flint walks toward player
+            if (l4CutsceneTimer < 30) {
+                if (l4FlintY < l4PlayerY - 30) l4FlintY += 1.5;
+                l4FlintFacing = 'down';
+            } else if (l4CutsceneTimer === 30) {
+                // Ow!
+                dialogBox.innerHTML = '<span style="color:#ffcc00">Ow!</span>';
+                dialogBox.classList.add('visible');
+            } else if (l4CutsceneTimer >= 60) {
+                dialogBox.classList.remove('visible');
+                l4CutscenePhase = 'walk-to-cauldron';
+                l4CutsceneTimer = 0;
+            }
+        } else if (l4CutscenePhase === 'walk-to-cauldron') {
+            // Flint walks back to cauldron
+            const targetX = L4_CAULDRON.x + L4_CAULDRON.w / 2 - 12;
+            const targetY = L4_CAULDRON.y + L4_CAULDRON.h + 5;
+            const dx = targetX - l4FlintX;
+            const dy = targetY - l4FlintY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > 3) {
+                l4FlintX += (dx / dist) * 2;
+                l4FlintY += (dy / dist) * 2;
+                l4FlintFacing = dy < -2 ? 'up' : (dx > 2 ? 'right' : dx < -2 ? 'left' : 'up');
+            } else {
+                l4FlintFacing = 'up';
+                l4CutscenePhase = 'drop-hair';
+                l4CutsceneTimer = 0;
+            }
+        } else if (l4CutscenePhase === 'drop-hair') {
+            if (l4CutsceneTimer >= 30) {
+                l4CutscenePhase = 'stir-1';
+                l4CutsceneTimer = 0;
+            }
+        } else if (l4CutscenePhase === 'stir-1') {
+            if (l4CutsceneTimer === 1) {
+                l4State = 'dialog';
+                l4DialogLines = [
+                    "FLINT: The Book of Visions is an ancient wizarding relic.",
+                    "FLINT: Stolen from my people years ago.",
+                    "FLINT: We did not know it was here until it started sending me visions.",
+                    "FLINT: And the book never sends visions. Unless it's important."
+                ];
+                l4DialogIndex = 0;
+                showL4Dialog(l4DialogLines[0]);
+                l4ResumePhase = 'grab-shelf';
+            }
+        } else if (l4CutscenePhase === 'grab-shelf') {
+            // Flint walks to shelf on left
+            const targetX = L4_SHELF_LEFT.x + L4_SHELF_LEFT.w + 5;
+            const targetY = L4_SHELF_LEFT.y + L4_SHELF_LEFT.h / 2;
+            const dx = targetX - l4FlintX;
+            const dy = targetY - l4FlintY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > 3) {
+                l4FlintX += (dx / dist) * 2;
+                l4FlintY += (dy / dist) * 2;
+                l4FlintFacing = dx < 0 ? 'left' : 'right';
+            } else {
+                l4FlintFacing = 'left';
+                if (l4CutsceneTimer >= 30) {
+                    l4CutscenePhase = 'throw-shelf';
+                    l4CutsceneTimer = 0;
+                }
+            }
+        } else if (l4CutscenePhase === 'throw-shelf') {
+            // Walk back to cauldron
+            const targetX = L4_CAULDRON.x + L4_CAULDRON.w / 2 - 12;
+            const targetY = L4_CAULDRON.y + L4_CAULDRON.h + 5;
+            const dx = targetX - l4FlintX;
+            const dy = targetY - l4FlintY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > 3) {
+                l4FlintX += (dx / dist) * 2;
+                l4FlintY += (dy / dist) * 2;
+                l4FlintFacing = dx > 2 ? 'right' : 'up';
+            } else {
+                l4FlintFacing = 'up';
+                l4CutscenePhase = 'grab-potion';
+                l4CutsceneTimer = 0;
+            }
+        } else if (l4CutscenePhase === 'grab-potion') {
+            // Flint walks to table on right
+            const targetX = L4_TABLE_RIGHT.x - 5;
+            const targetY = L4_TABLE_RIGHT.y + L4_TABLE_RIGHT.h / 2;
+            const dx = targetX - l4FlintX;
+            const dy = targetY - l4FlintY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > 3) {
+                l4FlintX += (dx / dist) * 2;
+                l4FlintY += (dy / dist) * 2;
+                l4FlintFacing = dx > 0 ? 'right' : 'left';
+            } else {
+                l4FlintFacing = 'right';
+                if (l4CutsceneTimer >= 30) {
+                    l4CutscenePhase = 'throw-potion';
+                    l4CutsceneTimer = 0;
+                }
+            }
+        } else if (l4CutscenePhase === 'throw-potion') {
+            // Walk back to cauldron
+            const targetX = L4_CAULDRON.x + L4_CAULDRON.w / 2 - 12;
+            const targetY = L4_CAULDRON.y + L4_CAULDRON.h + 5;
+            const dx = targetX - l4FlintX;
+            const dy = targetY - l4FlintY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > 3) {
+                l4FlintX += (dx / dist) * 2;
+                l4FlintY += (dy / dist) * 2;
+                l4FlintFacing = dx < -2 ? 'left' : 'up';
+            } else {
+                l4FlintFacing = 'up';
+                l4CutscenePhase = 'stir-2';
+                l4CutsceneTimer = 0;
+            }
+        } else if (l4CutscenePhase === 'stir-2') {
+            if (l4CutsceneTimer === 1) {
+                dialogBox.innerHTML = '<span style="color:#ff8800">FLINT:</span> Show me... Show me...';
+                dialogBox.classList.add('visible');
+            }
+            if (l4CutsceneTimer >= 90) {
+                dialogBox.classList.remove('visible');
+                l4CutscenePhase = 'boom';
+                l4CutsceneTimer = 0;
+            }
+        } else if (l4CutscenePhase === 'boom') {
+            if (l4CutsceneTimer >= 60) {
+                l4CutscenePhase = 'reveal';
+                l4CutsceneTimer = 0;
+            }
+        } else if (l4CutscenePhase === 'reveal') {
+            if (l4CutsceneTimer >= 120) {
+                l4CutscenePhase = 'flint-react';
+                l4CutsceneTimer = 0;
+            }
+        } else if (l4CutscenePhase === 'flint-react') {
+            if (l4CutsceneTimer === 1) {
+                dialogBox.innerHTML = '<span style="color:#ff8800">FLINT:</span> No! We\'re too late!<br><span style="color:#ff8800">FLINT:</span> There\'s a murder, and it already happened!';
+                dialogBox.classList.add('visible');
+            }
+            if (l4CutsceneTimer >= 120) {
+                dialogBox.classList.remove('visible');
+                l4CutscenePhase = 'fade-out';
+                l4CutsceneTimer = 0;
+            }
+        } else if (l4CutscenePhase === 'fade-out') {
+            l4FadeAlpha = Math.min(1, l4CutsceneTimer / 90);
+            if (l4FadeAlpha >= 1) {
+                l4State = 'complete';
+                l4CutsceneTimer = 0;
+            }
+        }
+        return;
+    }
+
+    if (l4State === 'complete') {
+        l4CutsceneTimer++;
+        return;
+    }
+
+    // Free movement
+    if (l4State !== 'free') return;
+
+    let moved = false;
+    let newX = l4PlayerX;
+    let newY = l4PlayerY;
+    const spd = 2.5;
+
+    if (keys['arrowleft'] || keys['a']) { newX -= spd; l4PlayerFacing = 'left'; moved = true; }
+    if (keys['arrowright'] || keys['d']) { newX += spd; l4PlayerFacing = 'right'; moved = true; }
+    if (keys['arrowup'] || keys['w']) { newY -= spd; l4PlayerFacing = 'up'; moved = true; }
+    if (keys['arrowdown'] || keys['s']) { newY += spd; l4PlayerFacing = 'down'; moved = true; }
+
+    // Room bounds
+    if (newX < 30) newX = 30;
+    if (newX > 440) newX = 440;
+    if (newY < 45) newY = 45;
+    if (newY > 280) newY = 280;
+
+    // Collider check
+    for (const c of L4_COLLIDERS) {
+        const pr = { x: newX, y: newY + 18, w: 24, h: 18 };
+        if (pr.x < c.x + c.w && pr.x + pr.w > c.x && pr.y < c.y + c.h && pr.y + pr.h > c.y) {
+            newX = l4PlayerX;
+            newY = l4PlayerY;
+            break;
+        }
+    }
+
+    l4PlayerX = newX;
+    l4PlayerY = newY;
+    if (moved) player.animTimer++;
+
+    // Prompt
+    const pcx = l4PlayerX + 12;
+    const pcy = l4PlayerY + 18;
+    const cx = L4_CAULDRON.x + L4_CAULDRON.w / 2;
+    const cy = L4_CAULDRON.y + L4_CAULDRON.h / 2;
+    const nearCauldron = Math.abs(pcx - cx) < 60 && Math.abs(pcy - cy) < 60;
+    const nearFlint = Math.abs(pcx - (l4FlintX + 12)) < 50 && Math.abs(pcy - (l4FlintY + 18)) < 50;
+    const nearShelf = Math.abs(pcx - (L4_SHELF_LEFT.x + L4_SHELF_LEFT.w / 2)) < 55 && Math.abs(pcy - (L4_SHELF_LEFT.y + L4_SHELF_LEFT.h / 2)) < 55;
+    const nearTable = Math.abs(pcx - (L4_TABLE_RIGHT.x + L4_TABLE_RIGHT.w / 2)) < 55 && Math.abs(pcy - (L4_TABLE_RIGHT.y + L4_TABLE_RIGHT.h / 2)) < 55;
+
+    if (nearCauldron || nearFlint || nearShelf || nearTable || pcy > 268) {
+        promptEl.classList.add('visible');
+        promptEl.textContent = isMobile() ? 'Tap LOOK to examine' : 'Press E or SPACE to examine';
+    } else {
+        promptEl.classList.remove('visible');
+    }
+}
+
+function drawLevel4() {
+    // Dark purple magical room
+    ctx.fillStyle = '#0a0818';
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+    // Floor — dark stone with magical glow
+    ctx.fillStyle = '#1a1030';
+    ctx.fillRect(30, 45, 420, 250);
+    // Floor tiles
+    for (let tx = 30; tx < 450; tx += 40) {
+        for (let ty = 45; ty < 295; ty += 40) {
+            ctx.fillStyle = (Math.floor(tx / 40) + Math.floor(ty / 40)) % 2 === 0 ? '#1e1238' : '#161028';
+            ctx.fillRect(tx, ty, 40, 40);
+        }
+    }
+    // Magical circle on floor around cauldron
+    ctx.strokeStyle = '#5a1a7a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(L4_CAULDRON.x + L4_CAULDRON.w / 2, L4_CAULDRON.y + L4_CAULDRON.h / 2, 55, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = '#3a0a5a';
+    ctx.beginPath();
+    ctx.arc(L4_CAULDRON.x + L4_CAULDRON.w / 2, L4_CAULDRON.y + L4_CAULDRON.h / 2, 48, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Walls
+    ctx.fillStyle = '#2a1a4a';
+    ctx.fillRect(0, 0, WIDTH, 50);
+    ctx.fillRect(0, 280, WIDTH, 40);
+    ctx.fillRect(0, 0, 34, HEIGHT);
+    ctx.fillRect(446, 0, 34, HEIGHT);
+    // Wall trim
+    ctx.fillStyle = '#4a2a6a';
+    ctx.fillRect(30, 46, 420, 4);
+    ctx.fillRect(30, 280, 420, 4);
+    ctx.fillRect(30, 46, 4, 238);
+    ctx.fillRect(446, 46, 4, 238);
+
+    // Shelf on left wall (spell books, herbs)
+    ctx.fillStyle = '#5c3a1a';
+    ctx.fillRect(L4_SHELF_LEFT.x, L4_SHELF_LEFT.y, L4_SHELF_LEFT.w, L4_SHELF_LEFT.h);
+    ctx.fillStyle = '#7a5020';
+    ctx.fillRect(L4_SHELF_LEFT.x, L4_SHELF_LEFT.y, L4_SHELF_LEFT.w, 4);
+    ctx.fillRect(L4_SHELF_LEFT.x, L4_SHELF_LEFT.y + 26, L4_SHELF_LEFT.w, 3);
+    ctx.fillRect(L4_SHELF_LEFT.x, L4_SHELF_LEFT.y + 52, L4_SHELF_LEFT.w, 3);
+    // Books on shelves
+    const bookColors = ['#8a2222', '#2244aa', '#228844', '#aa6622', '#6622aa'];
+    for (let i = 0; i < 5; i++) {
+        ctx.fillStyle = bookColors[i];
+        ctx.fillRect(L4_SHELF_LEFT.x + 4 + i * 11, L4_SHELF_LEFT.y + 5, 8, 18);
+    }
+    // Herb jars on middle shelf
+    for (let i = 0; i < 4; i++) {
+        ctx.fillStyle = '#446644';
+        ctx.fillRect(L4_SHELF_LEFT.x + 6 + i * 14, L4_SHELF_LEFT.y + 30, 10, 16);
+        ctx.fillStyle = '#88aa88';
+        ctx.fillRect(L4_SHELF_LEFT.x + 8 + i * 14, L4_SHELF_LEFT.y + 30, 6, 3);
+    }
+    // Dried herbs hanging on bottom shelf
+    for (let i = 0; i < 3; i++) {
+        ctx.fillStyle = '#557755';
+        ctx.fillRect(L4_SHELF_LEFT.x + 8 + i * 18, L4_SHELF_LEFT.y + 58, 4, 14);
+        ctx.fillStyle = '#668866';
+        ctx.fillRect(L4_SHELF_LEFT.x + 6 + i * 18, L4_SHELF_LEFT.y + 56, 8, 4);
+    }
+
+    // Table on right wall (potions)
+    ctx.fillStyle = '#5c3a1a';
+    ctx.fillRect(L4_TABLE_RIGHT.x, L4_TABLE_RIGHT.y, L4_TABLE_RIGHT.w, L4_TABLE_RIGHT.h);
+    ctx.fillStyle = '#7a5020';
+    ctx.fillRect(L4_TABLE_RIGHT.x, L4_TABLE_RIGHT.y, L4_TABLE_RIGHT.w, 4);
+    // Potion bottles
+    const potionColors = ['#cc2244', '#2266cc', '#22cc66', '#cc8822', '#cc22cc'];
+    for (let i = 0; i < 5; i++) {
+        ctx.fillStyle = potionColors[i];
+        ctx.fillRect(L4_TABLE_RIGHT.x + 6 + i * 13, L4_TABLE_RIGHT.y + 6, 8, 16);
+        ctx.fillStyle = '#ddd';
+        ctx.fillRect(L4_TABLE_RIGHT.x + 8 + i * 13, L4_TABLE_RIGHT.y + 4, 4, 4);
+    }
+
+    // Cauldron
+    drawL4Cauldron();
+
+    // Door at bottom (just visual, blocked by Flint's "Not yet")
+    ctx.fillStyle = '#4a2a1a';
+    ctx.fillRect(210, 280, 60, 20);
+    ctx.fillStyle = '#6a3a2a';
+    ctx.fillRect(212, 282, 56, 16);
+    ctx.fillStyle = '#ffcc00';
+    ctx.fillRect(250, 288, 4, 4);
+
+    // Flint
+    drawFlintSprite(Math.floor(l4FlintX), Math.floor(l4FlintY), l4FlintFacing);
+
+    // Player
+    const px = Math.floor(l4PlayerX);
+    const py = Math.floor(l4PlayerY);
+    const char = selectedChar || CHARACTERS[0];
+    const moving = isMoving() && l4State === 'free';
+    const bounce = Math.sin(player.animTimer * 0.15) * (moving ? 1.5 : 0);
+    const legSwing = moving ? Math.sin(player.animTimer * 0.22) * 3 : 0;
+    const armSwing = moving ? Math.sin(player.animTimer * 0.18) * 2 : 0;
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(px + 12, py + 36, 13, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (l4PlayerFacing === 'up') drawCharBack(px, py + bounce, bounce, legSwing, armSwing, char);
+    else if (l4PlayerFacing === 'down') drawCharFront(px, py + bounce, bounce, legSwing, armSwing, char);
+    else drawCharSide(px, py + bounce, bounce, legSwing, armSwing, l4PlayerFacing, char);
+
+    // Ambient magical glow
+    const grd = ctx.createRadialGradient(
+        L4_CAULDRON.x + L4_CAULDRON.w / 2, L4_CAULDRON.y + L4_CAULDRON.h / 2, 10,
+        L4_CAULDRON.x + L4_CAULDRON.w / 2, L4_CAULDRON.y + L4_CAULDRON.h / 2, 120
+    );
+    const pulse = 0.04 + Math.sin(player.animTimer * 0.03) * 0.02;
+    grd.addColorStop(0, `rgba(120, 40, 180, ${pulse})`);
+    grd.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+    // Cauldron look vision (book image)
+    if (l4State === 'cauldron-look') {
+        const t = Math.min(l4CutsceneTimer / 60, 1);
+        ctx.fillStyle = `rgba(10, 10, 20, ${t * 0.85})`;
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+        if (t > 0.3) {
+            const a = Math.min((t - 0.3) / 0.4, 1);
+            // You holding the book
+            ctx.globalAlpha = a;
+            // Player figure
+            ctx.fillStyle = '#d4a076';
+            ctx.fillRect(220, 100, 16, 14);
+            ctx.fillStyle = (selectedChar || CHARACTERS[0]).shirt;
+            ctx.fillRect(216, 114, 24, 20);
+            ctx.fillRect(210, 116, 8, 14);
+            ctx.fillRect(246, 116, 8, 14);
+            // Book in hands
+            ctx.fillStyle = '#5a1a7a';
+            ctx.fillRect(224, 132, 20, 26);
+            ctx.fillStyle = '#7a2a9a';
+            ctx.fillRect(226, 134, 16, 22);
+            // Eye on book
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.ellipse(234, 145, 6, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#6a1a9a';
+            ctx.beginPath();
+            ctx.arc(234, 145, 2, 0, Math.PI * 2);
+            ctx.fill();
+            // Glow around the vision
+            ctx.strokeStyle = `rgba(120, 40, 180, ${a * 0.6})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.ellipse(234, 140, 40, 50, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+        }
+    }
+
+    // Cutscene overlays
+    if (l4State === 'cutscene') {
+        // Boom effect
+        if (l4CutscenePhase === 'boom') {
+            const t = l4CutsceneTimer / 60;
+            const flashAlpha = t < 0.3 ? t / 0.3 : Math.max(0, 1 - (t - 0.3) / 0.7);
+            ctx.fillStyle = `rgba(180, 80, 255, ${flashAlpha * 0.5})`;
+            ctx.fillRect(0, 0, WIDTH, HEIGHT);
+            // Smoke puff
+            ctx.fillStyle = `rgba(100, 60, 140, ${flashAlpha * 0.7})`;
+            for (let i = 0; i < 6; i++) {
+                const angle = (i / 6) * Math.PI * 2 + l4CutsceneTimer * 0.05;
+                const r = 20 + t * 40;
+                const sx = L4_CAULDRON.x + L4_CAULDRON.w / 2 + Math.cos(angle) * r;
+                const sy = L4_CAULDRON.y + Math.sin(angle) * r * 0.6;
+                ctx.beginPath();
+                ctx.arc(sx, sy, 12 + t * 8, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        // Reveal — murderer and dead body
+        if (l4CutscenePhase === 'reveal' || l4CutscenePhase === 'flint-react') {
+            const t = l4CutscenePhase === 'reveal' ? Math.min(l4CutsceneTimer / 60, 1) : 1;
+            ctx.fillStyle = `rgba(10, 10, 20, ${t * 0.9})`;
+            ctx.fillRect(0, 0, WIDTH, HEIGHT);
+            if (t > 0.3) {
+                const a = Math.min((t - 0.3) / 0.4, 1);
+                ctx.globalAlpha = a;
+                // Dead body on the ground
+                ctx.fillStyle = '#8a4444';
+                ctx.fillRect(200, 200, 30, 10);
+                ctx.fillStyle = '#d4a076';
+                ctx.fillRect(228, 200, 10, 10);
+                ctx.fillStyle = '#aa3333';
+                ctx.fillRect(210, 204, 12, 4);
+                // Murderer standing over body
+                drawMurderer(220, 150);
+                // Vision frame
+                ctx.strokeStyle = `rgba(200, 40, 40, ${a * 0.6})`;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.ellipse(234, 180, 50, 50, 0, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+            }
+        }
+    }
+
+    // Fade out
+    if (l4CutscenePhase === 'fade-out' || l4State === 'complete') {
+        ctx.fillStyle = `rgba(0, 0, 0, ${l4FadeAlpha})`;
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    }
+
+    // Complete overlay
+    if (l4State === 'complete') {
+        const t = Math.min(l4CutsceneTimer / 120, 1);
+        if (t > 0.3) {
+            ctx.fillStyle = `rgba(255, 204, 0, ${Math.min((t - 0.3) / 0.3, 1)})`;
+            ctx.font = 'bold 18px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('LEVEL 4 COMPLETE', WIDTH / 2, HEIGHT / 2 - 10);
+            ctx.font = '12px monospace';
+            ctx.fillStyle = `rgba(255, 255, 255, ${Math.min((t - 0.3) / 0.3, 1)})`;
+            ctx.fillText('A murder has already happened...', WIDTH / 2, HEIGHT / 2 + 20);
+            ctx.textAlign = 'left';
+        }
+    }
+
+    // Intro fade
+    if (l4State === 'intro' && l4IntroAlpha > 0) {
+        ctx.fillStyle = `rgba(0, 0, 0, ${l4IntroAlpha})`;
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    }
+
+    // Room name
+    if (l4State === 'free' || l4State === 'dialog') {
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(4, 4, 120, 18);
+        ctx.fillStyle = '#b070e0';
+        ctx.font = '10px monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText("Flint's Chamber", 8, 16);
+    }
+}
+
+function drawL4Cauldron() {
+    const cx = L4_CAULDRON.x;
+    const cy = L4_CAULDRON.y;
+
+    // Cauldron body (big round pot)
+    ctx.fillStyle = '#333';
+    ctx.fillRect(cx + 5, cy + 15, 70, 40);
+    ctx.fillStyle = '#2a2a2a';
+    ctx.fillRect(cx + 10, cy + 10, 60, 10);
+    // Rim
+    ctx.fillStyle = '#555';
+    ctx.fillRect(cx + 8, cy + 8, 64, 5);
+    // Legs
+    ctx.fillStyle = '#222';
+    ctx.fillRect(cx + 12, cy + 52, 6, 8);
+    ctx.fillRect(cx + 62, cy + 52, 6, 8);
+    // Liquid inside
+    const bubblePhase = Math.sin(player.animTimer * 0.06);
+    const isActive = l4CutscenePhase === 'stir-1' || l4CutscenePhase === 'stir-2' ||
+                     l4CutscenePhase === 'drop-hair' || l4ResumePhase === 'grab-shelf';
+    ctx.fillStyle = isActive ? '#7a2aaa' : '#4a1a6a';
+    ctx.fillRect(cx + 14, cy + 14, 52, 10);
+    // Bubbles
+    if (isActive || l4State === 'cauldron-look') {
+        ctx.fillStyle = '#aa44dd';
+        const bx1 = cx + 25 + Math.sin(player.animTimer * 0.08) * 5;
+        const bx2 = cx + 45 + Math.cos(player.animTimer * 0.1) * 5;
+        ctx.beginPath();
+        ctx.arc(bx1, cy + 16, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(bx2, cy + 18, 2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    // Steam
+    ctx.fillStyle = `rgba(120, 80, 160, ${0.2 + bubblePhase * 0.1})`;
+    for (let i = 0; i < 3; i++) {
+        const sx = cx + 20 + i * 16 + Math.sin(player.animTimer * 0.04 + i) * 4;
+        const sy = cy + 4 - Math.abs(Math.sin(player.animTimer * 0.03 + i * 2)) * 10;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 4, 0, Math.PI * 2);
+        ctx.fill();
     }
 }
 

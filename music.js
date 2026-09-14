@@ -8,7 +8,8 @@ const TRACKS = {
     charselect: 'music-charselect.mp3',
     panic: 'music-panic.mp3',
     level3: 'music-level3.mp3',
-    piano: 'music-piano.mp3'
+    piano: 'music-piano.mp3',
+    level4: 'music-level4.mp3'
 };
 
 function initAudio(track) {
