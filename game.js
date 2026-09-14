@@ -105,6 +105,7 @@ let l4DialogIndex = 0;
 let l4FadeAlpha = 0;
 let l4BubbleTimer = 0;
 let l4ResumePhase = ''; // phase to resume after dialog during cutscene
+let l4EnteredAt = 0;
 
 let murdererY = 0;
 let murdererSpeed = 0.4;
@@ -7615,6 +7616,7 @@ function startLevel4() {
     l4FadeAlpha = 0;
     l4BubbleTimer = 0;
     l4ResumePhase = '';
+    l4EnteredAt = Date.now();
     dialogBox.classList.remove('visible');
     promptEl.classList.remove('visible');
     document.getElementById('chat-panel').style.display = 'none';
@@ -7625,6 +7627,8 @@ function startLevel4() {
 }
 
 function handleLevel4Action(key) {
+    if (Date.now() - l4EnteredAt < 400) return;
+    l4EnteredAt = Date.now();
     const k = key.toLowerCase();
     if (l4State === 'intro') return;
     if (l4State === 'complete') return;
