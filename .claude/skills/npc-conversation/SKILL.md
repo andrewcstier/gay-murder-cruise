@@ -1,123 +1,93 @@
 ---
 name: npc-conversation
 description: Use when adding NPC conversations to this game. Covers portraits, chat UI, typewriter text, hardcoded dialog trees, goodbye flow, and notebook integration.
-version: 1.0.0
+version: 3.0.0
 ---
 
 # NPC Conversation System
 
-This skill defines how NPC conversations work in Gay Murder Cruise. The system is modeled after guard-riddle-rpg but uses hardcoded dialog instead of LLM calls.
+This skill defines how NPC conversations work in Gay Murder Cruise.
 
 ## Architecture
 
-All conversation state lives in `game.js`. The chat UI is rendered via DOM elements (not canvas) positioned below the game canvas. Portraits are drawn on a separate small canvas element.
+All conversation state lives in `game.js`. The chat UI is DOM elements below the canvas. Portraits are on a separate 96x96 canvas.
 
-## Core State Variables
+## Dialog Types
 
+### Simple sequential (one speaker)
 ```javascript
-let chatOpen = false;
-let talkingTo = null;           // NPC key string
-let chatMessages = {};          // { npcKey: [{role:'assistant'|'user', text:'...'}] }
-let sayingBye = false;
-let typingText = null;          // { full: '...', current: '...', charIndex: 0, timer: null }
-let chatInput = '';
+const L3_DIALOG = {
+    npcKey: [
+        "First line.",
+        "Second line.",
+    ],
+};
 ```
 
-## NPC Definition
-
-Each NPC needs:
+### Multi-speaker combined conversation (AJ+RJ pattern)
 ```javascript
-const NPCS = [
-    {
-        key: 'unique-id',
-        name: 'DISPLAY NAME',
-        color: '#hexcolor',          // border/name color in chat
-        x: ..., y: ...,              // position in room
-        drawSprite: function(ctx, x, y) { ... },      // 32x32 sprite
-        drawPortrait: function(ctx) { ... },           // 96x96 portrait
-        greeting: 'First message when player talks to them',
-        responses: { ... },          // dialog tree (see below)
-        goodbye: 'Farewell message',
-    },
-];
+const L3_DIALOG = {
+    aj: [
+        {speaker: 'aj', text: "Oh hi! We're just looking at rings."},
+        {speaker: 'rj', text: "Hey! AJ won't stop talking about the show."},
+        {speaker: 'aj', text: "I was Cher!"},
+    ],
+    rj: [], // empty — RJ redirects to AJ's combined dialog
+};
 ```
+When `npcKey === 'rj'`, redirect to 'aj'. The render function checks `typeof lineData === 'object'` and uses `lineData.speaker` to look up name/color/portrait.
 
-## Dialog Tree (Hardcoded)
+## Opening a Conversation
 
-For non-LLM NPCs, responses are matched by keyword:
 ```javascript
-responses: {
-    // Each key is a keyword/phrase to match in player input (lowercased)
-    'notebook': 'Here, take my notebook! It helps organize clues.',
-    'help': 'Talk to everyone and gather information.',
-    'key': 'I swear I didn\'t have the key!',
-    // Special: '_default' fires when no keyword matches
-    '_default': 'Hmm, I\'m not sure about that.',
-    // Special: '_first' is the greeting (shown on first open only)
-    '_first': 'Hey there! Welcome!',
+function openLevel3Chat(npcKey) {
+    if (npcKey === 'rj') npcKey = 'aj'; // redirect combined NPCs
+    l3State = 'chat';
+    l3TalkingTo = npcKey;
+
+    const npc = L3_NPCS[npcKey];
+    const panel = document.getElementById('chat-panel');
+    panel.style.display = 'block';
+    panel.style.borderColor = npc.color;
+    // ... set portrait, name, colors
+
+    const lines = L3_DIALOG[npcKey];
+    const idx = l3DialogIndex[npcKey];
+    const lineData = lines[Math.min(idx, lines.length - 1)];
+    const line = typeof lineData === 'object' ? lineData.text : lineData;
+    startLevel3Typing(line);
+    renderL3ChatLine(npcKey, lineData);
+
+    // Trigger clues on first talk
+    if (npcKey === 'guard' && l3DialogIndex.guard === 0) {
+        l3GridUnlocked = true;
+        addL3Clue("...");
+    }
 }
 ```
 
-## Interaction Flow
+## Typewriter Effect
 
-### Opening a Conversation
-1. Player presses E/SPACE/LOOK near an NPC (proximity check same as room items)
-2. `chatOpen = true`, `talkingTo = npc.key`
-3. Show portrait canvas + chat panel below game
-4. If first time talking, show greeting with typewriter effect
-5. If already talked before, show existing message history
-6. Player input box is focused
-
-### Sending a Message
-1. Player types text and presses Enter (or taps Send button)
-2. Add `{role: 'user', text: input}` to `chatMessages[talkingTo]`
-3. Match input against NPC's `responses` keywords (case-insensitive, check all keys, first match wins)
-4. Add `{role: 'assistant', text: response}` to messages
-5. Start typewriter effect on the response
-6. Trigger any clue/item discoveries based on response key
-
-### Typewriter Effect
 ```javascript
-function startTyping(text) {
-    typingText = { full: text, current: '', charIndex: 0 };
-    // In game loop or setInterval, advance charIndex every ~30ms
-    // Clicking/tapping the chat area skips to full text
-}
-function stopTyping() {
-    if (typingText) typingText.current = typingText.full;
-    typingText = null;
-}
+l3Typewriting = { full: text, current: '', charIndex: 0 };
+// In update: advance 2 chars per frame
+// First click = skip to full text, second click = advance
 ```
 
-### Goodbye Flow
-1. Player clicks "THANKS, GOODBYE" button (or it's the only option in some states)
-2. Show ONLY the farewell message (hide input, hide other buttons)
-3. Start typewriter on farewell text
-4. After 1.5 seconds (or text length * 25ms + 500ms, whichever is greater), auto-close chat
-5. `chatOpen = false`, `talkingTo = null`, `sayingBye = false`
+## Rendering with Speaker Support
 
-### Closing Without Goodbye
-- Press Escape: immediately close chat, no farewell
-- This is an alternate path — goodbye is the "polite" close
-
-## Portrait Rendering
-
-Portraits are 96x96 pixel art drawn on a dedicated canvas:
 ```javascript
-function drawPortrait(ctx, npc) {
-    // Background
-    ctx.fillStyle = '#1a1420';
-    ctx.fillRect(0, 0, 96, 96);
-    // Character (bigger, more detailed version of their sprite)
-    npc.drawPortrait(ctx);
+function renderL3ChatLine(npcKey, lineData) {
+    const speaker = typeof lineData === 'object' ? lineData.speaker : null;
+    const speakerKey = speaker || npcKey;
+    const displayNpc = L3_NPCS[speakerKey];
+    // Update name, color, portrait for current speaker
+    container.innerHTML = `<div class="msg-npc"><span style="color:${displayNpc.color}">${displayNpc.name}:</span> ${text}</div>`;
 }
 ```
-
-Portraits MUST match the sprite visually (same colors, same features, just larger/more detailed).
 
 ## Chat UI Layout (DOM)
 
-The chat panel appears BELOW the game canvas (not overlaid):
 ```
 ┌─────────────────────────────┐
 │         GAME CANVAS         │
@@ -125,117 +95,52 @@ The chat panel appears BELOW the game canvas (not overlaid):
 ┌─────────[NPC COLOR BORDER]──┐
 │        [96x96 PORTRAIT]     │
 │       ─── NPC NAME ───      │
-│                             │
-│  NPC: greeting text...      │
-│  YOU: player question       │
-│  NPC: response text...      │
-│                             │
-│  [input box............] [▶]│
-│  [  THANKS, GOODBYE     ]  │
+│  NPC_NAME: dialog text...   │
+│  [ NEXT ]                   │
+│  [ Accuse NAME ]            │  ← optional, per-suspect
 └─────────────────────────────┘
 ```
 
-## Input Handling During Chat
+## Accusation System (Level 3 pattern)
 
-When `chatOpen === true`:
-- Arrow keys, WASD: blocked (player cannot move)
-- E/SPACE: do NOT trigger examine
-- Escape: close chat
-- Enter: send message
-- All keyboard input goes to the text input
+- Track which suspects have been talked to: `l3TalkedTo = { chuck: false, flint: false, aj: false }`
+- Record whether all were talked to BEFORE current chat: `l3AllTalkedBeforeChat`
+- "Accuse [Name]" button shows for the current suspect only
+- Clicking shows "Are you sure?" with YES/NO
+- Wrong: NPC denies, chat closes, level continues
+- Correct: cutscene triggers
 
-## Mobile Considerations
+### Critical: Event handler race condition
+The chat-next button has BOTH an `addEventListener('click')` (permanent) and an `.onclick` (dynamic). When setting up a CONTINUE button for cutscene triggers, keep `l3AccusationOpen = true` so the addEventListener returns early. Handle panel cleanup directly in the onclick, NOT via `closeLevel3Chat()` (which sets state to 'free').
 
-- Input does NOT auto-focus (prevents keyboard popup on mobile)
-- Send button is always visible next to input
-- "THANKS, GOODBYE" button is large tap target
-- Typewriter can be skipped by tapping the message area
-- LOOK button acts as "send" if input has text, otherwise does nothing in chat
+## NPC Sprites
 
-## Notebook Integration
+Each NPC needs:
+- `drawXxxSprite(x, y, facing)` — ~24-32px wide game sprite
+- Portrait function for the 96x96 chat portrait canvas
+- Sprite variations: Chuck is wide (32px, suit), Flint is emo (black, hair over eye), AJ+RJ have muscle tanks
 
-When an NPC gives the player a notebook:
-1. Set `hasNotebook = true`
-2. Show notebook icon button (bottom-left, fixed position)
-3. Press C to toggle notebook (when not in chat)
-4. Notebook is a fullscreen overlay with deduction grid
+## L-Shaped Notebook Grid
 
-### Notebook Grid Structure
-```javascript
-let notebook = {
-    open: false,
-    grid: [['','',''], ['','',''], ['','','']],  // rows x cols, values: '' | 'check' | 'x' | '?'
-    autoMarks: {},
-};
+Three 3x3 sub-grids in an L shape (single HTML table):
 ```
-
-### Grid Toggle Logic
-Clicking a cell cycles: empty → ✓ (check) → ✗ (x) → ? → empty
-
-When a ✓ is placed:
-- All other cells in that row get auto-✗
-- All other cells in that column get auto-✗
-- These auto-marks are tracked in `autoMarks` and can be undone if the ✓ is removed
-
-### Notebook Tutorial (Blake's tutorial)
-When player asks for tutorial, Blake explains:
-- "Each row is a person, each column is an item"
-- "Click a cell to mark ✓ (they had it), ✗ (they didn't), or ? (maybe)"
-- "When you mark ✓, other cells in that row and column get ✗ automatically"
-- "Use the clues to figure out who had what!"
-
-## Clue Discovery
-
-Clues are discovered by:
-1. Talking to an NPC (greeting triggers a clue)
-2. NPC response to a specific keyword triggers a clue
-3. Examining an object (separate from conversation)
-
-```javascript
-let discoveredClues = [];
-
-function addClue(text) {
-    if (!discoveredClues.includes(text)) discoveredClues.push(text);
-}
+              Items              Personas
+           Book PrEP Mic    Jiggly Mariah Cher
+Chuck    [  ][  ][  ]  |  [  ][  ][  ]
+Flint    [  ][  ][  ]  |  [  ][  ][  ]
+AJ       [  ][  ][  ]  |  [  ][  ][  ]
+         ─────────────────
+Jiggly   [  ][  ][  ]
+Mariah   [  ][  ][  ]
+Cher     [  ][  ][  ]
 ```
+- Auto-marks only apply within each sub-grid
+- Bottom-right quadrant is empty (no interaction)
+- Clues section is scrollable (max-height: 120px; overflow-y: auto)
+- Grid is locked until a specific NPC is talked to (`l3GridUnlocked`)
 
-Clues appear in the notebook's "CLUES & EVIDENCE" section.
+## Clue Text
 
-## Template: Adding a New NPC
-
-```javascript
-const NEW_NPC = {
-    key: 'npc-key',
-    name: 'NPC NAME',
-    color: '#ff69b4',
-    x: 200, y: 150,
-    greeting: 'Hello! First thing they say.',
-    goodbye: 'See you later!',
-    responses: {
-        'keyword1': { text: 'Response to keyword1', clue: 'Clue text discovered' },
-        'keyword2': { text: 'Response to keyword2', item: 'notebook' },
-        '_default': { text: 'Generic response' },
-    },
-    drawSprite(ctx, x, y) {
-        // 32x32 pixel art at (x, y)
-    },
-    drawPortrait(ctx) {
-        // 96x96 pixel art filling the portrait canvas
-    },
-};
-```
-
-## Exclamation Point (Attention Getter)
-
-When an NPC needs the player's attention (e.g., after getting out of bed):
-```javascript
-// Draw "!" above NPC
-ctx.fillStyle = '#fff';
-ctx.fillRect(npcX + 8, npcY - 20, 16, 18);
-ctx.fillStyle = '#ff0000';
-ctx.font = 'bold 14px monospace';
-ctx.textAlign = 'center';
-ctx.fillText('!', npcX + 16, npcY - 6);
-```
-
-The exclamation appears for ~60 frames then disappears. NPC faces the player during this.
+Don't include parenthetical solver hints like "(Cher != Book)". State facts plainly:
+- "Cher was already on stage when the robbery happened."
+- "Chuck is 340 pounds — physically impossible for him to be Skinny Mariah Carey."

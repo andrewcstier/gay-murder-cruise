@@ -1,7 +1,7 @@
 ---
 name: create-level
 description: Use when the user asks to create a new level, room, or area in the game. Covers room layout, doors, interactions, collision, and transitions.
-version: 1.0.0
+version: 3.0.0
 ---
 
 # Create a Level
@@ -10,121 +10,170 @@ This skill provides the rules and patterns for creating new levels/rooms in Gay 
 
 ## Architecture
 
-The game is in `game.js` (single file, vanilla JS canvas). Levels are rendered via the `draw()` function which checks `gameState` and `roomState` to decide what to render. Movement is handled in `update()`.
+The game is in `game.js` (single file, vanilla JS canvas 480x320). Levels are rendered via the `draw()` function which checks `gameState`. Movement is handled in `update()`.
 
-## Room Creation Checklist
+## Level Types
 
-When creating a new room/level:
+### Single-room (Level 2 pattern)
+- One gameState, sub-states for flow control
+- Fixed 480x320 room, no camera
 
-1. **Define colliders** for all solid objects (beds, tables, fixtures, etc.)
-2. **Define interaction items** with `{ id, x, y, w, h }` for examinable objects
-3. **Add a draw function** that renders walls, floor, objects, player, and prompt
-4. **Add movement bounds** in `update()` with `minX, maxX, minY, maxY`
-5. **Add walk-through door transitions** that check player position and swap `roomState`
-6. **Set spawn position** right in front of the door the player entered through
+### Multi-room with scrolling (Level 3 pattern — recommended)
+- Multiple rooms connected by walk-through doors
+- One room (roundabout) scrolls vertically with a camera
+- Room switching changes drawing function and player position
+- Camera tracks player in scrollable rooms
 
-## Mandatory Rules
+## Level 3 Pattern (Current Reference)
 
-### Doors
-- Doors on top/bottom walls must be VERTICAL (taller than wide, with panel details)
-- Doors on left/right walls are horizontal
-- Doors must ALWAYS be drawn flush inside the wall they belong to — never floating in open space
-- Door frame rect must overlap with the wall rect
-- When entering a room through a door on the right wall, the exit door in the new room should be on the LEFT wall (and vice versa). Top/bottom follow the same logic.
+### State Variables
+```javascript
+let l3State = 'shop-intro'; // sub-states: 'free', 'chat', 'notebook', 'accuse', 'complete', etc.
+let l3Room = 'shop'; // current room name
+let l3PlayerX = 228, l3PlayerY = 230, l3PlayerFacing = 'up';
+let l3NearNpc = null, l3NearDoor = null;
+let l3Camera = { y: 0 };
+const L3_ROUNDABOUT_HEIGHT = 700; // total height of scrollable room
+function l3sy(worldY) { return worldY - l3Camera.y; } // screen-space conversion
+```
 
-### Collision
-- Player must NEVER walk through or over solid objects
-- Every piece of furniture/fixture needs a collision rect in the room's colliders array
-- Use `collidesWithAny(x, y, pw, ph, colliders)` to check
-- Implement axis-sliding: if full movement blocked, try X-only then Y-only
+### Multi-Room Doors
+```javascript
+const L3_DOORS = {
+    shop: [
+        { x: 0, y: 100, w: 28, h: 100, target: 'roundabout', playerX: 410, playerY: 160, facing: 'left', label: 'Exit' },
+    ],
+    roundabout: [
+        { x: 420, y: 120, w: 60, h: 80, target: 'shop', playerX: 30, playerY: 160, facing: 'right', label: 'Shop' },
+    ],
+};
+```
+Door zones must be wide enough (40-60px min dimension) and reachable within player bounds.
 
 ### Room Transitions
-- Doors between rooms are walk-through (no examine needed) — detect when player reaches the wall edge near the door
-- Only transition if player Y/X is within the door's range on that wall
-- Spawn the player right in front of the door they came through, facing into the room
-- Spawn positions must be safely within the new room's movement bounds (not at/past edges, or the transition will re-trigger)
-
-### Room Size
-- Rooms should be tight — only enough walking space to navigate. No large empty areas.
-- A "tiny" room means 2-3 steps of movement at most.
-
-### Interactions
-- Items the player can examine need entries in the room's items array
-- Proximity check: `Math.abs(rpx - icx) < 50 && Math.abs(rpy - icy) < 50`
-- Show prompt when near, hide when not near or when in dialog
-- Set `gameState = 'room-dialog'` and show `dialogBox` for text interactions
-- `closeDialog()` returns to `gameState = 'room'`
-
-### Drawing
-- Always draw: floor with pattern, walls on all sides with trim, doors in walls, objects, then player on top
-- Use the existing `drawRoomPlayer()` function for the player character
-- Canvas is 480x320 (`ROOM_W` x `ROOM_H`)
-
-## Game States
-
-- `'room'` — player can move and interact in the current room
-- `'room-dialog'` — dialog box is showing, player frozen
-- `'book-closeup'` / `'book-open'` — special fullscreen views
-- Rooms are sub-states via `roomState`: `'room'`, `'bathroom'`, `'balcony'`, etc.
-
-## Template
-
 ```javascript
-// Colliders for new room
-const NEW_ROOM_COLLIDERS = [
-    { x: ..., y: ..., w: ..., h: ... },  // furniture
-];
-
-// Interaction items
-const NEW_ROOM_ITEMS = [
-    { id: 'item-name', x: ..., y: ..., w: ..., h: ... },
-];
-
-function drawNewRoom() {
-    // Floor
-    ctx.fillStyle = '#...';
-    ctx.fillRect(0, 0, ROOM_W, ROOM_H);
-
-    // Walls (all four sides, tight)
-    // ...
-
-    // Door in wall (flush, correct orientation)
-    // ...
-
-    // Furniture/objects (matching colliders)
-    // ...
-
-    drawRoomPlayer();
-
-    if (roomNearItem && gameState === 'room') {
-        promptEl.classList.add('visible');
-        promptEl.textContent = isMobile() ? 'Tap LOOK to examine' : 'Press E or SPACE to examine';
-    } else if (gameState === 'room') {
-        promptEl.classList.remove('visible');
+for (const door of doors) {
+    if (pcx > door.x && pcx < door.x + door.w && pcy > door.y && pcy < door.y + door.h) {
+        l3Room = door.target;
+        l3PlayerX = door.playerX;
+        l3PlayerY = door.playerY;
+        l3PlayerFacing = door.facing;
+        // Switch music if needed
+        return;
     }
 }
 ```
 
-## Movement bounds in update()
-
+### Scrollable Room Camera
 ```javascript
-if (roomState === 'newroom') {
-    minX = wallLeft + 4; maxX = wallRight - 28;
-    minY = wallTop + 4; maxY = wallBottom - 40;
-    colliders = NEW_ROOM_COLLIDERS;
+if (l3Room === 'roundabout') {
+    l3Camera.y = l3PlayerY - HEIGHT / 2 + 18;
+    if (l3Camera.y < 0) l3Camera.y = 0;
+    if (l3Camera.y > L3_ROUNDABOUT_HEIGHT - HEIGHT) l3Camera.y = ...;
+} else {
+    l3Camera.y = 0;
+}
+// All drawing in scrollable rooms uses l3sy(worldY) for y-coordinates
+```
+
+### Variable-Width Bounds (roundabout narrows into hallway)
+```javascript
+if (l3Room === 'roundabout') {
+    if (newY > 350) { // hallway section — narrow
+        if (newX < 134) newX = 134;
+        if (newX > 310) newX = 310;
+    }
 }
 ```
 
-## Walk-through transition
-
+### Blocking Exit Until Condition Met
 ```javascript
-// Entering new room from main room (e.g. door in right wall)
-if (roomPlayerX >= maxX && roomPlayerY > doorTop && roomPlayerY < doorBottom) {
-    roomState = 'newroom';
-    roomPlayerX = spawnX;  // safely inside new room bounds
-    roomPlayerY = spawnY;  // right in front of the left-wall door
-    roomPlayerFacing = 'right';
-    roomNearItem = null;
+if (l3Room === 'shop' && !l3ShopkeeperTalked) {
+    l3State = 'shop-exit-blocked';
+    dialogBox.innerHTML = '<span style="color:#ffcc00;">I should talk to the shop owner first.</span>';
+    dialogBox.classList.add('visible');
     return;
 }
 ```
+
+### Fade-to-Room Teleport
+```javascript
+if (l3State === 'fade-to-theater') {
+    l3FadeToTheaterAlpha += 0.02;
+    if (l3FadeToTheaterAlpha >= 1) {
+        l3Room = 'theater';
+        l3PlayerX = 228; l3PlayerY = 200;
+        l3State = 'free';
+    }
+}
+// Draw: ctx.fillStyle = `rgba(0,0,0,${alpha})`; ctx.fillRect(...)
+```
+
+### Room Drawing Dispatch
+```javascript
+function drawLevel3() {
+    switch (l3Room) {
+        case 'shop': drawL3Shop(); break;
+        case 'roundabout': drawL3Roundabout(); break;
+        case 'theater': drawL3Theater(); break;
+    }
+}
+```
+
+## Hooking Into the Game
+
+### 1. handleAction() dispatcher
+```javascript
+if (gameState === 'levelN') { handleLevelNAction(key); return; }
+```
+
+### 2. update() and draw()
+```javascript
+if (gameState === 'levelN') { updateLevelN(); return; }
+if (gameState === 'levelN') { drawLevelN(); return; }
+```
+
+### 3. Level select (only visible with #dev hash)
+```javascript
+} else if (level === N) {
+    selectedChar = selectedChar || CHARACTERS[0];
+    startLevelN();
+}
+```
+
+## Comic Book Cutscenes
+
+Levels can start with comic panel sequences:
+- `gameState = 'comic-cutscene'`, `comicPanel` tracks current panel
+- Each panel is a function drawing to the full canvas
+- Panels advance on tap/keypress with 400ms debounce
+- After all panels: `startLevelN()`
+- `drawComicPanel(n)` dispatches via switch statement
+
+## Mandatory Rules
+
+### Doors
+- Door zones must be 40-60px minimum in the narrow dimension
+- Door zones must overlap with the walkable area (verify against bounds)
+- Doors flush inside walls, never floating
+- Player bounds must allow reaching all door zones (verify mathematically)
+
+### Collision
+- Every solid object needs a collider
+- NPCs need colliders: `{ x: npc.x + 4, y: npc.y + 8, w: 16, h: 28 }`
+- Use `collidesWithAny()` with axis-sliding
+- Wall colliders need gaps aligned with door zones
+
+### Room Size
+- Canvas is 480x320
+- Scrollable rooms can be taller (e.g. 700px) with camera
+
+### Player Drawing
+- Use character system: `drawCharFront/Back/Side(px, py, bounce, legSwing, armSwing, char)`
+- In scrollable rooms: use `l3sy()` for y-coordinate
+- Include shadow ellipse
+
+### Music
+- Different tracks per room area: `GameMusic.startMusic('trackName')`
+- Switch on room transitions
+- Tracks defined in music.js TRACKS object
